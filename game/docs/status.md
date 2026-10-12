@@ -2,6 +2,8 @@
 
 *The handoff document: what exists, what's verified, what's next. Last updated 2026-10-12.*
 
+Tracked in PPM as `texas-shitkickers` (id 658): the roadmap, the user's tasks, and a journal entry after each session.
+
 ## Decided
 
 - **Genre: a brawler** (Final Fight / Double Dragon), decided 2026-10-12 after playing both. The platformer is kept at
