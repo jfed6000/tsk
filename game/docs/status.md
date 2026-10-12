@@ -60,7 +60,8 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 - On the F256 the viewer runs on the K2 (smooth); the game (`tsk`, P4 sprint 1) moves the hero on Boot Hill in MAME
   and on the host 6809, no enemies yet, not yet run on the K2.
 - **Fixed 2026-10-12**, found by the port: in the brawler the jump button stomped at once (no jumping at all since
-  the stomp was added in 45d1f15), and one tap of X gave two snap kicks. Each press now queues one kick. SNES pad support is untested on real pads (`port-guide.md` section 9).
+  the stomp was added in 45d1f15), and one tap of X gave two snap kicks. Each press now queues one kick.
+- SNES pad support is untested on real pads (`port-guide.md` section 9).
 
 ## Next
 
