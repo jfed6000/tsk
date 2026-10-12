@@ -132,7 +132,8 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
   - Metal Slug-level violence using the reserved blood CLUT entry;
   - revenant touches on the hero (a bullet-holed hat, stitched leather, faintly glowing eyes at night);
   - a Morricone minor key.
-  **Mock-up built:** `?mode=brawler` opens on Main Street at dusk (`js/mainstreet.js`).
+  **Mock-up built:** `?mode=brawler` opens on Main Street at dusk (`js/mainstreet.js`). The user's verdict (2026-10-12):
+  **"It is darker but still fun."** The darker tone is approved for the brawler route.
 - **How violent?** Somewhere between Mario (bonk, vanish), Metal Slug (slapstick gore, played for laughs) and
   House of the Dead (horror gore). Undecided. Things to weigh:
   - The title already rules out a kids' game, and the premise (a dead man's boots, an undertaker boss) is Weird West.
