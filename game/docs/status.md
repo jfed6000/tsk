@@ -9,6 +9,7 @@
 - **Tone: darker**, "darker but still fun" (Main Street at dusk), with an **undead posse** for the menace.
 - **Controls: two buttons** (jump, kick); side kick = back + kick; C is a shortcut for SNES pads (3 buttons).
 - **Pickup weapons:** bullwhip and six-shooter (six shots, then tossed).
+- **The hero is called "Shitkickers"**, the boots themselves. Ringo is the cowboy who died wearing them.
 
 ## What exists
 
@@ -17,7 +18,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 | Part | State |
 |---|---|
 | **Hero** | Final design: two cowboy boots joined to a very high crotch, a face across both, hat, arms. Profile when moving, faces the camera when standing. 74 frames, including grab, throw, whip and shoot |
-| **Story** | `story.md`: "died with his boots on" revenge western. Ringo's boots against the Diamondback Gang |
+| **Story** | `story.md`: "died with his boots on" revenge western. the Shitkickers (the boots Ringo died in) against the Diamondback Gang |
 | **Stage 1: Boot Hill (brawler)** | The wordless opening (rise from the grave, the hat hops on), the graveyard, five waves of skeletons clawing out of the ground plus dillos, lightning, boss **Two-Bit** (shovel swing, clods thrown across lanes, tunnels through depth and bursts up into a daze, raises two dead at half health) |
 | **Stage 2: Main Street at dusk** | False fronts, sunset, night falling a step per wave (a CLUT fade that spares the lights), mangy coyotes and skeleton gunslingers, five waves, then "TO BE CONTINUED..." |
 | **Brawler systems** | Depth band with shadows, waves with screen lock and "GO >>", 3-kick combo, side kick, flying kick, stomp, grab/knee/throw, weapon pickups, beans, health bar plus lives (hats), last-hit enemy bar, combos, game over |

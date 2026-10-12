@@ -19,7 +19,9 @@ and set off across Texas to kick every member of the gang into the next county.
 
 ## The hero
 
-**No name.** He's the Man With No Name, in boots. Townsfolk just call him *the Shitkicker*.
+**Shitkickers.** That's his name (the user's call, 2026-10-12): cowboy-boot slang, half the game's title, and plural
+the way a pair of jeans is. He has no other name; he's the Man With No Name, in boots. He is **not** Ringo: Ringo
+is the cowboy who was killed wearing him.
 
 - **What he is:** two cowboy boots joined at the shafts. A face, a hat and two stubby arms. What's left of the cowboy.
 - **Who he is:** an ornery, scowling jerk with a code. He kicks first and doesn't talk, but:
@@ -29,7 +31,7 @@ and set off across Texas to kick every member of the gang into the next county.
 - **Why he kicks:** he's boots. Every move is a kick: snap kick, side kick, bicycle kick, flying kick, and the stomp.
 - **His cowboy: Ringo.** An old drover who wouldn't sell his land to the gang. He's seen only in the opening:
   the hat and the boots, and a headstone carved *RINGO. R.I.P.* (The name nods to Johnny Ringo and to the Ringo Kid
-  in *Stagecoach*, and it fits a headstone in the 3×5 font. The townsfolk call the hero "Ringo's boots".)
+  in *Stagecoach*, and it fits a headstone in the 3×5 font.)
 
 ## The villain: Diamondback
 

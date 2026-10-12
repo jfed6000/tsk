@@ -683,7 +683,7 @@ T.runBrawler = function (A) {
   }
   function stageClear() { phase = 'clear'; phaseT = 0; sfx('win'); setS('taunt'); player.vx = player.vz = 0; }
 
-  // ---------------------------------------------------------------- the opening on Boot Hill: Ringo's boots climb out
+  // ---------------------------------------------------------------- the opening on Boot Hill: the Shitkickers climb out of Ringo's grave
   const STONE = { x: 66, z: 4 };
   const IN = { bolt: 0.7, rumble: 1.1, rise: 1.5, wake: 1.5 + HERO.rise.dur + 0.3 };
   IN.hop = IN.wake + 0.3; IN.land = IN.hop + 0.55; IN.end = IN.land + 0.2;
@@ -760,7 +760,7 @@ T.runBrawler = function (A) {
     const cx = Math.round(camX), wx = x => x - cx, p = player;
     // HUD
     if (phase !== 'intro') {
-      put(T.bossBar('RINGO', Math.max(0, p.hp), MAX_HP), 6, 6, 0, 0, 0);
+      put(T.bossBar('SHITKICKERS', Math.max(0, p.hp), MAX_HP), 6, 6, 0, 0, 0);
       for (let i = 0; i < p.lives; i++) put(HAT, 108 + i * 24, 6, 0, 0, 0);
       put(T.textSprite('SCORE ' + String(score).padStart(7, '0'), '#fff3c4', 1), 6, 26, 0, 0, 0);
       if (p.weapon) {

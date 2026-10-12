@@ -3,8 +3,8 @@
 A Final Fight / Double Dragon style brawler, prototyped in the browser for the Wildbits F256.
 Open `index.html` (no build step, no server needed).
 
-**Ringo's boots** climb out of his grave on **Boot Hill** at midnight and kick their way through the undead posse
-to Two-Bit the gravedigger. Then they head down **Main Street at dusk**, where the night falls as you fight.
+Ringo, an old cowboy, was gunned down and buried on **Boot Hill** with his boots on. At midnight the boots,
+the **Shitkickers**, climb out of his grave and kick their way through the undead posse to Two-Bit the gravedigger. Then they head down **Main Street at dusk**, where the night falls as you fight.
 
 ## Controls
 
