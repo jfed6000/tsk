@@ -469,6 +469,37 @@ function drawHero(ctx, p) {
   else {
     if (front) drawArm(ctx, sB[0], sB[1], p.bh, p.bb, p.armL, PAL.f2);
     drawArm(ctx, sF[0], sF[1], p.fh, p.fb, p.armL, PAL.n2);
+    if (p.whip || p.gun) {
+      const j = ik(sF[0], sF[1], p.fh[0], p.fh[1], p.armL, p.armL, p.fb);
+      if (p.whip) drawWhip(ctx, j.hx, j.hy, p.whip);
+      if (p.gun) drawGun(ctx, j.hx, j.hy, p.gun);
+    }
+  }
+  ctx.restore();
+}
+
+// pickup weapons, drawn in the hand. Brass and leather only: a grey gun would pull the eye whites grey (see the spur).
+function drawWhip(ctx, x, y, w) {
+  ctx.lineCap = 'round';
+  for (const [col, lw] of [[PAL.out, 2.6], [PAL.n2, 1.2]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(w.c[0], w.c[1], w.e[0], w.e[1]); ctx.stroke();
+  }
+  if (w.crack) {                                     // the crack at the tip
+    ctx.fillStyle = PAL.sm1; const [ex, ey] = w.e;
+    ctx.fillRect(ex - 3, ey - 0.5, 6, 1.4); ctx.fillRect(ex - 0.5, ey - 3, 1.4, 6); ctx.fillRect(ex - 1.5, ey - 1.5, 3, 3);
+  }
+}
+function drawGun(ctx, x, y, g) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(g.a || 0);
+  ctx.strokeStyle = PAL.out; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.moveTo(-1.6, 0); ctx.lineTo(-3.8, 4.6); ctx.lineTo(-0.6, 5.2); ctx.lineTo(1.2, 0.4); ctx.closePath();
+  ctx.fillStyle = PAL.band; ctx.fill(); ctx.stroke();              // grip
+  ctx.beginPath(); ctx.rect(-1.6, -2.8, 4.4, 3.8); ctx.fillStyle = PAL.buckle; ctx.fill(); ctx.stroke();   // cylinder
+  ctx.beginPath(); ctx.rect(2.4, -2.2, 7.6, 2.2); ctx.fillStyle = PAL.buckle; ctx.fill(); ctx.stroke();    // barrel
+  if (g.flash) {
+    ctx.fillStyle = PAL.sm2; ctx.beginPath(); ctx.moveTo(10, -1); ctx.lineTo(17, -4.5); ctx.lineTo(15, -1); ctx.lineTo(17, 2.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PAL.sm1; ctx.fillRect(10, -2, 4, 2);
   }
   ctx.restore();
 }
@@ -593,6 +624,22 @@ function heroAnims() {
       fh: [11, -29], bh: [-10, -30], fb: -1, bb: -1, face: 'squint' }),
     pose({ br: -0.18, bx: -1, nl: leg(-0.35, 1), fl: leg(0.2, 0, -2), hy: -4, hr: -0.25,
       fh: [11, -24], bh: [-10, -26], fb: -1, bb: -1, face: 'squint' }),
+  ] };
+
+  // brawler moves: grab an outlaw by the collar, throw him; crack a whip; fan a six-shooter
+  A.grab = { fps: 1, loop: false, poses: [pose({ br: -0.05, fh: [15, -21], bh: [13, -18], nl: leg(-0.25), fl: leg(0.3, 0, -2) })] };
+  A.throw = { fps: 7, loop: false, poses: [
+    pose({ br: -0.3, bx: -2, fh: [-5, -35], bh: [-9, -33], fb: -1, bb: -1, face: 'yell', nl: leg(-0.3), fl: leg(0.35, 0, -2) }),
+    pose({ br: 0.25, bx: 2, fh: [16, -14], bh: [14, -12], face: 'yell', nl: leg(-0.45), fl: leg(0.4, 0, -2) }),
+  ] };
+  A.whip = { fps: 12, loop: false, poses: [
+    pose({ br: -0.12, fh: [-3, -33], fb: -1, whip: { c: [-12, -48], e: [-24, -40] }, nl: leg(-0.15), fl: leg(0.25, 0, -2) }),
+    pose({ br: 0.1, fh: [14, -21], face: 'yell', whip: { c: [32, -32], e: [60, -23], crack: true }, nl: leg(-0.35), fl: leg(0.35, 0, -2) }),
+    pose({ br: 0.05, fh: [12, -17], whip: { c: [28, -22], e: [44, -4] }, nl: leg(-0.25), fl: leg(0.3, 0, -2) }),
+  ] };
+  A.shoot = { fps: 10, loop: false, poses: [
+    pose({ fh: [16, -22], bh: [6, -13], gun: { a: 0 }, nl: leg(-0.2), fl: leg(0.3, 0, -2), pupil: [1.2, 0] }),
+    pose({ br: -0.06, fh: [14, -25], bh: [6, -13], gun: { a: -0.35, flash: true }, face: 'yell', nl: leg(-0.2), fl: leg(0.3, 0, -2) }),
   ] };
 
   // clawing out of the grave (hatless, eyes shut), then waking up

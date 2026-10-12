@@ -105,7 +105,8 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
 
 - The placeholder names above (Ringo is settled).
 - Is Vernon (the Ugly) in or out?
-- Does the hero get a non-kick weapon? Metal Slug has one; spurs that fling like throwing stars would fit.
+- **Pickup weapons (wanted, 2026-10-12):** a bullwhip and a six-shooter with exactly six shots, then he tosses it.
+  Both are in the brawler test. Throwing spurs are still an option for a permanent sub-weapon.
 - Lives and continues: arcade continues, or Mario-style lives with 1-ups (a spare hat?).
 - **What kind of game?** It's a platformer with kicks now. Two alternatives, undecided (2026-10-12):
   - **Ninja Gaiden** (action platformer): the natural evolution of what's built. Sharper combat, a wall-kick, the

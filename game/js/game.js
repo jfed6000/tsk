@@ -197,6 +197,12 @@ function sfx(k) {
   }
 }
 
+// ?mode=brawler: the Final Fight-style test on the desert (js/brawler.js) takes over from here
+if (params.get('mode') === 'brawler') {
+  T.runBrawler({ HERO, DILLO, BARREL, FX, COYOTE, keys, pressed, sfx, pollPad, params });
+  return;
+}
+
 // ---------------------------------------------------------------- world state
 // phase: 'intro' (Ringo's boots climb out of the grave), 'play', 'dead' (respawning), 'clear' (level done)
 let phase = LV.intro && !params.has('start') ? 'intro' : 'play', phaseT = 0;

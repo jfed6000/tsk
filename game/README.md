@@ -25,6 +25,8 @@ and shared CLUTs. See `docs/f256-plan.md`. Press `I` in game for the live sprite
 
 ## URL flags
 - `?level=desert`: the desert test range (endless outlaws, no boss)
+- `?mode=brawler`: the **brawler test**, a Final Fight-style belt-scroller on the desert (see below);
+  `?weapon=whip` or `?weapon=gun` starts it holding a weapon
 - `?start=2300`: start at that x, skipping the opening (2300 is the boss arena)
 - `?bot`: a crude autopilot that fights the boss; `?god`: no damage (both for testing, with `?ff`)
 - `?sheet`: sprite sheet and F256 budget view (blue = 32×32 hardware sprite cells, red = attack hitboxes)
@@ -33,6 +35,29 @@ and shared CLUTs. See `docs/f256-plan.md`. Press `I` in game for the live sprite
 - `?demo`: scripted attract mode
 - `?debug`: draw hitboxes in game
 - `?ff=4`: fast-forward N seconds at load (for headless screenshots)
+
+## Brawler test (`?mode=brawler`)
+
+To compare against the platformer: a floor band you walk into and out of, depth-sorted sprites with shadows,
+and waves that lock the screen until the gang is down ("GO >>"). It lives in `js/brawler.js`.
+
+| Key | Move |
+|---|---|
+| Arrows | Move; up/down is depth |
+| X X X | Kick combo; the third knocks down |
+| C | Side kick (knockdown) |
+| Z, then X | Flying kick |
+| Z, then Z | Stomp |
+| Walk into a staggered outlaw | Grab him: X knees, C throws him into his friends |
+| X on a weapon | Pick it up |
+
+Barrels drop **pickups**:
+- **Bullwhip:** long reach, wears out after 14 cracks, and you drop it when you're hit.
+- **Six-shooter:** six shots, then he tosses the empty gun.
+- **Beans:** health.
+
+The enemies are coyote outlaws, who flank you and swing shovels, with no more than two attacking at once, and dillos,
+which curl up and roll at you.
 
 ## How the sprites work
 The hero is **two cowboy boots joined from the shaft tops down to a very high crotch**. There's no body: a face

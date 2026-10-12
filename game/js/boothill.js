@@ -249,6 +249,8 @@ T.buildCoyote = function () {
     daze: [0, 1, 2, 3].map(i => mk({ eyes: 'daze', lean: -0.15 + (i % 2) * 0.08, shovel: 1.1, grip: [6, -16], mouth: 0.4, stars: i / 4 * TAU / 3, hat: 2 })),
     hurt: mk({ lean: -0.35, eyes: 'x', mouth: 1, shovel: -1.6, grip: [4, -26], hat: 3 }),
     ko: mk({ lean: -0.6, eyes: 'x', mouth: 1, shovel: -2.8, grip: [0, -30], hat: 6, legs: [1.2, -1.2] }),
+    // flat on his back (the brawler's knockdown): the standing drawing tipped over
+    down: bake(B.FW, B.FH, B.OX, B.OY, CPAL, ctx => { ctx.translate(24, -3); ctx.rotate(-Math.PI / 2 + 0.06); drawCoyote(ctx, { eyes: 'x', mouth: 1, shovel: 0.4, grip: [8, -22], hat: 4 }); }),
   };
 };
 
@@ -266,8 +268,8 @@ T.buildProps = function () {
   // carve the name in after pixelizing, so the letters stay crisp
   const hc = P.headstone.getContext('2d');
   hc.setTransform(1, 0, 0, 1, 0, 0);
-  T.drawText(hc, 'RINGO', 16, 13, GPAL.g0, 1, null, 'center');
-  T.drawText(hc, 'R.I.P.', 16, 21, GPAL.g0, 1, null, 'center');
+  T.drawText(hc, 'RINGO', 16, 13, GPAL.d1, 1, null, 'center');
+  T.drawText(hc, 'R.I.P.', 16, 21, GPAL.d1, 1, null, 'center');
   P.headstone = pixelize(P.headstone, GPAL, null, CLUT.spr); P.headstone.ox = 16; P.headstone.oy = 39;
   // the grave: a fresh mound before he rises, an open hole after
   P.mound = bake(40, 12, 20, 11, GPAL, ctx => {
