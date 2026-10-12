@@ -54,5 +54,7 @@ What it exercises:
 - `SS.ClutWrite` for the sprite, flash and tile CLUTs, and for the lightning swap.
 
 **Verified in MAME** (`wbjr2`, Longview, 2026-10-12): all of the above, including the three layers, the parallax,
-mirrored frames, the hit flash, the lightning and the clean exit to the shell. MAME isn't evidence of timing, and
-it doesn't model the tile layer's 8 px offset (port-guide §6), so the K2/Jr2 run is the real test.
+mirrored frames, the hit flash, the lightning and the clean exit to the shell.
+
+**Verified on the K2** (2026-10-12): "looks pretty smooth". The photo matches MAME, with no visible 8 px tile
+offset against the sprites (port-guide §6); that hasn't been measured to the pixel.
