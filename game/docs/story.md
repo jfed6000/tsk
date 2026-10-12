@@ -116,7 +116,12 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
     levels instead of platforms, and hit/knockdown/get-up animations for every enemy.
   - **Middle path:** single plane, with brawler-style combat. The screen locks while a group of enemies comes in, then
     "GO ->", with short platforming in between.
-  - A quick `?mode=brawler` experiment on the desert test range would let the user feel the difference.
+  - The `?mode=brawler` test is built (`js/brawler.js`). User's first reaction (2026-10-12): "a tough call... it is
+    kind of fun as a brawler."
+  - **Controls on the F256** (`port-guide.md` section 9): an Atari stick gives only 1 button on the current cores; an
+    **SNES pad gives 3**, and `SS.Joy` reads two pads at once (co-op); the keyboard gives plenty. The brawler needs
+    jump + kick + side kick. Design for 2 buttons (side kick as a direction + kick) with the third SNES button as a
+    shortcut. Pad support is untested on real pads (Tempest's was read from the RTL), so it needs a harness.
 - **How violent?** Somewhere between Mario (bonk, vanish), Metal Slug (slapstick gore, played for laughs) and
   House of the Dead (horror gore). Undecided. Things to weigh:
   - The title already rules out a kids' game, and the premise (a dead man's boots, an undertaker boss) is Weird West.
