@@ -1,0 +1,436 @@
+********************************************************************
+* hero.a - the Shitkickers: input -> state -> physics -> animation.
+*   A translation of brawler.js updatePlayer and pickAnim (the parts
+*   with no enemies yet).  Positions and velocities are 12.4 fixed
+*   point; the browser's per-second numbers become per-pass ones
+*   (60 passes a second, docs/port-plan.md).
+********************************************************************
+
+* states (the order matters: Jump, JKick and Stomp are the air states)
+ST.Idle             equ       0
+ST.Walk             equ       1
+ST.Jump             equ       2
+ST.JKick            equ       3                   the flying side kick
+ST.Stomp            equ       4
+ST.Land             equ       5
+ST.Snap             equ       6                   X: the snap kick, three to a combo
+ST.Side             equ       7                   C or back + X: the side kick
+ST.Taunt            equ       8
+
+* speeds, 12.4 per pass (browser: px/s at 60 passes)
+WalkX               equ       28                  105 px/s
+WalkZ               equ       17                  62 px/s
+JumpV               equ       96                  360 px/s
+Grav                equ       5                   1150 px/s/s
+FlyV                equ       45                  the flying kick, 170 px/s
+StompV              equ       -149                the stomp's drop, 560 px/s
+SideV               equ       24                  the side kick's lunge, 90 px/s
+ZMax                equ       80                  the street's depth, px
+
+* timings, passes (the browser's durations; the frame timing comes from tskassets.d)
+TurnLen             equ       6                   the 3/4 turn frame on stopping (0.1 s)
+LandFree            equ       5                   landing: free to move after (0.08 s)
+SnapDur             equ       HR.snap.N*HR.snap.T
+SnapChain           equ       SnapDur*4/5         a queued kick chains from here
+ChainT              equ       27                  after a snap kick: the next one chains (0.45 s)
+SideDur             equ       HR.side.N*HR.side.T
+SideHit             equ       3                   the side kick's first hit frame: it lunges
+TauntDur            equ       HR.taunt.N*HR.taunt.T
+JumpUp              equ       32                  jump frames: rising above 2 px/pass,
+JumpDn              equ       -32                 falling below -2
+
+HeroInit            ldd       #70*16
+                    std       <hx
+                    ldd       #40*16
+                    std       <hz
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lda       #TurnLen            straight to the idle, no turn
+                    sta       <ht
+                    rts
+
+* SetS - A = the new state.  Its time starts at 0, its animation from frame 0.
+SetS                sta       <hst
+                    clr       <ht
+                    clr       <hdesc
+                    clr       <hdesc+1
+                    rts
+
+********************************************************************
+* Hero - one pass
+********************************************************************
+Hero                lda       <ht                 the state's time, held at 255
+                    inca
+                    beq       h0
+                    sta       <ht
+h0                  lda       <hchain
+                    beq       h1
+                    dec       <hchain
+* dx, dz: -1, 0 or 1 from what is held
+h1                  clr       <hdx
+                    clr       <hdz
+                    lda       <inp
+                    bita      #IN.Right
+                    beq       h2
+                    inc       <hdx
+h2                  bita      #IN.Left
+                    beq       h3
+                    dec       <hdx
+h3                  bita      #IN.Down
+                    beq       h4
+                    inc       <hdz
+h4                  bita      #IN.Up
+                    beq       h5
+                    dec       <hdz
+* free to act: standing, walking, or a moment after landing
+h5                  lda       <hst
+                    cmpa      #ST.Idle
+                    beq       hfree
+                    cmpa      #ST.Walk
+                    beq       hfree
+                    cmpa      #ST.Land
+                    lbne      hsw
+                    lda       <ht
+                    cmpa      #LandFree
+                    lbls      hsw
+* back = pressing away from his facing; then he faces where he's pressed
+hfree               clr       <hback
+                    lda       <hdx
+                    beq       hf1
+                    bmi       hf0
+                    lda       <hface              pressing right: back if he faced left
+                    sta       <hback
+                    clr       <hface
+                    bra       hf1
+hf0                 lda       <hface              pressing left: back if he faced right
+                    eora      #1
+                    sta       <hback
+                    lda       #1
+                    sta       <hface
+hf1                 ldx       #0                  walking
+                    lda       <hdx
+                    beq       hf3
+                    ldx       #WalkX
+                    tsta
+                    bpl       hf3
+                    ldx       #-WalkX
+hf3                 stx       <hvx
+                    ldx       #0
+                    lda       <hdz
+                    beq       hf5
+                    ldx       #WalkZ
+                    tsta
+                    bpl       hf5
+                    ldx       #-WalkZ
+hf5                 stx       <hvz
+* the presses, in the browser's order
+                    lda       <ipress
+                    bita      #IN.Jump
+                    beq       hp1
+                    lda       #ST.Jump
+                    lbsr      SetS
+                    ldd       #JumpV
+                    std       <hvh
+                    ldd       <hvz                half the depth speed in the air
+                    asra
+                    rorb
+                    std       <hvz
+                    lbra      hsw
+hp1                 bita      #IN.Side            C: the side kick
+                    bne       hpside
+                    bita      #IN.Kick
+                    beq       hp3
+                    tst       <hback              back + X: the side kick
+                    bne       hpside
+                    lda       <hchain             X: the next snap kick of the combo
+                    beq       hp2a
+                    lda       <hstep
+                    cmpa      #3
+                    bhs       hp2a
+                    inca
+                    bra       hp2b
+hp2a                lda       #1
+hp2b                sta       <hstep
+                    lda       #ST.Snap
+                    lbsr      SetS
+                    bra       hsw
+hpside              lda       #ST.Side
+                    lbsr      SetS
+                    bra       hsw
+hp3                 bita      #IN.Taunt
+                    beq       hp4
+                    lda       #ST.Taunt
+                    lbsr      SetS
+                    bra       hsw
+hp4                 lda       <hdx                nothing pressed: walk or stand
+                    ora       <hdz
+                    beq       hp5
+                    lda       #ST.Walk
+                    bra       hp6
+hp5                 lda       #ST.Idle
+hp6                 cmpa      <hst
+                    beq       hsw
+                    lbsr      SetS
+
+* what each state does this pass
+hsw                 lda       <hst
+                    cmpa      #ST.Snap
+                    beq       sSnap
+                    cmpa      #ST.Side
+                    lbeq      sSide
+                    cmpa      #ST.Taunt
+                    lbeq      sTaunt
+                    cmpa      #ST.Land
+                    lbeq      sLand
+                    cmpa      #ST.Jump
+                    lblo      hmove
+                    cmpa      #ST.Stomp
+                    lbls      sAir
+                    lbra      hmove
+
+* the snap kick: a later press during it queues the next (not the press
+*   that started it); the combo is three
+sSnap               ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    tst       <ht
+                    beq       ss1
+                    lda       <ipress
+                    bita      #IN.Kick
+                    beq       ss1
+                    lda       #1
+                    sta       <hqd
+ss1                 lda       <ht
+                    cmpa      #SnapChain
+                    lblo      hmove
+                    tst       <hqd
+                    beq       ss2
+                    lda       <hstep
+                    cmpa      #3
+                    bhs       ss2
+                    clr       <hqd
+                    inc       <hstep
+                    lda       #ST.Snap
+                    lbsr      SetS
+                    lbra      hmove
+ss2                 lda       <ht
+                    cmpa      #SnapDur
+                    lblo      hmove
+                    clr       <hqd
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lda       #ChainT
+                    sta       <hchain
+                    lbra      hmove
+
+* the side kick: he lunges on the first hit frame
+sSide               ldd       #0
+                    std       <hvz
+                    std       <hvx
+                    lda       <hfr
+                    cmpa      #SideHit
+                    bne       sd1
+                    ldd       #SideV
+                    tst       <hface
+                    beq       sd0
+                    ldd       #-SideV
+sd0                 std       <hvx
+sd1                 lda       <ht
+                    cmpa      #SideDur
+                    lblo      hmove
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
+sTaunt              ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lda       <ht
+                    cmpa      #TauntDur
+                    lblo      hmove
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
+sLand               ldd       <hvx                he skids to a stop
+                    asra
+                    rorb
+                    std       <hvx
+                    lbra      hmove
+
+* the air: X turns a jump into the flying kick, Z into the stomp - but not
+*   on the pass the jump began, or its own press would stomp at once
+sAir                tst       <ht
+                    beq       sa2
+                    cmpa      #ST.Jump
+                    bne       sa1
+                    lda       <ipress
+                    bita      #IN.Kick
+                    beq       sa1
+                    lda       #ST.JKick
+                    lbsr      SetS
+                    bra       sa2
+sa1                 lda       <hst
+                    cmpa      #ST.Stomp
+                    beq       sa2
+                    lda       <ipress
+                    bita      #IN.Jump
+                    beq       sa2
+                    lda       #ST.Stomp
+                    lbsr      SetS
+                    ldd       #StompV
+                    std       <hvh
+                    ldd       #0
+                    std       <hvx
+sa2                 lda       <hst
+                    cmpa      #ST.JKick
+                    bne       sa3
+                    ldd       #FlyV
+                    tst       <hface
+                    beq       sa25
+                    ldd       #-FlyV
+sa25                std       <hvx
+sa3                 ldd       <hvh                gravity
+                    subd      #Grav
+                    std       <hvh
+                    addd      <hh
+                    std       <hh
+                    bgt       hmove
+                    ldd       #0                  down: land
+                    std       <hh
+                    std       <hvh
+                    std       <hvx
+                    std       <hvz
+                    lda       #ST.Land
+                    lbsr      SetS
+
+* move, and keep him in the street: z 0..ZMax, x from the camera's left
+*   edge + 10 to the level's end - 10
+hmove               ldd       <hx
+                    addd      <hvx
+                    std       <hx
+                    ldd       <hz
+                    addd      <hvz
+                    bpl       hm1
+                    ldd       #0
+hm1                 cmpd      #ZMax*16
+                    ble       hm2
+                    ldd       #ZMax*16
+hm2                 std       <hz
+                    ldd       <cam
+                    addd      #10
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       <tmp
+                    ldd       <hx
+                    cmpd      <tmp
+                    bge       hm3
+                    ldd       <tmp
+hm3                 cmpd      #(LEVEL.W-10)*16
+                    ble       hm4
+                    ldd       #(LEVEL.W-10)*16
+hm4                 std       <hx
+
+********************************************************************
+* PickAnim - the animation for the state, and its frame.  Descriptors:
+*   first frame (2), count, passes a frame, 1 = loops.  A new descriptor
+*   starts at frame 0; the same one plays on.
+********************************************************************
+PickAnim            lda       <hst
+                    cmpa      #ST.Idle
+                    bne       pa1
+                    leax      AnTurn,pcr          stopping: the 3/4 turn, then idle
+                    ldb       <ht
+                    cmpb      #TurnLen
+                    blo       paset
+                    leax      AnIdle,pcr
+                    bra       paset
+pa1                 cmpa      #ST.Jump
+                    bne       pa2
+                    leax      AnJump0,pcr         the jump frame follows the speed
+                    ldd       <hvh
+                    cmpd      #JumpUp
+                    bgt       paset
+                    leax      AnJump1,pcr
+                    cmpd      #JumpDn
+                    bgt       paset
+                    leax      AnJump2,pcr
+                    bra       paset
+pa2                 leay      AnTab,pcr
+                    lsla
+                    ldd       a,y
+                    leax      d,y
+paset               cmpx      <hdesc
+                    beq       paadv
+                    stx       <hdesc
+                    clr       <hfr
+                    clr       <hft
+                    rts
+paadv               inc       <hft
+                    lda       <hft
+                    cmpa      3,x
+                    blo       pax
+                    clr       <hft
+                    inc       <hfr
+                    lda       <hfr
+                    cmpa      2,x
+                    blo       pax
+                    tst       4,x
+                    beq       panl
+                    clr       <hfr
+                    rts
+panl                deca
+                    sta       <hfr
+pax                 rts
+
+* HeroFrame - Exit: D = the frame to draw (mirrored when he faces left)
+HeroFrame           ldx       <hdesc
+                    ldd       ,x
+                    addb      <hfr
+                    adca      #0
+                    tst       <hface
+                    beq       hfr1
+                    addd      #HR.Mir
+hfr1                rts
+
+* the descriptor for each state (Idle and Jump are picked above)
+AnTab               fdb       AnIdle-AnTab
+                    fdb       AnRun-AnTab
+                    fdb       AnJump0-AnTab
+                    fdb       AnAir-AnTab
+                    fdb       AnStomp-AnTab
+                    fdb       AnLand-AnTab
+                    fdb       AnSnap-AnTab
+                    fdb       AnSide-AnTab
+                    fdb       AnTaunt-AnTab
+
+AnIdle              fdb       HR.idle
+                    fcb       HR.idle.N,HR.idle.T,1
+AnTurn              fdb       HR.turn
+                    fcb       1,255,0
+AnRun               fdb       HR.run
+                    fcb       HR.run.N,HR.run.T,1
+AnJump0             fdb       HR.jump
+                    fcb       1,255,0
+AnJump1             fdb       HR.jump+1
+                    fcb       1,255,0
+AnJump2             fdb       HR.jump+2
+                    fcb       1,255,0
+AnAir               fdb       HR.airside
+                    fcb       1,255,0
+AnStomp             fdb       HR.stomp+1
+                    fcb       1,255,0
+AnLand              fdb       HR.land
+                    fcb       1,255,0
+AnSnap              fdb       HR.snap
+                    fcb       HR.snap.N,HR.snap.T,0
+AnSide              fdb       HR.side
+                    fcb       HR.side.N,HR.side.T,0
+AnTaunt             fdb       HR.taunt
+                    fcb       HR.taunt.N,HR.taunt.T,0

@@ -288,7 +288,7 @@ T.runBrawler = function (A) {
     switch (p.state) {
       case 'snap':
         p.vx = p.vz = 0;
-        if (pressed.snap) p.queued = true;
+        if (pressed.snap && p.t > 0) p.queued = true;       // a later press queues the next kick (not the one that started this)
         if (p.t >= HERO.snap.dur * 0.8) {
           if (p.queued && p.step < 3) { p.queued = false; p.step++; setS('snap'); sfx('whoosh'); }
           else if (p.t >= HERO.snap.dur) { p.queued = false; setS('idle'); p.chainT = 0.45; }
@@ -297,8 +297,10 @@ T.runBrawler = function (A) {
       case 'side': p.vz = 0; p.vx = p.frame === SIDE_HIT0 ? p.face * 90 : 0; if (p.t >= HERO.side.dur) setS('idle'); break;
       case 'taunt': p.vx = p.vz = 0; if (p.t >= HERO.taunt.dur) setS('idle'); break;
       case 'jump': case 'jumpkick': case 'stomp':
-        if (p.state === 'jump' && pressed.snap) setS('jumpkick');
-        else if (p.state !== 'stomp' && pressed.jump) { setS('stomp'); p.vh = -560; p.vx = 0; sfx('whoosh'); }
+        if (p.t > 0) {                                  // not the press that started the jump (it would stomp at once)
+          if (p.state === 'jump' && pressed.snap) setS('jumpkick');
+          else if (p.state !== 'stomp' && pressed.jump) { setS('stomp'); p.vh = -560; p.vx = 0; sfx('whoosh'); }
+        }
         if (p.state === 'jumpkick') p.vx = p.face * 170;
         p.vh -= GRAV * dt; p.h += p.vh * dt;
         if (p.h <= 0) {

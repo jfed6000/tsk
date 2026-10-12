@@ -8,8 +8,10 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 | | |
 |---|---|
 | `tools/export.py` | The asset exporter. It runs the browser prototype headless with `?export` (`../game/js/export.js` draws and packs), writes `assets/*.bin` and the generated `src/tskassets.d`, then rebuilds `assets/preview/*.png` **from the binaries alone** to prove the data |
+| `src/tsk.asm` + `src/*.a` | **tsk**, the game (P4, `docs/port-plan.md`) |
 | `src/tskview.asm` | **tskview**, the asset viewer and graphics harness |
-| `tools/mame.sh`, `tools/tskview.lua` | Run tskview headless in the Wildbits MAME (`wbjr2`), with scripted keys and snapshots in `mame/snap/wbjr2/` |
+| `tools/hostrun.py` | The game on the host 6809 with the OS-9 calls answered in Python: a pass-by-pass trace of any variable |
+| `tools/mame.sh`, `tools/tsk.lua`, `tools/tskview.lua` | Run the game's demo or tskview headless in the Wildbits MAME (`wbjr2`), with scripted keys and snapshots in `mame/snap/wbjr2/` |
 
 ## Asset formats (all big-endian)
 
@@ -26,6 +28,29 @@ CLUT plan: 0 sprites, 1 hit flash (all white), 2 afterimage (ghost), 3 tiles.
 
 Boot Hill comes to 576 tiles (3 sets, 144K), 514 sprite cells (514K) and 186 frames: the hero's 74 and the
 skeleton's 19, each in both directions.
+
+## tsk: the game
+
+```
+make                 # tsk (2.9K of the 40,192-byte budget; data area 7K of 8K) and tskview
+make install DSK=/absolute/path/to/image.dsk
+make host            # the demo on the host 6809, the hero's state every 10 passes
+make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
+```
+
+On the machine: `chd /dd/TSK`, then `tsk` to play or `tsk d` for the demo.
+
+| Key | Does |
+|---|---|
+| Arrows | Walk (up and down move along the street's depth) |
+| Z or space | Jump; again in the air: the stomp |
+| X | Snap kick; three presses chain the combo. In the air: the flying kick. Back + X: the side kick |
+| C | Side kick |
+| T | Taunt |
+| Q | Quit |
+
+Sprint 1 (2026-10-12): the hero on Boot Hill with every ground and air move, the camera, and the depth-sorted
+display list with his shadow. No enemies yet. Verified on the host and in MAME; not yet run on the K2.
 
 ## tskview
 

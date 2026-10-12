@@ -90,6 +90,13 @@ T.runExport = function (A) {
   addGroup('SK', [['idle', SKEL.idle, 3, true], ['walk', SKEL.walk, 7, true], ['aim', [SKEL.aim], 1, false], ['shoot', [SKEL.shoot], 1, false],
     ['reload', SKEL.reload, 6, true], ['hurt', [SKEL.hurt], 1, false], ['headless', SKEL.headless, 5, true], ['heap', [SKEL.heap], 1, false],
     ['rise', SKEL.rise, 6, false]], S.OX, S.OY);
+  // effects: the ground shadow under every character (brawler.js PICK.shadow: an opaque dark ellipse, no blending)
+  const shadow = (() => {
+    const c = T.canvas(32, 8), x = c.getContext('2d');
+    x.translate(16, 4); x.beginPath(); x.ellipse(0, 0, 13, 3.4, 0, 0, Math.PI * 2); x.fillStyle = '#2a1a1e'; x.fill();
+    return T.pixelize(c, { s: '#2a1a1e' }, null, T.CLUT.spr);
+  })();
+  addGroup('FX', [['shadow', [shadow], 1, false]], 16, 4);
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
   const sprites = new Uint8Array(cellData.length * 1024);

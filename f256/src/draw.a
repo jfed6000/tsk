@@ -1,0 +1,302 @@
+********************************************************************
+* draw.a - the camera, the display list and the sprite records.
+*
+*   Every pass each character puts one entry in the display list.  The
+*   list is sorted nearest first (sprite 0 is drawn on top), and each
+*   entry's frame expands into one 32x32 record per cell (frames.bin).
+*   The shadows go after every character, so nothing stands behind its
+*   own shadow.  One SS.SprPush sends the records used this pass or last.
+********************************************************************
+
+CTL.Spr             equ       %00000001+CLUT.Spr*2    enabled, the sprite CLUT, 32x32
+CamLead             equ       144                 the camera keeps him 0.45 of the way across
+CamMax              equ       LEVEL.W-320
+
+CamInit             ldd       #0
+                    std       <camf
+                    std       <cam
+                    rts
+
+********************************************************************
+* Camera - follow the hero rightward (it never pans back: brawler.js),
+*   easing in by 1/8 of the gap a pass; then the three maps' scroll:
+*   street 1x, hill 1/2, sky 1/4.
+********************************************************************
+Camera              ldd       <hx
+                    subd      #CamLead*16
+                    bcc       cm1
+                    ldd       #0
+cm1                 cmpd      #CamMax*16
+                    bls       cm2
+                    ldd       #CamMax*16
+cm2                 subd      <camf
+                    bls       cm5                 never back
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    bne       cm4
+                    ldb       #1
+cm4                 addd      <camf
+                    std       <camf
+cm5                 ldd       <camf
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    std       <cam
+                    rts
+
+********************************************************************
+* Draw - the display list, the records, one push, the maps' scroll.
+*   Exit: carry = error in B
+********************************************************************
+Draw                clr       <dln
+                    leay      dl,u
+* the hero
+                    lbsr      HeroFrame
+                    std       DL.Frm,y
+                    lda       #CTL.Spr
+                    sta       DL.Ctl,y
+                    ldd       <hx
+                    ldx       <hz
+                    pshs      x
+                    ldx       <hh
+                    lbsr      Place
+                    leas      2,s
+                    inc       <dln
+* (enemies, pickups and effects go here)
+                    lbsr      SortDL
+* the characters, nearest first
+                    leay      recs,u
+                    leax      dl,u
+                    lda       <dln
+                    sta       <tmpn
+                    beq       dw2
+dw1                 pshs      x
+                    ldd       DL.X,x
+                    std       <bcx
+                    ldd       DL.Y,x
+                    std       <bcy
+                    lda       DL.Ctl,x
+                    sta       <bctl
+                    ldd       DL.Frm,x
+                    lbsr      BuildChar
+                    puls      x
+                    leax      DL.Size,x
+                    dec       <tmpn
+                    bne       dw1
+* then their shadows
+                    leax      dl,u
+                    lda       <dln
+                    sta       <tmpn
+dw1s                ldd       DL.Shy,x
+                    beq       dw1t
+                    pshs      x
+                    std       <bcy
+                    ldd       DL.X,x
+                    std       <bcx
+                    lda       #CTL.Spr
+                    sta       <bctl
+                    ldd       #FX.shadow
+                    lbsr      BuildChar
+                    puls      x
+dw1t                leax      DL.Size,x
+                    dec       <tmpn
+                    bne       dw1s
+* switch off what was used last pass and not this one, and push them all
+dw2                 tfr       y,d
+                    pshs      u
+                    subd      ,s++
+                    subd      #recs
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb                          B = records used
+                    stb       <tmpn
+dw3                 cmpb      <nrec
+                    bhs       dw4
+                    clr       ,y
+                    leay      8,y
+                    incb
+                    bra       dw3
+dw4                 lda       <tmpn               push max(this pass, last pass)
+                    ldb       <nrec
+                    sta       <nrec
+                    pshs      a
+                    cmpb      ,s+
+                    bhs       dw5
+                    tfr       a,b
+dw5                 clra
+                    tstb
+                    beq       dw6
+                    ldy       #0
+                    lbsr      SprPush
+                    bcs       dwx
+dw6                 lbra      MapScrl
+dwx                 rts
+
+* Place - fill a display entry's position.  Entry: Y = the entry,
+*   D = x (12.4), X = h (12.4), 2,s = z (12.4).
+*   Screen x = x - camera, y = FLOOR.Y + z - h; the shadow at h = 0.
+Place               lsra                          x in pixels
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    subd      <cam
+                    std       DL.X,y
+                    ldd       2,s                 z in pixels
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    stb       DL.Z,y
+                    addd      #FLOOR.Y
+                    std       DL.Shy,y
+                    pshs      d
+                    tfr       x,d                 h in pixels (signed)
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    pshs      d
+                    ldd       2,s
+                    subd      ,s++
+                    std       DL.Y,y
+                    leas      2,s
+                    rts
+
+* SortDL - nearest (biggest z) first; a bubble sort, the list is short
+SortDL              lda       <dln
+                    cmpa      #2
+                    blo       sox
+so0                 clr       <tmpf
+                    leax      dl,u
+                    lda       <dln
+                    deca
+                    sta       <tmpn
+so1                 lda       DL.Z,x
+                    cmpa      DL.Z+DL.Size,x
+                    bhs       so3
+                    ldb       #DL.Size            swap the pair
+so2                 lda       ,x
+                    pshs      a
+                    lda       DL.Size,x
+                    sta       ,x+
+                    puls      a
+                    sta       DL.Size-1,x
+                    decb
+                    bne       so2
+                    leax      -DL.Size,x
+                    inc       <tmpf
+so3                 leax      DL.Size,x
+                    dec       <tmpn
+                    bne       so1
+                    tst       <tmpf
+                    bne       so0
+sox                 rts
+
+* MapScrl - the three maps follow the camera.  Exit: carry = error in B
+MapScrl             ldx       <cam
+                    ldy       #2
+                    lbsr      Scrl
+                    bcs       msx
+                    ldd       <cam
+                    lsra
+                    rorb
+                    tfr       d,x
+                    ldy       #1
+                    lbsr      Scrl
+                    bcs       msx
+                    ldd       <cam
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    tfr       d,x
+                    ldy       #0
+                    lbsr      Scrl
+msx                 rts
+
+********************************************************************
+* BuildChar - one frame as 32x32 sprite records.
+*   Entry: Y = the next free record, D = the frame, bcx/bcy = the feet
+*   on screen, bctl = the CTRL byte.  Exit: Y = the next free record.
+*   Each cell (frames.bin: count, then dx, dy, cell number) becomes:
+*     ADDR = sprbase + cell * 1024,  X = feet x + dx + 32,  Y = feet y + dy + 32
+*   (the visible screen starts at 32,32).  Stops when the records run out.
+********************************************************************
+BuildChar           leax      frames,u
+                    lslb
+                    rola                          D = frame * 2
+                    addd      #2
+                    ldd       d,x                 the frame's offset in frames.bin
+                    leax      d,x
+                    lda       ,x+
+                    sta       <bcn
+                    beq       bc9
+bc1                 cmpy      <recend
+                    bhs       bc9
+                    lda       <bctl
+                    sta       ,y                  CTRL
+                    ldd       2,x                 the cell number
+                    lslb
+                    rola
+                    lslb
+                    rola                          cell * 4 = address bits 23:8
+                    addb      <sprbase+1
+                    adca      <sprbase
+                    std       1,y                 ADDR hi, mid
+                    clr       3,y                 ADDR lo
+                    ldb       ,x                  dx
+                    sex
+                    addd      <bcx
+                    addd      #32
+                    std       4,y
+                    ldb       1,x                 dy
+                    sex
+                    addd      <bcy
+                    addd      #32
+                    std       6,y
+                    leax      4,x
+                    leay      8,y
+                    dec       <bcn
+                    bne       bc1
+bc9                 rts
+
+ClearRecs           leax      recs,u
+                    ldy       #NRecs*8
+cr1                 clr       ,x+
+                    leay      -1,y
+                    bne       cr1
+                    rts
+
+PushRecs            ldy       #0
+                    ldd       #NRecs
+* SprPush - Y = first record, D = count.  Exit: carry = error in B
+SprPush             pshs      u
+                    tfr       d,u
+                    clra
+                    ldb       #SS.SprPush
+                    os9       I$SetStt
+                    puls      u,pc

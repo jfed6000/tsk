@@ -1,0 +1,740 @@
+********************************************************************
+* platform.a - start-up, asset loading, the display, the frame loop,
+*   input, pause and exit.  Runs with U = the data area, DP = its page.
+*   The patterns are the Joust port's (joust/src/platform.a) and
+*   tskview's, which is proven on the K2.
+********************************************************************
+
+FlashLen            equ       8                   lightning: passes lit
+
+* SS.LiveKeys sense bits (wildbits_vtio.d SHIFTBIT..SPACEBIT, as Joust's KY.*)
+KY.Up               equ       %00001000
+KY.Down             equ       %00010000
+KY.Left             equ       %00100000
+KY.Right            equ       %01000000
+KY.Space            equ       %10000000
+
+********************************************************************
+* start - X = the parameters, U = DP = the data area
+********************************************************************
+start               lda       ,x                  the first parameter character: d = demo
+                    tfr       u,x                 clear the data area below the stack
+                    ldy       #StkBase
+st1                 clr       ,x+
+                    leay      -1,y
+                    bne       st1
+                    stu       <dbase
+                    ora       #$20
+                    cmpa      #'d
+                    bne       st2
+                    inc       <demo
+                    lbsr      DemoStart
+st2                 leax      recs+NRecs*8,u
+                    stx       <recend
+                    lda       #FX_TXT             fallback if the mode cannot be read
+                    sta       <mcrlo
+                    lda       #FT_OMIT
+                    sta       <mcrhi
+                    leax      Icpt,pcr            signals land in sigcode / paused
+                    os9       F$Icpt
+                    clra                          remember the display mode
+                    ldb       #SS.MCR
+                    os9       I$GetStt            X = MCR low, Y = MCR high
+                    bcs       st3
+                    tfr       x,d
+                    stb       <mcrlo
+                    tfr       y,d
+                    stb       <mcrhi
+st3                 lbsr      WSigSet             tell us when our terminal is hidden
+                    leax      MsgLoad,pcr
+                    lbsr      WriteLn
+                    lbsr      Alloc
+                    lbcs      Fail
+                    lbsr      LoadAll
+                    lbcs      Fail
+                    lbsr      Display
+                    lbcs      Fail
+                    lbsr      HeroInit
+                    lbsr      CamInit
+
+********************************************************************
+* the frame loop: one pass a 60 Hz tick
+********************************************************************
+Main                ldx       #2                  one tick (1 only yields)
+                    os9       F$Sleep
+                    tst       <sigcode
+                    lbne      Quit
+                    tst       <paused
+                    lbne      PausWt
+                    lbsr      Input
+                    tst       <qkey
+                    lbne      Quit
+                    lbsr      Hero
+                    lbsr      Camera
+                    lbsr      Weather
+                    lbcs      Fail
+                    lbsr      Draw
+                    lbcs      Fail
+                    lbra      Main
+
+Quit                lbsr      Cleanup
+                    leax      MsgBye,pcr
+                    lbsr      WriteLn
+                    clrb
+                    os9       F$Exit
+
+Fail                pshs      b
+                    lbsr      Cleanup
+                    leax      MsgErr,pcr
+                    lbsr      WriteLn
+                    puls      b
+                    os9       F$Exit
+
+********************************************************************
+* PausWt - our terminal is in the background (SS.WSig).  Nothing runs;
+*   grfdrv256 restores our CLUTs, tile maps and sprites when we come
+*   forward.  The sleep is cut short by the S$WinFg signal.  Only the
+*   abort signals end the program from here: the keys belong to the
+*   terminal on screen.
+********************************************************************
+PausWt              ldx       #30
+                    os9       F$Sleep
+                    tst       <sigcode
+                    lbne      Quit
+                    tst       <paused
+                    bne       PausWt
+                    clr       <ilast              no stale presses on the way back
+                    lbra      Main
+
+* Icpt - the signal intercept: U = the data area (as given to F$Icpt)
+Icpt                cmpb      #S$WinBg
+                    bne       ic1
+                    stb       paused,u
+                    rti
+ic1                 cmpb      #S$WinFg
+                    bne       ic2
+                    clr       paused,u
+                    rti
+ic2                 cmpb      #S$Abort
+                    blo       icx
+                    cmpb      #S$Intrpt
+                    bhi       icx
+                    stb       sigcode,u
+icx                 rti
+
+* WSigSet / WSigClr - the terminal visibility signals.  A driver without
+*   SS.WSig fails the call and the game simply never pauses.
+WSigSet             clra
+                    ldb       #SS.WSig
+                    ldx       #S$WinBg*256+S$WinFg
+                    os9       I$SetStt
+                    bcs       ws1
+                    inc       <wsigok
+ws1                 clrb
+                    rts
+
+WSigClr             tst       <wsigok
+                    beq       ws2
+                    clra
+                    ldb       #SS.WSig
+                    ldx       #0
+                    os9       I$SetStt
+                    clr       <wsigok
+ws2                 rts
+
+********************************************************************
+* Input - what is held now (INP), the new presses (IPRESS), and Q.
+*   One SS.LiveKeys: A = the sense bits (arrows, shift, space), X/Y/U =
+*   six ordinary keys held now, lower case.  It also empties the input
+*   buffer, so nothing typed during play reaches the shell.  In the demo
+*   the script supplies INP and the keyboard only answers Q.
+********************************************************************
+Input               clra
+                    ldb       #SS.LiveKeys
+                    os9       I$GetStt
+                    pshs      u,y,x               ,s = the six key slots
+                    ldu       <dbase              the call returned R$U in U
+                    bcc       in0
+                    clra                          an older driver: no keyboard
+                    clrb
+                    std       ,s
+                    std       2,s
+                    std       4,s
+in0                 clrb
+                    bita      #KY.Left
+                    beq       in1
+                    orb       #IN.Left
+in1                 bita      #KY.Right
+                    beq       in2
+                    orb       #IN.Right
+in2                 bita      #KY.Up
+                    beq       in3
+                    orb       #IN.Up
+in3                 bita      #KY.Down
+                    beq       in4
+                    orb       #IN.Down
+in4                 bita      #KY.Space
+                    beq       in5
+                    orb       #IN.Jump
+in5                 leax      ,s
+                    lda       #6
+                    sta       <tmpn
+in6                 lda       ,x+
+                    beq       in8
+                    ora       #$20
+                    leay      KeyTab,pcr
+in7                 cmpa      ,y
+                    beq       in7a
+                    leay      2,y
+                    tst       ,y
+                    bne       in7
+                    bra       in8
+in7a                orb       1,y
+                    cmpa      #'q
+                    bne       in8
+                    inc       <qkey
+in8                 dec       <tmpn
+                    bne       in6
+                    leas      6,s
+                    tst       <demo
+                    beq       in9
+                    lbsr      DemoStep            B = the script's input
+in9                 stb       <inp
+                    lda       <ilast
+                    coma
+                    anda      <inp
+                    sta       <ipress
+                    stb       <ilast
+                    rts
+
+* the ordinary keys: code, input bit (Q has none)
+KeyTab              fcb       'z,IN.Jump
+                    fcb       'x,IN.Kick
+                    fcb       'c,IN.Side
+                    fcb       't,IN.Taunt
+                    fcb       'q,0
+                    fcb       0
+
+********************************************************************
+* The demo: entries of passes, input bits; 0 passes starts it again.
+*   The same moves the browser's controls make, as a test path that
+*   needs no held keys (MAME's Lua can type, not hold).
+********************************************************************
+DemoStart           leax      DemoTab,pcr
+                    stx       <dptr
+                    lda       ,x
+                    sta       <dleft
+                    rts
+
+* DemoStep - Exit: B = this pass's input
+DemoStep            ldx       <dptr
+                    ldb       1,x
+                    dec       <dleft
+                    bne       dm1
+                    leax      2,x
+                    lda       ,x
+                    bne       dm0
+                    leax      DemoTab,pcr
+                    lda       ,x
+dm0                 stx       <dptr
+                    sta       <dleft
+dm1                 rts
+
+DemoTab             fcb       70,0                    stand: the turn, then idle
+                    fcb       90,IN.Right             walk right
+                    fcb       30,IN.Right+IN.Down     and toward the camera
+                    fcb       12,0
+                    fcb       2,IN.Kick,7,0           the three-kick combo
+                    fcb       2,IN.Kick,7,0
+                    fcb       2,IN.Kick,50,0
+                    fcb       2,IN.Jump,55,0          jump
+                    fcb       2,IN.Jump,14,0          flying kick
+                    fcb       2,IN.Kick,50,0
+                    fcb       2,IN.Jump,14,0          stomp
+                    fcb       2,IN.Jump,40,0
+                    fcb       25,IN.Left              walk back: he turns
+                    fcb       2,IN.Right+IN.Kick,50,0 back + kick: the side kick
+                    fcb       2,IN.Taunt,70,0
+                    fcb       40,IN.Up
+                    fcb       250,IN.Right            a long walk: the camera follows
+                    fcb       2,IN.Right+IN.Jump,60,IN.Right
+                    fcb       60,0
+                    fcb       0
+
+Alloc               ldx       #NTilBlk
+                    lbsr      GfxAlloc
+                    bcs       alx
+                    tfr       x,d
+                    stb       <tilblk
+                    ldx       #NSprBlk
+                    lbsr      GfxAlloc
+                    bcs       alx
+                    tfr       x,d
+                    stb       <sprblk
+                    ldx       #NMapBlk
+                    lbsr      GfxAlloc
+                    bcs       alx
+                    tfr       x,d
+                    stb       <mapblk
+                    clrb
+alx                 rts
+
+* GfxAlloc - X = block count.  Exit: X = first block, carry = error in B
+GfxAlloc            pshs      u
+                    clra                          path 0
+                    ldb       #SS.GfxAlloc
+                    os9       I$SetStt
+                    puls      u,pc
+
+* GfxFree - B = first block (0 = none), A = count
+GfxFree             tstb
+                    beq       gf1
+                    pshs      u
+                    pshs      a
+                    clra
+                    tfr       d,x                 R$X = the first block
+                    puls      b
+                    clra
+                    tfr       d,u                 R$U = the count
+                    clra                          path 0
+                    ldb       #SS.GfxFree
+                    os9       I$SetStt
+                    puls      u
+gf1                 rts
+
+********************************************************************
+* LoadAll - every asset file.  Exit: carry = error in B
+********************************************************************
+LoadAll             lda       <tilblk
+                    ldb       #NTilBlk
+                    ldy       #0
+                    leax      FTiles,pcr
+                    lbsr      LoadFile
+                    bcs       lax
+                    lda       <sprblk
+                    ldb       #NSprBlk
+                    ldy       #0
+                    leax      FSprites,pcr
+                    lbsr      LoadFile
+                    bcs       lax
+                    lda       <mapblk
+                    ldb       #NMapBlk
+                    ldy       #0
+                    leax      FMaps,pcr
+                    lbsr      LoadFile
+                    bcs       lax
+                    leax      FFrames,pcr
+                    leay      frames,u
+                    ldd       #FRM.Size
+                    lbsr      LoadData
+                    bcs       lax
+                    leax      FClutS,pcr
+                    leay      clutbuf,u
+                    ldd       #1024
+                    lbsr      LoadData
+                    bcs       lax
+                    leax      FClutT,pcr
+                    leay      tclut,u
+                    ldd       #1024
+                    lbsr      LoadData
+                    bcs       lax
+                    leax      FClutF,pcr
+                    leay      fclut,u
+                    ldd       #1024
+                    lbsr      LoadData
+lax                 rts
+
+********************************************************************
+* LoadFile - read a file into asset blocks, one block at a time (from
+*   jstview).  Entry: X = pathname, A = first block, B = block count,
+*   Y = offset into the first block.  Exit: carry = error in B; a short
+*   file is not an error.  Only ever one window mapped.
+********************************************************************
+LoadFile            sta       <lblk
+                    stb       <lcnt
+                    sty       <loff
+                    lda       #READ.
+                    os9       I$Open
+                    bcs       lfret
+                    sta       <fpath
+lfblk               pshs      u
+                    clra
+                    ldb       <lblk
+                    tfr       d,x
+                    ldb       #1
+                    os9       F$MapBlk            U = the block in this process
+                    bcs       lfmaperr
+                    stu       <lmap
+                    ldd       #$2000
+                    subd      <loff
+                    tfr       d,y                 Y = room left in the block
+                    ldd       <loff
+                    leax      d,u                 X = where the read goes
+                    lda       <fpath
+                    os9       I$Read              Y = bytes read
+                    pshs      cc,b                keep the read result
+                    ldu       <lmap
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      cc,b
+                    puls      u                   the data area again
+                    bcc       lfgot
+                    cmpb      #E$EOF
+                    beq       lfdone
+                    bra       lferr
+lfgot               ldd       #$2000
+                    subd      <loff
+                    pshs      d
+                    cmpy      ,s++
+                    blo       lfdone              short read: the end of the file
+                    clr       <loff
+                    clr       <loff+1
+                    inc       <lblk
+                    dec       <lcnt
+                    bne       lfblk
+lfdone              lda       <fpath
+                    os9       I$Close
+                    clrb
+                    rts
+lfmaperr            puls      u
+lferr               pshs      b
+                    lda       <fpath
+                    os9       I$Close
+                    puls      b
+                    coma
+lfret               rts
+
+********************************************************************
+* LoadData - read a small file into the data area.
+*   Entry: X = pathname, Y = the buffer, D = bytes.  Exit: carry = error
+********************************************************************
+LoadData            pshs      y,u
+                    pshs      d                   ,s = bytes, 2,s = buffer, 4,s = data area
+                    lda       #READ.
+                    os9       I$Open              A = the path
+                    bcs       ld9
+                    ldx       2,s
+                    ldy       ,s
+                    pshs      a
+                    os9       I$Read
+                    puls      a
+                    pshs      cc,b
+                    os9       I$Close
+                    puls      cc,b
+ld9                 leas      2,s                 (LEAS leaves CC alone)
+                    puls      y,u,pc
+
+********************************************************************
+* Display - CLUTs, the sprite table, tile sets, tile maps, layers, and
+*   the display mode.  Exit: carry = error in B
+********************************************************************
+Display             leax      clutbuf,u           CLUT 0: the sprite colours
+                    ldy       #CLUT.Spr*256
+                    ldd       #256
+                    lbsr      ClutWrite
+                    lbcs      dsx
+* CLUT 1: every colour white, for the hit flash (entry 0 stays transparent)
+                    leax      clutbuf,u
+                    clr       ,x+
+                    clr       ,x+
+                    clr       ,x+
+                    clr       ,x+
+                    ldy       #255*2
+                    ldd       #$FFFF
+ds1                 std       ,x++
+                    leay      -1,y
+                    bne       ds1
+                    leax      clutbuf,u
+                    ldy       #CLUT.Fls*256
+                    ldd       #256
+                    lbsr      ClutWrite
+                    lbcs      dsx
+                    leax      tclut,u             CLUT 3: the tile colours
+                    ldy       #CLUT.Til*256
+                    ldd       #256
+                    lbsr      ClutWrite
+                    lbcs      dsx
+* the sprites' base address, and our sprite table
+                    lda       <sprblk
+                    lbsr      BlkAddr
+                    std       <sprbase
+                    clr       <sprbase+2
+                    leax      recs,u
+                    pshs      u
+                    ldy       #0                  R$Y = 0: the table is in our own map
+                    ldu       #NRecs              R$U = the records we own
+                    clra
+                    ldb       #SS.SprReg
+                    os9       I$SetStt
+                    puls      u
+                    lbcs      dsx
+                    lda       #1
+                    sta       <regd
+                    lbsr      PushRecs            all off (the data area was cleared)
+                    lbcs      dsx
+* tile sets: set k is the 64K at tilblk + 8k (linear, CFG 0)
+                    clr       <tsn
+ds2                 lda       <tsn
+                    lsla
+                    lsla
+                    lsla
+                    adda      <tilblk
+                    tfr       a,b
+                    clra
+                    tfr       d,x                 R$X = the block
+                    clra
+                    ldb       <tsn
+                    tfr       d,y                 R$Y = CFG 0 : set k
+                    pshs      u
+                    ldu       #0                  R$U = offset 0
+                    clra
+                    ldb       #SS.TsSet
+                    os9       I$SetStt
+                    puls      u
+                    lbcs      dsx
+                    inc       <tsn
+                    lda       <tsn
+                    cmpa      #TIL.Sets
+                    blo       ds2
+* tile maps 0-2, all in one block at the offsets the exporter gave
+                    ldy       #MAP0.Of
+                    ldd       #MAP0.W
+                    ldx       #0
+                    lbsr      OneMap
+                    bcs       dsx
+                    ldy       #MAP1.Of
+                    ldd       #MAP1.W
+                    ldx       #1
+                    lbsr      OneMap
+                    bcs       dsx
+                    ldy       #MAP2.Of
+                    ldd       #MAP2.W
+                    ldx       #2
+                    lbsr      OneMap
+                    bcs       dsx
+* layers: 0 is in front.  The street (map 2) leads, the sky (map 0) trails.
+                    ldx       #0
+                    ldy       #6
+                    lbsr      OneLayer
+                    bcs       dsx
+                    ldx       #1
+                    ldy       #5
+                    lbsr      OneLayer
+                    bcs       dsx
+                    ldx       #2
+                    ldy       #4
+                    lbsr      OneLayer
+                    bcs       dsx
+* graphics, tiles and sprites on; text off
+                    pshs      u
+                    ldx       #FX_GRF+FX_TIL+FX_SPR
+                    ldy       #FT_OMIT            leave the mode byte alone
+                    clra
+                    ldb       #SS.MCR
+                    os9       I$SetStt
+                    puls      u
+                    bcs       dsx
+                    lda       #1
+                    sta       <gfxon
+                    clrb
+dsx                 rts
+
+* OneMap - X = map number, Y = offset in mapblk, D = width in tiles
+OneMap              pshs      x,d                 ,s = width, 2,s = map number
+                    lbsr      ClearTmRec
+                    leax      tmrec,u
+                    lda       #%00000001          enable, 16x16 tiles
+                    sta       ,x
+                    lda       <mapblk
+                    sta       1,x                 the block
+                    sty       2,x                 the offset in it
+                    ldd       ,s
+                    std       4,x                 SIZE_X
+                    ldd       #MAP.H
+                    std       6,x                 SIZE_Y
+                    puls      d,y                 Y = the map number
+                    leax      tmrec,u
+* SendRec - X = the record, Y = the map number
+SendRec             pshs      u
+                    clra
+                    ldb       #SS.TmSet
+                    os9       I$SetStt
+                    puls      u
+                    rts
+
+* OneLayer - X = layer 0-2, Y = source (4-6 = tile map 0-2)
+OneLayer            pshs      u
+                    clra
+                    ldb       #SS.Layer
+                    os9       I$SetStt
+                    puls      u
+                    rts
+
+ClearTmRec          leax      tmrec,u
+                    ldb       #12
+ct1                 clr       ,x+
+                    decb
+                    bne       ct1
+                    rts
+
+* Scrl - Y = map number, X = X scroll (Y scroll 0)
+Scrl                pshs      u
+                    ldu       #0
+                    clra
+                    ldb       #SS.TmScrl
+                    os9       I$SetStt
+                    puls      u
+                    rts
+
+********************************************************************
+* Weather - the tick count, lightning now and then, the flashes running
+*   down.  Lightning swaps the tile CLUT for its lit copy: one
+*   SS.ClutWrite, and another to put the night back.
+*   Exit: carry = error in B
+********************************************************************
+Weather             ldd       <ticks
+                    addd      #1
+                    std       <ticks
+                    anda      #%00000001          every 512 ticks (~8.5 s)
+                    bne       we1
+                    tstb
+                    bne       we1
+                    lbsr      Bolt
+                    bcs       wex
+we1                 tst       <lflash
+                    beq       we2
+                    dec       <lflash
+                    bne       we2
+                    leax      tclut,u             the night again
+                    ldy       #CLUT.Til*256
+                    ldd       #256
+                    lbsr      ClutWrite
+                    bcs       wex
+we2                 clrb
+wex                 rts
+
+Bolt                lda       #FlashLen
+                    sta       <lflash
+                    leax      fclut,u
+                    ldy       #CLUT.Til*256
+                    ldd       #256
+* ClutWrite - X = B,G,R,A entries, Y = CLUT number * 256 + first entry,
+*   D = count.  Exit: carry = error in B
+ClutWrite           pshs      u
+                    tfr       d,u
+                    clra
+                    ldb       #SS.ClutWrite
+                    os9       I$SetStt
+                    puls      u,pc
+
+
+* BlkAddr - physical address of a block: A = block -> A = hi, B = mid
+BlkAddr             clrb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    rts
+
+********************************************************************
+* Cleanup - every exit path.  Everything VICKY reads goes off BEFORE the
+*   blocks are freed: it reads them by physical address and has no idea
+*   this program is leaving.
+********************************************************************
+Cleanup             pshs      cc,d,x,y
+                    lbsr      WSigClr
+                    tst       <regd
+                    beq       cu1
+                    lbsr      ClearRecs
+                    lbsr      PushRecs
+                    pshs      u
+                    ldu       #0                  a count of 0 gives the table up
+                    clra
+                    ldb       #SS.SprReg
+                    os9       I$SetStt
+                    puls      u
+                    clr       <regd
+cu1                 lbsr      ClearTmRec          tile maps off
+                    leax      tmrec,u
+                    ldy       #0
+                    lbsr      SendRec
+                    leax      tmrec,u
+                    ldy       #1
+                    lbsr      SendRec
+                    leax      tmrec,u
+                    ldy       #2
+                    lbsr      SendRec
+                    clr       <tsn                tile sets off (block 0)
+cu2                 clra
+                    ldb       <tsn
+                    tfr       d,y
+                    pshs      u
+                    ldx       #0
+                    ldu       #0
+                    clra
+                    ldb       #SS.TsSet
+                    os9       I$SetStt
+                    puls      u
+                    inc       <tsn
+                    lda       <tsn
+                    cmpa      #TIL.Sets
+                    blo       cu2
+                    tst       <gfxon              the display mode as it was
+                    beq       cu3
+                    pshs      u
+                    clra
+                    ldb       <mcrlo
+                    tfr       d,x
+                    ldb       <mcrhi
+                    tfr       d,y
+                    clra
+                    ldb       #SS.MCR
+                    os9       I$SetStt
+                    puls      u
+                    clr       <gfxon
+cu3                 lda       #NTilBlk            and only then free the blocks
+                    ldb       <tilblk
+                    lbsr      GfxFree
+                    lda       #NSprBlk
+                    ldb       <sprblk
+                    lbsr      GfxFree
+                    lda       #NMapBlk
+                    ldb       <mapblk
+                    lbsr      GfxFree
+                    clr       <tilblk
+                    clr       <sprblk
+                    clr       <mapblk
+                    puls      cc,d,x,y,pc
+
+* WriteLn - X = a $0D-terminated string, to path 1
+WriteLn             pshs      d,x,y,u
+                    lda       #1
+                    ldy       #80
+                    os9       I$WritLn
+                    puls      d,x,y,u,pc
+
+********************************************************************
+* Names and messages
+********************************************************************
+FTiles              fcc       /tiles.bin/
+                    fcb       $0D
+FSprites            fcc       /sprites.bin/
+                    fcb       $0D
+FMaps               fcc       /maps.bin/
+                    fcb       $0D
+FFrames             fcc       /frames.bin/
+                    fcb       $0D
+FClutS              fcc       /clut_spr.bin/
+                    fcb       $0D
+FClutT              fcc       /clut_tile.bin/
+                    fcb       $0D
+FClutF              fcc       /clut_flash.bin/
+                    fcb       $0D
+MsgLoad             fcc       /Texas Shitkickers - saddling up.../
+                    fcb       $0D
+MsgBye              fcc       /So long, partner./
+                    fcb       $0D
+MsgErr              fcc       "tsk failed - run it from the TSK directory (chd /dd/TSK)"
+                    fcb       $0D

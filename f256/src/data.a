@@ -1,0 +1,106 @@
+********************************************************************
+* data.a - the data area.  U = DP = its start; the direct page first,
+*   then the larger tables, then the stack.  Cleared at start-up.
+********************************************************************
+
+* sizes
+NRecs               equ       32                  sprite records we own (SS.SprReg)
+NDL                 equ       12                  display list entries (characters) a pass
+NTilBlk             equ       (TIL.Size+$1FFF)/$2000
+NSprBlk             equ       (SPR.Size+$1FFF)/$2000
+NMapBlk             equ       (MAP.Size+$1FFF)/$2000
+
+* a display list entry: one character
+DL.Z                equ       0                   depth: z in pixels (bigger = nearer = drawn on top)
+DL.Ctl              equ       1                   sprite CTRL byte (enable, CLUT)
+DL.Frm              equ       2                   frame number (mirrored already applied)
+DL.X                equ       4                   screen x of the feet
+DL.Y                equ       6                   screen y of the feet
+DL.Shy              equ       8                   screen y of its shadow (0 = none)
+DL.Size             equ       10
+
+* held-input bits (INP); the game edge-detects them into IPRESS
+IN.Left             equ       %00000001
+IN.Right            equ       %00000010
+IN.Up               equ       %00000100
+IN.Down             equ       %00001000
+IN.Jump             equ       %00010000
+IN.Kick             equ       %00100000
+IN.Side             equ       %01000000
+IN.Taunt            equ       %10000000
+
+* ---------------------------------------------------------------- direct page
+dbase               rmb       2                   the data area (U), for after calls that return U
+sigcode             rmb       1                   abort/interrupt signal (0 = none)
+paused              rmb       1                   1 = our terminal is in the background
+wsigok              rmb       1                   1 = SS.WSig registered
+mcrlo               rmb       1                   display mode on entry, put back on exit
+mcrhi               rmb       1
+gfxon               rmb       1                   1 = our display mode is on
+tilblk              rmb       1                   first block of each asset (0 = none)
+sprblk              rmb       1
+mapblk              rmb       1
+regd                rmb       1                   1 = the sprite table is registered
+sprbase             rmb       3                   physical address of sprblk: hi, mid, lo
+fpath               rmb       1                   LoadFile: the path
+lblk                rmb       1                   LoadFile: current block
+lcnt                rmb       1                   LoadFile: blocks left
+loff                rmb       2                   LoadFile: offset in the current block
+lmap                rmb       2                   LoadFile: where the block is mapped
+tmrec               rmb       12                  SS.TmSet record
+tsn                 rmb       1                   tile set counter
+* input
+demo                rmb       1                   1 = the demo script drives the hero
+dptr                rmb       2                   demo: the script entry
+dleft               rmb       1                   demo: ticks left in the entry
+inp                 rmb       1                   held now (IN.*)
+ilast               rmb       1                   held last pass
+ipress              rmb       1                   new presses this pass
+qkey                rmb       1                   1 = Q pressed
+* time, camera, weather
+ticks               rmb       2                   passes since start
+camf                rmb       2                   camera x, 12.4
+cam                 rmb       2                   camera x, pixels
+lflash              rmb       1                   lightning: passes left
+* the hero (positions and velocities 12.4)
+hx                  rmb       2                   x in the level
+hz                  rmb       2                   depth into the street, 0 = back
+hh                  rmb       2                   height above the floor
+hvx                 rmb       2
+hvz                 rmb       2
+hvh                 rmb       2
+hface               rmb       1                   0 = right, 1 = left
+hst                 rmb       1                   state (ST.*)
+ht                  rmb       1                   passes in the state (stops at 255)
+hstep               rmb       1                   the snap-kick combo step, 1-3
+hqd                 rmb       1                   1 = a kick queued during a snap kick
+hchain              rmb       1                   passes left to chain the next snap kick
+hdx                 rmb       1                   -1, 0, 1 this pass
+hdz                 rmb       1
+hback               rmb       1                   1 = pressing away from his facing
+hdesc               rmb       2                   the animation playing (descriptor), 0 = restart
+hfr                 rmb       1                   its frame
+hft                 rmb       1                   passes into the frame
+* drawing
+dln                 rmb       1                   display list entries this pass
+nrec                rmb       1                   sprite records used last pass
+bcx                 rmb       2                   BuildChar: the feet, screen x
+bcy                 rmb       2                   and y
+bctl                rmb       1                   the CTRL byte
+bcn                 rmb       1                   cells left in the frame
+recend              rmb       2                   the end of recs
+tmpn                rmb       1
+tmpf                rmb       1
+tmp                 rmb       2
+dpend               equ       .
+
+* ---------------------------------------------------------------- the rest
+recs                rmb       NRecs*8             our sprite table, registered with the driver
+dl                  rmb       NDL*DL.Size         the display list
+frames              rmb       FRM.Size            frames.bin
+clutbuf             rmb       1024                sprite CLUT, then the all-white hit-flash CLUT
+tclut               rmb       1024                the tile CLUT
+fclut               rmb       1024                the tile CLUT, lightning-lit
+StkBase             equ       .
+                    rmb       512                 stack
+size                equ       .
