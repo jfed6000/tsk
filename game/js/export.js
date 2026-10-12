@@ -1,7 +1,7 @@
 // Texas Shitkickers — the asset exporter (?export). Draws the assets exactly as the game does, then packs them in the
 // F256's formats. f256/tools/export.py runs this page headless, pulls the result out of the DOM and writes the files.
 //
-//   tiles.bin   unique 16x16 tiles, 256 bytes each (8bpp, linear); tile 0 is empty. Sets of 256 tiles = 64K each.
+//   tiles.bin   unique 16x16 tiles, 256 bytes each (8bpp, linear); tile 0 of every set is empty. Sets of 256 = 64K.
 //   maps.bin    the three tile maps, back to back: per cell a tile number then an attribute byte
 //               (tile set in bits 2:0, CLUT in bits 5:3), row-major, MAP_H rows
 //   sprites.bin 32x32 sprite cells, 1K each (8bpp)
@@ -41,7 +41,10 @@ T.runExport = function (A) {
       for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) t[y * TS + x] = img.idx[(sy + y) * img.width + sx + x] || 0;
       const key = String.fromCharCode(...t);
       let n = tileKeys.get(key);
-      if (n === undefined) { n = tileData.length; tileKeys.set(key, n); tileData.push(t); }
+      if (n === undefined) {
+        if (tileData.length % 256 === 0) tileData.push(new Uint8Array(256));   // slot 0 of every set stays empty (MAME skips tile number 0)
+        n = tileData.length; tileKeys.set(key, n); tileData.push(t);
+      }
       const o = (ty * need + tx) * 2;
       cells[o] = n & 255; cells[o + 1] = (n >> 8) | (CLUT_TILE << 3);
     }

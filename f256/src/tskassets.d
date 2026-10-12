@@ -12,9 +12,9 @@ CLUT.Gst equ 2
 CLUT.Til equ 3
 
 * tiles.bin
-TIL.N    equ 574         unique tiles (tile 0 is empty)
+TIL.N    equ 576         unique tiles (tile 0 is empty)
 TIL.Sets equ 3           tile sets of 256 tiles (64K each)
-TIL.Size equ $023E00    bytes
+TIL.Size equ $024000    bytes
 
 * maps.bin: three maps back to back, 2 bytes a cell
 MAP0.W  equ 46          FAR: width in tiles, scrolls at 0.25x
