@@ -70,6 +70,7 @@ Each enemy has a job, Mario-style: one clear behaviour, readable at a glance.
 | **Scorpion** | Low; a tail sting with a wind-up | Jump it, or side kick during the wind-up |
 | **Jackrabbit** | Fast, hops over low kicks | Snap kick on the landing |
 | **Prairie dog sniper** | Pops out of holes and throws rocks (the Piranha Plant role) | Stomp the hole |
+| **Skeleton gunslinger** (built, the undead posse) | Keeps its distance, lines up in your lane, aims (eyes flare), shoots; reloads after six; skull can be kicked off | Step out of the lane or jump; punish the reload; kick the skull into the others |
 | **Rattler henchman** | Coils, then lunges a long way | Bait the lunge, then kick |
 | **Tumbleweed** | A hazard that rolls with the wind | Kick it back for points |
 
@@ -108,7 +109,8 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
 - **Pickup weapons (wanted, 2026-10-12):** a bullwhip and a six-shooter with exactly six shots, then he tosses it.
   Both are in the brawler test. Throwing spurs are still an option for a permanent sub-weapon.
 - Lives and continues: arcade continues, or Mario-style lives with 1-ups (a spare hat?).
-- **What kind of game?** It's a platformer with kicks now. Two alternatives, undecided (2026-10-12):
+- **What kind of game? DECIDED (2026-10-12): a brawler.** The user: "let's add the undead posse skeleton gunslingers and
+  make a brawler." The platformer is kept at `?mode=platformer`. The options considered were:
   - **Ninja Gaiden** (action platformer): the natural evolution of what's built. Sharper combat, a wall-kick, the
     spurs as the sub-weapon (its shuriken), Ninja Gaiden-style cutscenes between levels for the story beats.
   - **Final Fight / Double Dragon** (belt-scroller brawler): it fits a kicking-only hero (combos, grabs, throws) and adds

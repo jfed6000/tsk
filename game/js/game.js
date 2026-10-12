@@ -56,6 +56,8 @@ if (params.has('sheet') || params.has('lineup')) {
       ['buzzard', [BUZZ.perch, ...BUZZ.fly, BUZZ.dive]],
       ['two-bit', [...C.idle, ...C.walk, C.windup, C.swing, C.throw]],
       ['two-bit 2', [C.dig, C.pop, ...C.daze, C.hurt, C.ko, ...C.talk]],
+      ['skeleton', (() => { const K = T.buildSkeleton(); return [...K.idle, ...K.walk, K.aim, K.shoot, ...K.reload, K.hurt]; })()],
+      ['skeleton 2', (() => { const K = T.buildSkeleton(); return [...K.headless, K.heap, ...K.rise, ...K.skull, K.hat, ...K.bones, K.bullet]; })()],
       ['props', [PROPS.headstone, PROPS.mound, PROPS.hole, ...PROPS.lantern, PROPS.clod, ...PROPS.digMound, HAT, BARREL]],
     ] }, true);
   }
@@ -197,8 +199,9 @@ function sfx(k) {
   }
 }
 
-// ?mode=brawler: the Final Fight-style test on the desert (js/brawler.js) takes over from here
-if (params.get('mode') === 'brawler') {
+// The game is the brawler (js/brawler.js), which takes over from here. The original platformer is kept for
+// reference at ?mode=platformer (or any ?level=...).
+if (params.get('mode') !== 'platformer' && !params.has('level')) {
   T.runBrawler({ HERO, DILLO, BARREL, FX, COYOTE, keys, pressed, sfx, pollPad, params });
   return;
 }

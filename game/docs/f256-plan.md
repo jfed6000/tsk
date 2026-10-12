@@ -31,18 +31,29 @@ title screen, it takes one of the parallax layers.
 
 | Measured in the prototype | |
 |---|---|
-| Hero frames | 58 (116 with mirrors). The front-facing idle is symmetric, so its mirror copies could be dropped |
-| Hero cells | 408 × 1K = **~408K of sprite data** (outside the 64K) |
-| Hero records per frame | 2 standing, 2-4 moving and kicking, 4 max |
+| Hero frames | 74 (148 with mirrors). The front-facing idle is symmetric, so its mirror copies could be dropped |
+| Hero cells | 504 × 1K = **~504K of sprite data** (outside the 64K) |
+| Hero records per frame | 2 standing, 2-4 moving and kicking, 6 max (the whip and gun frames) |
 | Dillo / barrel / buzzard | 1 record each (32×32) |
-| Two-Bit (boss) | 3-4 records (64×64 frame) |
-| Busiest frame seen (stomp + combo + afterimages) | 56 / 128 records |
+| Two-Bit (boss), coyote, skeleton | 3-4 records each (64×64 frames) |
+| Busiest frame seen | 62 / 128 records (a brawler wave with six enemies) |
+
+## The brawler
+
+- **Depth sorting** is just sprite numbering: each frame the display list is sorted by depth (z), and nearer
+  actors get lower sprite numbers, which draw on top. One contiguous `SS.SprPush` range per frame, as the guide
+  recommends.
+- **Shadows** are ordinary sprites (solid dark ellipses; there's no blending).
+- **The street** behind the floor scrolls 1:1 with it, so it's tile map 0; the sky and the middle distance are maps 1
+  and 2 at 0.25 and 0.5.
+- **Night falling** (Main Street) and **lightning** (Boot Hill) are both CLUT writes to the tile CLUT. Night falling
+  leaves the light colours (lit windows, lanterns, the sun) untouched.
 
 ## CLUTs (4 × 256, entry 0 transparent)
 
 | CLUT | Use | Prototype count |
 |---|---|---|
-| 0 | sprites: hero, enemies, boss, props, effects, text | 103 colours |
+| 0 | sprites: hero, enemies, boss, props, effects, text | 118 colours (all stages together; per stage would be less) |
 | 1 | sprite hit flash (every entry white) | derived |
 | 2 | sprite afterimage (blue ghost of CLUT 0) | derived |
 | 3 | all three tile maps | 34 colours |
