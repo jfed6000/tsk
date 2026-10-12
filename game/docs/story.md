@@ -107,6 +107,15 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
 - Is Vernon (the Ugly) in or out?
 - Does the hero get a non-kick weapon? Metal Slug has one; spurs that fling like throwing stars would fit.
 - Lives and continues: arcade continues, or Mario-style lives with 1-ups (a spare hat?).
+- **What kind of game?** It's a platformer with kicks now. Two alternatives, undecided (2026-10-12):
+  - **Ninja Gaiden** (action platformer): the natural evolution of what's built. Sharper combat, a wall-kick, the
+    spurs as the sub-weapon (its shuriken), Ninja Gaiden-style cutscenes between levels for the story beats.
+  - **Final Fight / Double Dragon** (belt-scroller brawler): it fits a kicking-only hero (combos, grabs, throws) and adds
+    2-player co-op (player 2 as another pair of boots, e.g. Jessa's). But it's a rebuild: a depth axis, street/saloon
+    levels instead of platforms, and hit/knockdown/get-up animations for every enemy.
+  - **Middle path:** single plane, with brawler-style combat. The screen locks while a group of enemies comes in, then
+    "GO ->", with short platforming in between.
+  - A quick `?mode=brawler` experiment on the desert test range would let the user feel the difference.
 - **How violent?** Somewhere between Mario (bonk, vanish), Metal Slug (slapstick gore, played for laughs) and
   House of the Dead (horror gore). Undecided. Things to weigh:
   - The title already rules out a kids' game, and the premise (a dead man's boots, an undertaker boss) is Weird West.
