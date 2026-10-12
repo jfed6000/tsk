@@ -38,6 +38,10 @@ and shared CLUTs. See `docs/f256-plan.md`. Press `I` in game for the live sprite
 
 ## Brawler test (`?mode=brawler`)
 
+The default stage is **Main Street at dusk**, a mock-up of the darker tone: false-front buildings with lit
+windows, lanterns and wanted posters, a sunset going down behind the mesas, night falling a step each wave (the
+lights stay lit), a mangy yellow-eyed coyote gang, tumbleweeds and dust. `&stage=desert` gives the original desert.
+
 To compare against the platformer: a floor band you walk into and out of, depth-sorted sprites with shadows,
 and waves that lock the screen until the gang is down ("GO >>"). It lives in `js/brawler.js`.
 

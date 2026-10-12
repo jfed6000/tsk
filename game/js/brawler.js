@@ -20,8 +20,14 @@ T.runBrawler = function (A) {
   const PAL = T.PAL;
 
   // ---------------------------------------------------------------- assets
+  // the stage: Main Street at dusk (the darker look; default) or the original desert (?stage=desert)
+  const STAGE = params.get('stage') === 'desert' ? 'desert' : 'mainstreet';
+  const MS = STAGE === 'mainstreet' ? T.buildMainStreet(VW, VH, FLOOR) : null;
   const TILES = T.buildTiles('desert');
-  const LAYERS = T.buildLayers(VW, VH, FLOOR, 'desert');
+  const LAYERS = MS ? { far: MS.far, mid: MS.mid } : T.buildLayers(VW, VH, FLOOR, 'desert');
+  const GANG = MS ? T.buildCoyote('mangy') : COYOTE;              // on Main Street the gang is mangy and yellow-eyed
+  const TUMBLE = T.buildTumbleweed();
+  const DARK = [0, 0.12, 0.24, 0.36, 0.48, 0.6];                  // night falls a step per wave
   const HAT = T.buildHat();
   const H = T.HERO, CB = T.BOSS, E = T.ENEMY;
   const mk = (w, h, ox, oy, pal, fn, outline = PAL.out) => {
@@ -76,7 +82,8 @@ T.runBrawler = function (A) {
   let player, enemies = [], items = [], bullets = [], parts = [], popups = [];
   const barrels = BARRELS.map(([x, z, item]) => ({ x, z, item, alive: true }));
   let camX = 0, lock = null, waveI = 0, goT = 0, shake = 0, hitstop = 0, score = 0, combo = 0, comboT = 0, time = 0;
-  let phase = 'play', phaseT = 0, showHelp = true, lastHit = null, lastHitT = 0;
+  let phase = 'play', phaseT = 0, showHelp = false, helpAuto = true, lastHit = null, lastHitT = 0;
+  let dark = 0, tumble = null, tumbleT = 4;
 
   function resetPlayer() {
     player = { x: 70, z: 40, h: 0, vx: 0, vz: 0, vh: 0, face: 1, state: 'idle', t: 1, hp: MAX_HP, lives: 3, inv: 0,
@@ -421,7 +428,7 @@ T.runBrawler = function (A) {
     for (const q of parts) {
       q.life -= dt;
       if (q.vx !== undefined) q.x += q.vx * dt;
-      if (q.vh !== undefined) { q.h += q.vh * dt; if (q.k !== 'dust' && q.k !== 'bit') q.vh -= GRAV * 0.8 * dt; if (q.h < 0) { q.h = 0; q.vh *= -0.3; q.vx *= 0.6; } }
+      if (q.vh !== undefined) { q.h += q.vh * dt; if (q.k !== 'dust' && q.k !== 'bit' && q.k !== 'mote') q.vh -= GRAV * 0.8 * dt; if (q.h < 0) { q.h = 0; q.vh *= -0.3; q.vx *= 0.6; } }
     }
     parts = parts.filter(q => q.life > 0);
     for (const u of popups) { u.life -= dt; if (u.life < 1.5) u.y -= 30 * dt; }
@@ -483,6 +490,10 @@ T.runBrawler = function (A) {
     if (goT > 0 && lock === null && phase === 'play' && Math.floor(goT * 4) % 2) put(T.textSprite('GO >>', '#ffd34a', 3), VW - 70, 70, 0, 0, 0);
     if (phase === 'clear') { const t = T.textSprite('BRAWL CLEAR!', '#ffd34a', 3); put(t, (VW - t.width) >> 1, 70, 0, 0, 0); }
     if (phase === 'over') { const t = T.textSprite('PRESS JUMP TO TRY AGAIN', '#c3c8d8', 1); put(t, (VW - t.width) >> 1, 120, 0, 0, 0); }
+    if (time < 3.2) {                                            // title card
+      const a = T.textSprite(MS ? 'MAIN STREET' : 'THE DESERT', '#ffd34a', 3), s2 = T.textSprite(MS ? 'DUSK' : 'NOON', '#e8a070', 1);
+      put(a, (VW - a.width) >> 1, 66, 0, 0, 0); put(s2, (VW - s2.width) >> 1, 88, 0, 0, 0);
+    }
     if (showHelp) { const h = helpSprite(); put(h, (VW - h.width) >> 1, 52, 0, 0, 0); }
     else put(T.textSprite('BRAWLER TEST   H: MOVES', '#ffe7b0', 1), 6, VH - 10, 0, 0, 0);
     for (const u of popups) { if (u.life < 0.2 && Math.floor(u.life * 30) % 2) continue; const t = T.textSprite(u.text, u.color, u.s); put(t, Math.max(2, Math.min(VW - 2 - t.width, wx(u.x) - (t.width >> 1))), u.y, 0, 0, 1); }
@@ -493,7 +504,7 @@ T.runBrawler = function (A) {
     for (const e of enemies) {
       let img, ox, oy;
       if (e.type === 'coyote') {
-        const C = COYOTE; ox = CB.OX; oy = CB.OY;
+        const C = GANG; ox = CB.OX; oy = CB.OY;
         img = { enter: C.walk[(e.anim * 8 | 0) % 4], approach: (e.vx || e.vz) ? C.walk[(e.anim * 8 | 0) % 4] : C.idle[(e.anim * 2 | 0) % 2],
           windup: C.windup, strike: C.swing, recover: C.idle[0], stagger: C.hurt, held: C.hurt, air: C.hurt, down: C.down,
           getup: C.daze[(e.anim * 8 | 0) % 4], ko: C.ko }[e.state];
@@ -507,11 +518,13 @@ T.runBrawler = function (A) {
     }
     for (const b of barrels) if (b.alive) { put(BARREL, wx(b.x), sy(b.z, 0), T.BARREL.OX, T.BARREL.OY, depth(b.z)); put(PICK.shadowS, wx(b.x), sy(b.z, 0), 12, 4, 9); }
     for (const it of items) { put(PICK[it.type], wx(it.x), sy(it.z, it.h), 12, 12, depth(it.z) + 0.002); if (Math.floor(time * 4) % 2 && it.type !== 'beans') put(T.textSprite('X', '#ffd34a', 1), wx(it.x), sy(it.z, it.h) - 18, 1, 0, 1); }
+    if (tumble) { put(TUMBLE[(time * 10 | 0) % 4], wx(tumble.x), sy(tumble.z, tumble.h), 12, 22, depth(tumble.z)); put(PICK.shadowS, wx(tumble.x), sy(tumble.z, 0), 12, 4, 9); }
     for (const b of bullets) put(PICK.bullet, wx(b.x), sy(b.z, b.h), 4, 4, depth(b.z) - 0.002, Math.sign(b.vx));
     for (const q of parts) {
       const k = q.life / q.max, y = sy(q.z, q.h);
       if (q.k === 'dust') put(FX.dust[Math.min(4, q.s + ((1 - k) * 2 | 0))][k > 0.5 ? 0 : 1], wx(q.x), y, 4, 4, depth(q.z) + 0.01);
       else if (q.k === 'bit') put(FX.bit[q.c], wx(q.x), y, 4, 4, 2);
+      else if (q.k === 'mote') put(FX.bit[0], wx(q.x), y, 4, 4, 8.5);
       else if (q.k === 'star') put(FX.star[Math.max(0, Math.min(5, Math.round((q.big ? 5 : 3) * (0.6 + k * 0.4))))], wx(q.x), y, 16, 16, 2);
       else if (q.k === 'chunk' || q.k === 'item') put(q.img, wx(q.x), y, q.img.ox ?? 1, q.img.oy ?? 1, depth(q.z) + 0.01);
       else if (q.k === 'ring') { const f = FX.ring[Math.min(FX.ring.length - 1, ((1 - k) * FX.ring.length) | 0)]; put(f, wx(q.x), y, f.ox, f.oy, 8); }
@@ -525,11 +538,17 @@ T.runBrawler = function (A) {
   function render() {
     const sx = shake > 0.3 ? Math.round((Math.random() - 0.5) * shake * 2) : 0, syy = shake > 0.3 ? Math.round((Math.random() - 0.5) * shake * 2) : 0;
     const cx = Math.round(camX);
-    const layer = (img, scroll) => { const off = -(Math.floor(scroll) % img.width); for (let x = off; x < VW; x += img.width) ctx.drawImage(img, x + sx, syy); };
+    const layer = (img, scroll) => {
+      const src = MS ? T.shadeOf(img, dark) : img, off = -(Math.floor(scroll) % img.width);
+      for (let x = off; x < VW; x += img.width) ctx.drawImage(src, x + sx, syy);
+    };
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
     layer(LAYERS.far, cx * 0.25); layer(LAYERS.mid, cx * 0.5);
-    const t0 = Math.floor(cx / TS);
-    for (let ty = 0; ty < MAP_H; ty++) for (let tx = t0; tx <= t0 + VW / TS + 1 && tx < MAP_W; tx++) { const tile = FRONT[ty][tx]; if (tile) ctx.drawImage(tile, tx * TS - cx + sx, ty * TS + syy); }
+    if (MS) layer(MS.street, cx);
+    else {
+      const t0 = Math.floor(cx / TS);
+      for (let ty = 0; ty < MAP_H; ty++) for (let tx = t0; tx <= t0 + VW / TS + 1 && tx < MAP_W; tx++) { const tile = FRONT[ty][tx]; if (tile) ctx.drawImage(tile, tx * TS - cx + sx, ty * TS + syy); }
+    }
     for (let i = DL.length - 1; i >= 0; i--) {
       const d = DL[i]; if (d.dropped) continue;
       const img = d.clut ? T.variant(d.img, d.clut) : d.img;
@@ -573,7 +592,19 @@ T.runBrawler = function (A) {
     if (pressed.help) showHelp = !showHelp;
     if (hitstop > 0) { hitstop -= dt; for (const k in pressed) pressed[k] = false; return; }
     time += dt; phaseT += dt; comboT -= dt; lastHitT -= dt; shake = Math.max(0, shake - 30 * dt);
-    if (showHelp && time > 7) showHelp = false;
+    if (helpAuto && time > 3.2 && time < 10) showHelp = true;
+    if (helpAuto && time >= 10) { showHelp = false; helpAuto = false; }
+    if (pressed.help) helpAuto = false;
+    // the light goes: a step darker each wave (a CLUT fade on the F256)
+    if (MS) dark += (DARK[Math.min(waveI, DARK.length - 1)] - dark) * Math.min(1, dt * 0.6);
+    // ambience: a tumbleweed now and then, dust motes in the low sun
+    if (!tumble && (tumbleT -= dt) <= 0) tumble = { x: camX - 20, z: Math.random() * ZMAX, h: 0, vh: 0, vx: 55 + Math.random() * 40 };
+    if (tumble) {
+      tumble.x += tumble.vx * dt; tumble.vh -= GRAV * 0.5 * dt; tumble.h += tumble.vh * dt;
+      if (tumble.h <= 0) { tumble.h = 0; tumble.vh = 90 + Math.random() * 70; }
+      if (tumble.x > camX + VW + 30) { tumble = null; tumbleT = 6 + Math.random() * 8; }
+    }
+    if (MS && Math.random() < dt * 2.5) parts.push({ k: 'mote', x: camX + Math.random() * VW, z: Math.random() * ZMAX, h: 20 + Math.random() * 90, vx: 8 + Math.random() * 10, vh: -3, life: 4, max: 4 });
     if (phase === 'play') updatePlayer(dt);
     else if (phaseT > 2 && pressed.jump) location.reload();
     updateEnemies(dt); updateBullets(dt); updateParts(dt); updateWaves(dt);

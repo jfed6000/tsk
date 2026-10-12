@@ -12,7 +12,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 | **Story** | `story.md`: "died with his boots on" revenge western. Ringo's boots against the Diamondback Gang, 7 levels, critter roster |
 | **Level 1: Boot Hill** | Built: wordless opening (rise from the grave), graveyard level with signposts that teach each move, buzzards and dillos, open-grave pits, 3 checkpoints, boss **Two-Bit** (shovel swing, dirt clods, dig-and-burst into dizzy), clear screen |
 | **Desert test range** | `?level=desert`: every move, endless outlaws, no boss |
-| **Brawler test** | `?mode=brawler` (`js/brawler.js`): a Final Fight-style belt-scroller on the desert, built to compare genres. Depth band, waves with screen lock, combos, knockdowns, grab/knee/throw, a coyote and dillo gang, pickups (bullwhip, six-shooter with six shots, beans). Verified by autopilot screenshots only |
+| **Brawler test** | `?mode=brawler` (`js/brawler.js`): a Final Fight-style belt-scroller on the desert, built to compare genres. Depth band, waves with screen lock, combos, knockdowns, grab/knee/throw, a coyote and dillo gang, pickups (bullwhip, six-shooter with six shots, beans). Default stage **Main Street at dusk** (`js/mainstreet.js`), the darker-tone mock-up: sunset, false fronts, night falling per wave as a CLUT fade that spares the lights, a mangy gang. Verified by autopilot screenshots only |
 | **Systems** | 3-hat health, checkpoints, respawn, combos, Mario head-bounces, dillo shells, lightning as a CLUT swap, sprite-record budget (I key) |
 
 ## Files

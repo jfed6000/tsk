@@ -234,7 +234,15 @@ function drawCoyote(ctx, o) {
   }
 }
 T.BOSS = { FW: 64, FH: 64, OX: 26, OY: 60 };
-T.buildCoyote = function () {
+// 'mangy': the same coyote re-coloured mean for the darker brawler stages (grey-brown mange, a blood-red band,
+// yellow eyes)
+const MANGY = { c0: '#3e3228', c1: '#5e5040', c2: '#7c6c56', c3: '#9a8a70', v1: '#2e2834', v2: '#3e3646', band: '#6a1010', eyeW: '#e8cc30' };
+T.buildCoyote = function (variant) {
+  const saved = Object.assign({}, CPAL);
+  if (variant === 'mangy') Object.assign(CPAL, MANGY);
+  try { return coyoteFrames(); } finally { Object.assign(CPAL, saved); }
+};
+function coyoteFrames() {
   const B = T.BOSS, mk = o => bake(B.FW, B.FH, B.OX, B.OY, CPAL, ctx => drawCoyote(ctx, o));
   const TAU = Math.PI * 2;
   return {
@@ -252,7 +260,7 @@ T.buildCoyote = function () {
     // flat on his back (the brawler's knockdown): the standing drawing tipped over
     down: bake(B.FW, B.FH, B.OX, B.OY, CPAL, ctx => { ctx.translate(24, -3); ctx.rotate(-Math.PI / 2 + 0.06); drawCoyote(ctx, { eyes: 'x', mouth: 1, shovel: 0.4, grip: [8, -22], hat: 4 }); }),
   };
-};
+}
 
 // ---------------------------------------------------------------- props and effects
 const GPAL = { out: PAL.out, g0: '#4a5068', g1: '#6f7690', g2: '#9aa1b8', g3: '#c3c8d8', d0: '#241d33', d1: '#3d3354', d2: '#5e5278', d3: '#8c80a6', moss: '#4f6a48' };
