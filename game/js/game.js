@@ -438,12 +438,13 @@ function updatePlayer(dt) {
   const ground = p.onGround;
 
   if (canAct(p)) {
+    const back = dir !== 0 && dir !== p.face;          // pressing away from where he faces
     if (dir) p.face = dir;
     const target = dir * RUN;
     const acc = dir ? 1300 : 1700;
     p.vx += Math.sign(target - p.vx) * Math.min(Math.abs(target - p.vx), acc * dt);
-    if (pressed.snap) setState('snap');
-    else if (pressed.side) setState('side');
+    if ((pressed.snap && back) || pressed.side) setState('side');   // back + kick: turn into the side kick (C: shortcut)
+    else if (pressed.snap) setState('snap');
     else if (pressed.taunt && p.state !== 'taunt') { setState('taunt'); sfx('tip'); }
     else if (p.jumpBuf > 0 && keys.down && p.onSolid && !p.onSolid.ground && !p.onSolid.block) {
       p.dropT = 0.2; p.jumpBuf = 0; p.onGround = false; setState('air');
@@ -1020,7 +1021,7 @@ let helpImg = null;
 function helpSprite() {
   if (helpImg) return helpImg;
   const lines = [
-    ['ARROWS/WASD', 'MOVE'], ['SPACE / Z', 'JUMP (HOLD = HIGHER)'], ['X', 'FRONT SNAP KICK'], ['C', 'SIDE KICK'],
+    ['ARROWS/WASD', 'MOVE'], ['SPACE / Z', 'JUMP (HOLD = HIGHER)'], ['X', 'FRONT SNAP KICK'], ['BACK + X', 'SIDE KICK'],
     ['X IN AIR', 'BICYCLE KICK'], ['C IN AIR', 'FLYING SIDE KICK'], ['DOWN IN AIR', 'STOMP'],
     ['DOWN+JUMP', 'DROP THROUGH PLANK'], ['T', 'TIP YER HAT'], ['M / P / I', 'MUTE / SHEET / F256 INFO'],
     ['', ''], ['STOMP A DILLO,', 'THEN KICK THE BALL!'],

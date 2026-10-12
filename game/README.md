@@ -10,7 +10,7 @@ You have three hats of health (the hats in the top left). Lanterns are checkpoin
 | Arrows / WASD | Move |
 | Space / Z | Jump (hold for higher) |
 | X | Front snap kick: knee up, then the whole boot thrust out sole-first, oversized on impact (in the air: **bicycle kick**) |
-| C | Side kick, the heavy one: he turns square to the camera, winds up, drives one long boot out sideways and turns back. About twice as long as the snap kick (in the air: **flying side kick**) |
+| Back + X (or C) | Side kick, the heavy one: he turns square to the camera, winds up, drives one long boot out sideways and turns back. Pressing *away* from where he faces turns him round into it, so it hits whoever is behind you. About twice as long as the snap kick (C in the air: **flying side kick**) |
 | Down (in air) | **Stomp**: ground-pound shockwave |
 | Down + Jump | Drop through a wooden plank |
 | T | Tip yer hat |
@@ -45,7 +45,7 @@ and waves that lock the screen until the gang is down ("GO >>"). It lives in `js
 |---|---|
 | Arrows | Move; up/down is depth |
 | X X X | Kick combo; the third knocks down |
-| C | Side kick (knockdown) |
+| Back + X (or C) | Side kick (knockdown): turn round and boot whoever is behind you |
 | Z, then X | Flying kick |
 | Z, then Z | Stomp |
 | Walk into a staggered outlaw | Grab him: X knees, C throws him into his friends |

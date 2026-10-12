@@ -185,6 +185,7 @@ T.runBrawler = function (A) {
     p.t += dt; p.inv -= dt; p.chainT = (p.chainT || 0) - dt;
     const free = p.state === 'idle' || p.state === 'walk' || (p.state === 'land' && p.t > 0.08);
     if (free) {
+      const back = dx !== 0 && dx !== p.face;              // pressing away from where he faces
       p.vx = dx * WALK_X; p.vz = dz * WALK_Z; if (dx) p.face = dx;
       const it = underfoot();
       if (pressed.jump) { setS('jump'); p.vh = JUMP_V; p.vz *= 0.5; sfx('jump'); }
@@ -192,10 +193,10 @@ T.runBrawler = function (A) {
         items.splice(items.indexOf(it), 1);
         p.weapon = { type: it.type, ammo: it.type === 'gun' ? (it.ammo ?? 6) : (it.ammo ?? 14) };
         sfx('tip'); popup(p.x, FLOOR + p.z - 54, it.type === 'gun' ? 'SIX-SHOOTER!' : 'BULLWHIP!', '#ffd34a', 1, 1.2);
-      } else if (pressed.snap && p.weapon && p.weapon.type === 'whip') { setS('whip'); sfx('whoosh'); }
+      } else if ((pressed.snap && back) || pressed.side) { setS('side'); sfx('whoosh'); }   // back + kick: turn into the side kick (C: shortcut)
+      else if (pressed.snap && p.weapon && p.weapon.type === 'whip') { setS('whip'); sfx('whoosh'); }
       else if (pressed.snap && p.weapon && p.weapon.type === 'gun') { setS('shoot'); fire(); }
       else if (pressed.snap) { p.step = p.chainT > 0 && p.step < 3 ? p.step + 1 : 1; setS('snap'); sfx('whoosh'); }
-      else if (pressed.side) { setS('side'); sfx('whoosh'); }
       else if (pressed.taunt) { setS('taunt'); sfx('tip'); }
       else if (dx && grabTarget(dx)) { p.held = grabTarget(dx); p.held.state = 'held'; setS('grab'); p.knees = 0; sfx('land'); }
       else { const want = dx || dz ? 'walk' : 'idle'; if (p.state !== want) { p.from = p.state; setS(want); } }
@@ -455,7 +456,7 @@ T.runBrawler = function (A) {
   let helpImg = null;
   function helpSprite() {
     if (helpImg) return helpImg;
-    const lines = [['ARROWS', 'MOVE (UP/DOWN = DEPTH)'], ['Z', 'JUMP'], ['X X X', 'KICK COMBO'], ['C', 'SIDE KICK (KNOCKDOWN)'],
+    const lines = [['ARROWS', 'MOVE (UP/DOWN = DEPTH)'], ['Z', 'JUMP'], ['X X X', 'KICK COMBO'], ['BACK + X', 'SIDE KICK (KNOCKDOWN)'],
       ['Z THEN X', 'FLYING KICK'], ['Z THEN Z', 'STOMP'], ['WALK INTO', 'A STAGGERED OUTLAW: GRAB'], ['  GRABBED', 'X: KNEE  C: THROW'],
       ['X ON A WEAPON', 'PICK IT UP'], ['H', 'HIDE THIS']];
     const w = 236, h = 20 + lines.length * 9, c = T.canvas(w, h), x = c.getContext('2d');

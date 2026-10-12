@@ -37,7 +37,7 @@ T.LEVELS = {
       { type: 'dillo', x: 2030 }, { type: 'dillo', x: 2060 }, { type: 'dillo', x: 2120 },
     ],
     signs: [
-      [168, 'Z: JUMP'], [232, 'X: KICK'], [440, 'JUMP THE GRAVES!'], [700, 'C: SIDE KICK'],
+      [168, 'Z: JUMP'], [232, 'X: KICK'], [440, 'JUMP THE GRAVES!'], [700, 'BACK+X: SIDE KICK'],
       [790, 'DOWN IN AIR: STOMP'], [900, 'X IN AIR: BICYCLE KICK'], [1420, 'DOWN+JUMP: DROP DOWN'],
       [2000, 'STOMP A DILLO, KICK THE BALL'],
     ],
