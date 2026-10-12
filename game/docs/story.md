@@ -107,6 +107,12 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
 ## Open questions
 
 - The placeholder names above (Ringo is settled).
+- **Player 2's name, for co-op (open, 2026-10-12).** It needs to sound like a pair with "Shitkickers". Candidates:
+  **Bootleggers** (boots, legs and outlaws: the sly one; my favourite), Asskickers (the straight crude match), Ropers (a
+  real boot style), Stompers, or Heartbreakers (if player 2 is a pair of women's riding boots, e.g. Jessa's).
+  Player 2 should look different at a glance (colours and hat). On the F256 a CLUT swap is cheapest, but all four
+  CLUTs are in use (sprites, flash, ghost, tiles), so either fold the ghost CLUT or give player 2 its own frames.
+  Story: a second victim of the gang buried on Boot Hill, rising from the next grave over in the same opening.
 - Is Vernon (the Ugly) in or out?
 - **Pickup weapons (wanted, 2026-10-12):** a bullwhip and a six-shooter with exactly six shots, then he tosses it.
   Both are in the brawler test. Throwing spurs are still an option for a permanent sub-weapon.
