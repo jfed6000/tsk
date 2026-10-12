@@ -107,3 +107,13 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
 - Is Vernon (the Ugly) in or out?
 - Does the hero get a non-kick weapon? Metal Slug has one; spurs that fling like throwing stars would fit.
 - Lives and continues: arcade continues, or Mario-style lives with 1-ups (a spare hat?).
+- **How violent?** Somewhere between Mario (bonk, vanish), Metal Slug (slapstick gore, played for laughs) and
+  House of the Dead (horror gore). Undecided. Things to weigh:
+  - The title already rules out a kids' game, and the premise (a dead man's boots, an undertaker boss) is Weird West.
+  - Gore on cute critters reads as mean in a way gore on human outlaws doesn't.
+  - Leaning: the Metal Slug middle. Keep the critters cartoonish (feathers, X-eyes, flattened). Get brutal-but-bloodless
+    satisfaction from **undead outlaws** (skeleton gunslingers on Boot Hill: kick the skull off, shatter the bones),
+    and maybe from human gunmen in later levels.
+  - **This can be deferred.** Draw every splatter in one reserved sprite-CLUT entry, so "blood" is red or tan dust
+    by a single CLUT write, the way some 16-bit games toned down. Design deaths for both and decide later.
+  - The cost is art time, not hardware: Metal Slug's charm is a unique death for each enemy.
