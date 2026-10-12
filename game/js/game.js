@@ -199,6 +199,9 @@ function sfx(k) {
   }
 }
 
+// ?export: build the assets and pack them for the F256 (js/export.js, driven by f256/tools/export.py)
+if (params.has('export')) { T.runExport({ HERO }); return; }
+
 // The game is the brawler (js/brawler.js), which takes over from here. The original platformer is kept for
 // reference at ?mode=platformer (or any ?level=...).
 if (params.get('mode') !== 'platformer' && !params.has('level')) {
