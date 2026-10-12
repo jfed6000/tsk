@@ -122,6 +122,17 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
     **SNES pad gives 3**, and `SS.Joy` reads two pads at once (co-op); the keyboard gives plenty. The brawler needs
     jump + kick + side kick. Design for 2 buttons (side kick as a direction + kick) with the third SNES button as a
     shortcut. Pad support is untested on real pads (Tempest's was read from the RTL), so it needs a harness.
+- **Darker, if it's a brawler (user, 2026-10-12):** "if we go this route the game needs to feel a bit darker."
+  The levers, cheapest first:
+  - dusk, night, rain and storm lighting (day-to-night fades, lightning and muzzle flashes are CLUT writes);
+  - grim places: Main Street with wanted posters, a burning ranch, the mine, the train yard;
+  - the critters made mean (mangy, scarred, yellow-eyed), plus Diamondback's **posse of dead men** (skeletons, ghouls in
+    dusters) for menace without gore;
+  - a straighter story with a cold open of Ringo's killing, a frightening Diamondback, and gallows humour;
+  - Metal Slug-level violence using the reserved blood CLUT entry;
+  - revenant touches on the hero (a bullet-holed hat, stitched leather, faintly glowing eyes at night);
+  - a Morricone minor key.
+  Offered: a "Main Street at dusk" brawler stage to test the tone.
 - **How violent?** Somewhere between Mario (bonk, vanish), Metal Slug (slapstick gore, played for laughs) and
   House of the Dead (horror gore). Undecided. Things to weigh:
   - The title already rules out a kids' game, and the premise (a dead man's boots, an undertaker boss) is Weird West.
