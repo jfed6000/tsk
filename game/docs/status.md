@@ -49,8 +49,8 @@ URL flags: `?sheet`, `?lineup`, `?level=desert`, `?start=X` (2300 = boss), `?dem
    middle path (`story.md`). Pickup weapons (whip, six-shooter) are wanted either way.
 2. **Gameplay thinking (the user, next session).** Open questions in `story.md`: a non-kick weapon (spurs?), lives
    versus continues, the vulture subplot, placeholder names.
-2. Playtest Boot Hill and tune it.
-3. Toward hardware, in the guide's order: an asset exporter (indexed frames, cell lists, CLUTs, tile sets/maps as
+3. Playtest Boot Hill and tune it.
+4. Toward hardware, in the guide's order: an asset exporter (indexed frames, cell lists, CLUTs, tile sets/maps as
    `.bin` plus a generated defs file), then an F256 viewer program showing the hero animations.
-4. Watch the sprite CLUT: likely a per-level sprite CLUT once more enemies exist.
-5. The next level (The Desert, with Big Shell Dillon) or the next enemy (Coyote gunslinger).
+5. Watch the sprite CLUT: likely a per-level sprite CLUT once more enemies exist.
+6. The next level (The Desert, with Big Shell Dillon) or the next enemy (Coyote gunslinger).
