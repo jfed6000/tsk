@@ -52,7 +52,7 @@ gi2                 std       <rnd
                     clr       <shake
                     ldd       #420                the first bolt after 7 s
                     std       <nbolt
-                    rts
+                    lbra      IntroInit           and it begins in the grave
 
 ********************************************************************
 * Stage - one pass of the stage's clocks and phases (not while a hit
@@ -70,6 +70,8 @@ sg0                 tst       <combot
                     beq       sg1
                     dec       <combot
 sg1                 lda       <phase
+                    cmpa      #PH.Intro
+                    lbeq      IntroStep
                     cmpa      #PH.Play
                     bne       sg2
                     lbsr      Hero

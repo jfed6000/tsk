@@ -1,0 +1,274 @@
+********************************************************************
+* intro.a - the opening on Boot Hill: the Shitkickers climb out of
+*   Ringo's grave (brawler.js updateIntro and its part of buildDL).
+*
+*   Lightning; the ground rumbles; the boots claw up out of the grave
+*   and wake; Ringo's hat hops off the headstone onto them.  Any button
+*   skips to the hat landing.  The headstone and the grave stay for the
+*   rest of the stage.
+********************************************************************
+
+PH.Intro            equ       4
+
+* the timeline, passes (brawler.js IN, seconds x 60)
+InBolt              equ       42                  0.7 s
+InRumble            equ       66                  1.1 s
+InRise              equ       90                  1.5 s
+InWake              equ       InRise+HR.rise.N*HR.rise.T+18     the rise, then 0.3 s
+InHop               equ       InWake+18           0.3 s
+InLand              equ       InHop+33            0.55 s
+InEnd               equ       InLand+12           0.2 s
+StoneX              equ       66                  Ringo's headstone
+StoneZ              equ       4
+GraveX              equ       96                  his grave: where he rises
+GraveZ              equ       34
+
+* IntroInit - from GameInit: the hero in the grave, the hat on the stone
+IntroInit           lda       #PH.Intro
+                    lbsr      SetPh
+                    ldd       #GraveX*16
+                    std       <hx
+                    ldd       #GraveZ*16
+                    std       <hz
+                    clr       <hface
+                    clr       <hatop
+                    ldd       #$7FFF              no lightning but the opening's own
+                    std       <nbolt
+                    rts
+
+* IntroStep - one pass of the opening
+IntroStep           lda       <ipress             a button: on to the hat landing
+                    anda      #IN.Jump+IN.Kick+IN.Side
+                    beq       is0
+                    ldd       <phaset
+                    cmpd      #InLand
+                    bhs       is0
+                    ldd       #InLand-1
+                    std       <phaset
+is0                 ldd       <phaset
+                    cmpd      #InBolt
+                    bne       is1
+                    lbsr      Bolt
+is1                 ldd       <phaset             the rumble: a shake and dirt
+                    cmpd      #InRumble
+                    blo       is3
+                    cmpd      #InRise
+                    bhs       is3
+                    lda       #3
+                    lbsr      Shk
+                    lbsr      Rand
+                    cmpa      #150
+                    bhs       is3
+                    lda       #1
+                    bsr       Dirt
+is3                 ldd       <phaset             he breaks out
+                    cmpd      #InRise
+                    bne       is4
+                    lda       #14
+                    bsr       Dirt
+is4                 ldd       <phaset             the hat's on: dust
+                    cmpd      #InLand
+                    bne       is5
+                    lda       #1
+                    sta       <hatop
+                    ldd       <hx
+                    std       <sx
+                    ldd       <hz
+                    std       <sz
+                    lda       #4
+                    lbsr      Puff
+is5                 ldd       <phaset
+                    cmpd      #InEnd
+                    blo       is9
+                    lda       #PH.Play            the fight's on
+                    lbsr      SetPh
+                    ldd       #0
+                    std       <titlet
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lda       #12
+                    sta       <ht
+                    ldd       #420
+                    std       <nbolt
+is9                 rts
+
+* Dirt - A = how many clods fly from his feet (brawler.js dirt)
+Dirt                sta       <kcnt
+dt1x                 lda       #16
+                    lbsr      RandS
+                    addd      <hx
+                    std       <sx
+                    ldd       <hz
+                    std       <sz
+                    ldd       #2*16
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       dt2x
+                    ldd       #PR.clod
+                    std       PT.F,y
+                    lda       #54
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #19
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #48
+                    lbsr      RandN
+                    adda      #32
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+dt2x                 dec       <kcnt
+                    bne       dt1x
+                    rts
+
+********************************************************************
+* Drawing
+********************************************************************
+* IntroFrame - the hero's frame in the opening.  Exit: D = it, or
+*   carry set if he's still underground
+IntroFrame          ldd       <phaset
+                    cmpd      #InRise
+                    blo       if8
+                    cmpd      #InWake
+                    bhs       if2
+                    subd      #InRise             clawing up: a frame every HR.rise.T passes
+                    tfr       b,a
+                    ldb       #HR.rise.T
+                    lbsr      Div
+                    cmpa      #HR.rise.N-1
+                    bls       if1
+                    lda       #HR.rise.N-1
+if1                 tfr       a,b
+                    clra
+                    addd      #HR.rise
+                    andcc     #$FE
+                    rts
+if2                 ldd       #HR.wake            awake, hatless; then the hat's on
+                    tst       <hatop
+                    beq       if3
+                    ldd       #HR.idle
+if3                 andcc     #$FE
+                    rts
+if8                 comb
+                    rts
+
+* DrawGrave - the headstone and the grave (a mound until he rises, then
+*   the hole), all stage long; in the opening, the hat on its way
+DrawGrave           ldd       #PR.stone
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       #StoneX*16
+                    std       <ex
+                    ldd       #StoneZ*16
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    ldx       #PR.hole            the hole (X: A is wanted for the phase)
+                    lda       <phase
+                    cmpa      #PH.Intro
+                    bne       gv1
+                    ldd       <phaset
+                    cmpd      #InRise
+                    bhs       gv1
+                    ldx       #PR.mound
+gv1                 stx       <efrm
+                    lda       #$FE
+                    sta       <ekey
+                    ldd       #GraveX*16
+                    std       <ex
+                    ldd       #GraveZ*16
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    lda       <phase              the hat: on the stone, then hopping
+                    cmpa      #PH.Intro
+                    bne       gv9
+                    tst       <hatop
+                    bne       gv9
+                    lbra      HatHop
+gv9                 rts
+
+* HatHop - the hat from the top of the stone to his head: k = 0..1 over
+*   InHop..InLand; along a line, lifted by sin(k * pi) * 26.  The hat's
+*   origin is its brim's middle; on the stone it sits 34 px up, on him
+*   31.6 (brawler.js: y0 = FLOOR + 4 - 34, y1 = FLOOR + 34 - 31.6).
+HatHop              ldd       <phaset
+                    subd      #InHop
+                    bpl       hh1
+                    ldd       #0
+hh1                 cmpd      #InLand-InHop
+                    bls       hh2
+                    ldd       #InLand-InHop
+hh2                 stb       <tmpk               k in passes (0..33)
+                    lda       #GraveX-StoneX      x = 66 + 30 k / 33
+                    mul
+                    lbsr      Div16
+                    addd      #StoneX
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       <ex
+                    ldb       <tmpk               the height off the ground: 34 to 32, plus the hop
+                    lda       #2
+                    mul
+                    lbsr      Div16
+                    pshs      b
+                    ldb       <tmpk
+                    leax      HopTab,pcr
+                    lda       b,x                 sin(k pi) * 26
+                    adda      #34
+                    suba      ,s+
+                    ldb       #16
+                    mul
+                    std       <eh
+                    ldd       #StoneZ*16          z: from the stone's to his
+                    std       <ez
+                    ldb       <tmpk
+                    lda       #GraveZ-StoneZ
+                    mul
+                    lbsr      Div16
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    addd      #StoneZ*16
+                    std       <ez
+                    ldd       #PR.hat
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #$FF
+                    sta       <ekey
+                    lbra      Ent
+
+* Div16 - D / the hop's length in passes (33) -> D
+Div16               pshs      x
+                    ldx       #0
+dv61                cmpd      #InLand-InHop
+                    blo       dv63
+                    subd      #InLand-InHop
+                    leax      1,x
+                    bra       dv61
+dv63                tfr       x,d
+                    puls      x,pc
+
+* sin(k pi / 33) * 26 for k = 0..33
+HopTab              fcb       0,2,5,7,10,12,14,16,18,20,21,23,24,25,25,26,26
+                    fcb       26,26,25,25,24,23,21,20,18,16,14,12,10,7,5,2,0

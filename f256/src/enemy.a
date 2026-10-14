@@ -2097,7 +2097,11 @@ dp9                 leax      PT.Size,x
 *   enemy that can be hit, into its lane, up close, and kick (a side
 *   kick three times in ten).  Exit: B = the input
 ********************************************************************
-BotStep             tst       <bott
+BotStep             tst       <phase              only in the fight
+                    beq       bs00
+                    clrb
+                    rts
+bs00                tst       <bott
                     beq       bs0
                     dec       <bott
 bs0                 clr       <binp

@@ -66,7 +66,14 @@ Draw                lbsr      ShakeXY
                     cmpa      #PH.Over
                     beq       dw0a
 * the hero: on alternate beats while he's untouchable only his shadow
-                    lbsr      HeroFrame
+                    cmpa      #PH.Intro           the opening: rising from the grave
+                    bne       dwh
+                    lbsr      IntroFrame
+                    bcs       dw0a                still underground
+                    std       <efrm
+                    lda       #CTL.Spr
+                    bra       dw0
+dwh                 lbsr      HeroFrame
                     std       <efrm
                     lda       #CTL.Spr
                     ldb       <hinv
@@ -91,6 +98,7 @@ dw0a
                     lbsr      DrawEb
                     lbsr      DrawPt
                     lbsr      DrawPick
+                    lbsr      DrawGrave
                     lbsr      SortDL
 * the HUD, titles and popups over everything, then everything else
 *   nearest first
@@ -181,7 +189,8 @@ dwx                 rts
 *   eshk, ekey.  Screen x = x - camera, y = FLOOR.Y + z - h, both
 *   shaken; the shadow at h = 0.  Things well off the screen are left
 *   out.  Sort key: z * 2 + ekey (0 = behind characters at that depth,
-*   1 = a character), or $FF for ekey $FF (on top).
+*   1 = a character), or $FF for ekey $FF (on top), 0 for ekey $FE (flat
+*   on the ground, in front of only the shadows).
 ********************************************************************
 Ent                 lda       <dln
                     cmpa      #NDL
@@ -214,7 +223,11 @@ Ent                 lda       <dln
                     lda       <ekey               the sort key
                     cmpa      #$FF
                     beq       en1
-                    lda       <tmp+1
+                    cmpa      #$FE                flat on the ground: behind everything
+                    bne       en0
+                    clra
+                    bra       en1
+en0                 lda       <tmp+1
                     lsla
                     adda      <ekey
 en1                 ldb       <dln

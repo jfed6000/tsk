@@ -47,6 +47,7 @@ name                fcs       /tsk/
                     use       stage.a
                     use       hud.a
                     use       pickup.a
+                    use       intro.a
                     use       draw.a
                     use       tsktabs.a
 

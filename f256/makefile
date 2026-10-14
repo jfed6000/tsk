@@ -18,7 +18,7 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
 ASSETFILES  = tiles.bin sprites.bin maps.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin
-TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/draw.a src/tskassets.d src/tsktabs.a
+TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/draw.a src/tskassets.d src/tsktabs.a
 BUDGET      = 40192
 
 all: tsk tskview

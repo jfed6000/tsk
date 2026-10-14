@@ -183,6 +183,7 @@ puf                 rmb       2                   its frame or cell
 puk                 rmb       1                   0 = a word (TX), 1 = points (a dynamic cell)
 pul                 rmb       1                   its life
 puw                 rmb       1                   points: the text's width
+hatop               rmb       1                   the opening: 1 = the hat's on his head
 hwep                rmb       1                   his weapon (WP.*)
 hammo               rmb       1                   its rounds (or the whip's lashes)
 nbolt               rmb       2                   passes to the next lightning

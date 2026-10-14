@@ -793,7 +793,10 @@ po2                 leax      PU.Size,x
 *   lower record is in front): the HUD, his hats, the titles, popups.
 *   Entry: Y = the first record.  Exit: Y = the next.
 ********************************************************************
-DrawTop             lda       #CTL.Spr            the HUD
+DrawTop             lda       <phase              no HUD in the opening
+                    cmpa      #PH.Intro
+                    lbeq      dt5
+                    lda       #CTL.Spr            the HUD
                     sta       <bctl
                     ldd       #HudY               (BuildRaw takes the top-left corner)
                     std       <bcy
@@ -894,6 +897,8 @@ dt8                 leax      PU.Size,x
 
 * Titles - the stage's name as it begins, GO >>, the clear, the end
 Titles              lda       <phase
+                    cmpa      #PH.Intro
+                    lbeq      ti9
                     cmpa      #PH.Play
                     bne       ti3
                     ldd       <titlet             the stage's name
