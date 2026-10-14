@@ -45,6 +45,7 @@ name                fcs       /tsk/
                     use       hero.a
                     use       enemy.a
                     use       stage.a
+                    use       hud.a
                     use       draw.a
                     use       tsktabs.a
 

@@ -91,8 +91,10 @@ dw0a
                     lbsr      DrawEb
                     lbsr      DrawPt
                     lbsr      SortDL
-* everything, nearest first
+* the HUD, titles and popups over everything, then everything else
+*   nearest first
                     leay      recs,u
+                    lbsr      DrawTop
                     clr       <tmpi
 dw1                 ldb       <tmpi
                     cmpb      <dln
@@ -362,6 +364,29 @@ bc1                 cmpy      <recend
                     dec       <bcn
                     bne       bc1
 bc9                 rts
+
+* BuildRaw - one cell as one record: D = the cell, bcx/bcy = its
+*   top-left on the screen, bctl = the CTRL byte.  Y = the record -> the next
+BuildRaw            cmpy      <recend
+                    bhs       rw9
+                    lslb
+                    rola
+                    lslb
+                    rola                          cell * 4 = address bits 23:8
+                    addb      <sprbase+1
+                    adca      <sprbase
+                    std       1,y
+                    clr       3,y
+                    lda       <bctl
+                    sta       ,y
+                    ldd       <bcx
+                    addd      #32
+                    std       4,y
+                    ldd       <bcy
+                    addd      #32
+                    std       6,y
+                    leay      8,y
+rw9                 rts
 
 ClearRecs           leax      recs,u
                     ldy       #NRecs*8

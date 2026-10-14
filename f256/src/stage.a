@@ -19,8 +19,8 @@ ComboLen              equ       84                  1.4 s to land the next hit o
 ********************************************************************
 * GameInit - a new game: everything cleared, the hero at the start
 ********************************************************************
-GameInit            leax      en,u                every table: enemies, skulls, bullets, particles
-                    ldy       #NEn*EN.Size+NSl*SL.Size+NEb*EB.Size+NPt*PT.Size
+GameInit            leax      en,u                every table: enemies, skulls, bullets, popups, particles
+                    ldy       #frames-en
 gi1                 clr       ,x+
                     leay      -1,y
                     bne       gi1
@@ -33,6 +33,9 @@ gi1                 clr       ,x+
 gi2                 std       <rnd
                     lbsr      HeroInit
                     lbsr      CamInit
+                    lbsr      HudInit
+                    clr       <hwep
+                    clr       <hammo
                     ldd       #0
                     std       <score
                     std       <score+2

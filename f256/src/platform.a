@@ -100,11 +100,14 @@ mn1                 lbsr      Stage               the clocks, the phase, the her
                     lbsr      Skulls
                     lbsr      EBullets
                     lbsr      Parts
+                    lbsr      Pops
                     lbsr      Camera
                     tst       <shake
                     beq       mn2
                     dec       <shake
 mn2                 lbsr      Weather
+                    lbcs      Fail
+                    lbsr      Hud
                     lbcs      Fail
                     lbsr      Draw
                     lbcs      Fail
@@ -302,7 +305,7 @@ Alloc               ldx       #NTilBlk
                     bcs       alx
                     tfr       x,d
                     stb       <tilblk
-                    ldx       #NSprBlk
+                    ldx       #NSprBlk+NDynBlk    the art, then the dynamic cells (hud.a)
                     lbsr      GfxAlloc
                     bcs       alx
                     tfr       x,d
@@ -739,7 +742,7 @@ cu2                 clra
 cu3                 lda       #NTilBlk            and only then free the blocks
                     ldb       <tilblk
                     lbsr      GfxFree
-                    lda       #NSprBlk
+                    lda       #NSprBlk+NDynBlk
                     ldb       <sprblk
                     lbsr      GfxFree
                     lda       #NMapBlk

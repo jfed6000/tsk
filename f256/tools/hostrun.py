@@ -10,7 +10,7 @@ sprite records the pass pushed.
     python3 tools/hostrun.py --demo --passes 400 --records 120
     python3 tools/hostrun.py --args bg --passes 3000 --every 60 --watch hst,hx,hhp,hlives --enemies
 """
-import argparse, os, re, sys
+import argparse, bisect, os, re, sys
 
 TEMPEST = os.path.expanduser('~/projects/wild/tempest/tools')
 sys.path.insert(0, TEMPEST)
@@ -45,6 +45,17 @@ class Host(CPU6809):
 
     def step(self):
         pc = self.pc
+        if self.npass == self.profile and self.profile:
+            c0 = self.cycles
+            self._step(pc)
+            off = pc - MODBASE
+            i = bisect.bisect_right(self.labofs, off) - 1
+            name = self.labnames[i] if i >= 0 else '?'
+            self.prof[name] = self.prof.get(name, 0) + self.cycles - c0
+            return
+        self._step(pc)
+
+    def _step(self, pc):
         if self.mem[pc] == 0x10 and self.mem[pc + 1] == 0x3F:
             fn = self.mem[pc + 2]
             self.pc = (pc + 3) & 0xFFFF
@@ -64,6 +75,8 @@ class Host(CPU6809):
             c = self.cycles - getattr(self, 'c0', 0)
             self.c0 = self.cycles
             if self.npass > 1:
+                if self.slow and c > self.slow:
+                    print(f'  slow pass {self.npass}: {c} cycles')
                 self.cmax = max(getattr(self, 'cmax', 0), c)
                 self.ctot = getattr(self, 'ctot', 0) + c
             if self.watch and self.npass % self.every == 0:
@@ -151,6 +164,8 @@ def main():
     ap.add_argument('--every', type=int, default=1)
     ap.add_argument('--records', type=int, default=0, help='print the sprite records pushed on this pass')
     ap.add_argument('--args', default=None, help='the parameters (d demo, b autopilot, g god); --demo = d')
+    ap.add_argument('--profile', type=int, default=0, help='cycles by routine on this pass')
+    ap.add_argument('--slow', type=int, default=0, help='report every pass over this many cycles')
     ap.add_argument('--enemies', action='store_true', help='print the enemy table with the watched variables')
     a = ap.parse_args()
     sym = {}
@@ -165,6 +180,9 @@ def main():
     mod = open(os.path.join(F256, 'tsk'), 'rb').read()
     exe, size = mod[9] << 8 | mod[10], mod[11] << 8 | mod[12]
     h = Host(sym, a.passes, [w for w in a.watch.split(',') if w], a.every, a.records, a.enemies)
+    h.slow, h.profile, h.prof = a.slow, a.profile, {}
+    labs = sorted((v, k) for k, v in sym.items() if re.match(r'^[A-Z][A-Za-z0-9]*$', k) and v < len(mod) and v >= 13)
+    h.labofs, h.labnames = [v for v, k in labs], [k for v, k in labs]
     h.load(MODBASE, mod)
     args = a.args if a.args is not None else 'd' if a.demo else ''
     h.load(PARAMS, args.encode() + b'\r')
@@ -174,6 +192,9 @@ def main():
             h.step()
     except Exit as e:
         print('exit:', e)
+    if h.prof:
+        for k, v in sorted(h.prof.items(), key=lambda kv: -kv[1])[:20]:
+            print(f'  {k:14} {v:7}')
     if h.npass > 2:   # 6809 cycles in a pass, the OS-9 calls not counted (a 60 Hz tick is ~105,000 at 6.29 MHz)
         print(f'cycles a pass: average {h.ctot // (h.npass - 1)}, most {h.cmax}')
 

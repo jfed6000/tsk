@@ -295,6 +295,9 @@ nk0
                     lbsr      FaceHero
                     lda       #SkHp
                     sta       EN.Hp,x
+                    lda       #8                  one of the dead names
+                    lbsr      RandN
+                    sta       EN.Nm,x
                     lda       #6
                     sta       EN.Am,x
                     lda       #1
@@ -904,6 +907,10 @@ fs3                 andcc     #$FE
 ********************************************************************
 HitE                sta       <dmg
                     stb       <knock
+                    lda       EN.Id,x             its bar shows in the HUD
+                    sta       <lhit
+                    lda       #LastLen
+                    sta       <lhitt
                     ldb       EN.Hp,x
                     subb      <dmg
                     stb       EN.Hp,x
@@ -939,7 +946,10 @@ HitE                sta       <dmg
                     std       EN.VX,x
                     bsr       NewSkull
                     ldd       #60
-                    lbsr      AddScore
+                    lbsr      ScoreAt
+                    lda       #58
+                    ldy       #TX.headsup
+                    lbsr      WordE
                     lda       #4
                     sta       <hitstop
                     lda       #6
@@ -947,7 +957,7 @@ HitE                sta       <dmg
 hi2                 lda       #ES.Air             knocked flying
                     lbsr      SetE
                     ldd       #30
-                    lbsr      AddScore
+                    lbsr      ScoreAt
                     ldd       #40
                     lbsr      ByDir
                     std       EN.VX,x
@@ -963,7 +973,7 @@ hi3                 lda       EN.St,x             staggered (a headless one grop
                     lda       #ES.Stag
                     lbsr      SetE
 hi4                 ldd       #10
-                    lbsr      AddScore
+                    lbsr      ScoreAt
                     ldd       #19
                     lbsr      ByDir
                     std       EN.VX,x
@@ -1021,9 +1031,11 @@ KO                  lda       #5
                     ldd       #0
                     std       EN.VZ,x
                     ldd       #150
-                    lbra      AddScore
+                    lbsr      ScoreAt
+                    lbra      KoWord
 ko0                 ldd       #350
-                    lbsr      AddScore
+                    lbsr      ScoreAt
+                    lbsr      KoWord
                     ldd       EN.X,x
                     std       <sx
                     ldd       EN.Z,x
@@ -1138,12 +1150,19 @@ hu3                 std       <hvx
                     lda       #6
                     lbsr      Shk
                     tst       <hhp
-                    bgt       hu4
+                    bgt       hu7
                     dec       <hlives             a life gone: full health, a while untouchable
                     bne       hu5
                     lbsr      GameOver            the last one
                     bra       hu4
-hu5                 lda       #MaxHp
+hu7                 ldx       #TX.ouch
+                    lda       #52
+                    lbsr      WordH
+                    bra       hu4
+hu5                 ldx       #TX.dagnab
+                    lda       #56
+                    lbsr      WordH
+                    lda       #MaxHp
                     sta       <hhp
                     lda       #RespT
                     sta       <hinv
@@ -1190,7 +1209,10 @@ bb3                 leax      EN.Size,x
 * StompShock - the stomp lands: everything close to him and on the
 *   ground is knocked flying, away from him
 ********************************************************************
-StompShock          lda       #12
+StompShock          ldx       #TX.stomp
+                    lda       #56
+                    lbsr      WordH
+                    lda       #12
                     lbsr      Shk
                     lda       #3
                     sta       <hitstop
@@ -1387,6 +1409,10 @@ ha9                 lda       SL.St,x
                     ldd       #6*16
                     std       <sh
                     pshs      x
+                    lda       #20                 FORE!
+                    lbsr      PopSxz
+                    ldd       #TX.fore
+                    lbsr      PopWord
                     lda       #1
                     lbsr      Spark
                     puls      x

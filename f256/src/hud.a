@@ -1,0 +1,1034 @@
+********************************************************************
+* hud.a - the HUD, the popups and the titles.
+*
+*   There's no bitmap layer to print on (all three layers are the
+*   scenery), so text is sprites.  Fixed words are frames the exporter
+*   drew (TX.*).  What changes - the health bars, the score, the
+*   weapon, the enemy's name, a score popup - is drawn by the 6809 into
+*   dynamic cells: two blocks allocated right after the sprite art, so
+*   a dynamic cell is just a cell number past the exported ones and the
+*   sprite code needs nothing new.
+*
+*   Dynamic cells 0-7 are the HUD: two strips of four 32x32 cells, the
+*   hero's at the top left and the enemy's at the top right.  A strip is
+*   redrawn only when what it shows changes.  Cells 8-15 hold score
+*   popups ("30 X2"), one each, round robin.
+*
+*   The font is the browser's 3x5 with its outline (tsktabs.a GlyTab,
+*   5x7 stamps); the colours are the browser's (CI.*).
+********************************************************************
+
+NDynBlk             equ       2
+DynCell             equ       NSprBlk*8           the first dynamic cell
+HudY                equ       4                   the strips' screen y
+PopCell             equ       DynCell+8
+NPu                 equ       8                   popups at once
+PopLife             equ       54                  0.9 s
+LastLen             equ       132                 the enemy's bar shows 2.2 s after a hit
+
+* a popup
+PU.L                equ       0                   passes to live, 0 = free
+PU.K                equ       1                   0 = a TX frame, 1 = a dynamic cell
+PU.F                equ       2                   the frame, or the cell
+PU.X                equ       4                   x in the level (px), its centre
+PU.Y                equ       6                   screen y (px) x 2: it rises half a pixel a pass
+PU.W                equ       8                   a dynamic cell's text width (centring)
+PU.Size             equ       9
+
+********************************************************************
+* HudInit - a new game: everything redrawn on the next pass
+********************************************************************
+HudInit             lda       #$FF
+                    sta       <hudhp
+                    sta       <hudwp
+                    sta       <hudsc
+                    sta       <hudeid
+                    sta       <hudcb
+                    clr       <lhit
+                    clr       <lhitt
+                    clr       <popn
+                    leax      pu,u
+                    ldb       #NPu*PU.Size
+hi0                 clr       ,x+
+                    decb
+                    bne       hi0
+                    lda       #1                  the name, once
+                    sta       <hudnm
+                    rts
+
+********************************************************************
+* Dynamic blocks: one mapped at a time, only while it's drawn into
+********************************************************************
+* MapDyn - A = 0 (the HUD) or 1 (the popups): dmap = where it's mapped.
+*   Exit: carry = error
+MapDyn              adda      <sprblk
+                    adda      #NSprBlk
+                    tfr       a,b
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    pshs      u
+                    os9       F$MapBlk
+                    tfr       u,x
+                    puls      u
+                    bcs       md1
+                    stx       <dmap
+md1                 rts
+
+UnmapDyn            pshs      u
+                    ldu       <dmap
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      u,pc
+
+* PixCol - x (0-255, along the cells of the mapped block), A = row:
+*   X = the pixel's address.  B = x on entry.
+PixCol              pshs      a
+                    clra
+                    pshs      b
+                    andb      #31                 within the cell
+                    ldx       <dmap
+                    abx
+                    puls      b
+                    lsrb                          which cell: x / 32 * 1024
+                    lsrb
+                    lsrb
+                    lsrb
+                    lsrb
+                    lslb
+                    lslb                          (x / 32) * 4 = the cell's address high byte
+                    clra
+                    exg       a,b                 D = cell * 1024
+                    leax      d,x
+                    puls      a
+                    ldb       #32
+                    mul                           the row
+                    leax      d,x
+                    rts
+
+* Band - clear rows A to A+6 (seven) across the four cells starting at
+*   cell B (0 or 4)
+Band                pshs      a,b
+                    lda       #4
+                    sta       <hcnt
+bn1                 ldb       1,s
+                    lda       #32
+                    mul                           cell * 32 = x
+                    lda       ,s
+                    lbsr      PixCol
+                    ldb       #7
+bn2                 bsr       Row0
+                    leax      32,x
+                    decb
+                    bne       bn2
+                    inc       1,s
+                    dec       <hcnt
+                    bne       bn1
+                    puls      a,b,pc
+
+* Row0 - zero the 32 bytes at X (X and B kept)
+Row0                pshs      b
+                    clra
+                    clrb
+                    std       ,x
+                    std       2,x
+                    std       4,x
+                    std       6,x
+                    std       8,x
+                    std       10,x
+                    std       12,x
+                    std       14,x
+                    std       16,x
+                    std       18,x
+                    std       20,x
+                    std       22,x
+                    std       24,x
+                    std       26,x
+                    std       28,x
+                    std       30,x
+                    puls      b,pc
+
+* Text - X = a 0-terminated string, B = x, A = the row, hcol = the fill
+*   colour: each character stamped, 4 px apart (outline in CI.Out).
+*   The column pointer walks along (Col), so there's one PixCol a string.
+Text                stx       <hstr
+                    stb       <hx0
+                    lbsr      PixCol
+                    stx       <hptr
+tx1                 ldx       <hstr
+                    lda       ,x+
+                    beq       tx9
+                    stx       <hstr
+                    cmpa      #'a                 lower case to upper
+                    blo       tx2
+                    suba      #$20
+tx2                 suba      #32
+                    cmpa      #90-32
+                    bls       tx3
+                    lda       #'?-32
+tx3                 ldb       #35
+                    mul
+                    leay      GlyTab,pcr
+                    leay      d,y                 the stamp
+                    lda       #5                  five columns
+                    sta       <hcnt
+tx4                 lda       <hcnt               the fifth column overlaps the next
+                    cmpa      #1                  character's first: it starts here
+                    bne       tx4a
+                    ldd       <hptr
+                    std       <nptr
+                    lda       <hx0
+                    sta       <nx0
+tx4a                ldx       <hptr
+                    ldb       #7                  seven rows, down the column
+tx5                 lda       ,y+                 (the stamps are column by column)
+                    beq       tx7
+                    cmpa      #1
+                    bne       tx6
+                    lda       #CI.Out
+                    bra       tx6a
+tx6                 lda       <hcol
+tx6a                sta       ,x
+tx7                 leax      32,x
+                    decb
+                    bne       tx5
+                    bsr       Col
+                    dec       <hcnt
+                    bne       tx4
+                    ldd       <nptr               back one column: the next character
+                    std       <hptr
+                    lda       <nx0
+                    sta       <hx0
+                    bra       tx1
+tx9                 rts
+
+* Col - the column pointer (hptr, hx0) one pixel right, into the next
+*   cell at a 32-pixel boundary
+Col                 ldx       <hptr
+                    leax      1,x
+                    inc       <hx0
+                    lda       <hx0
+                    anda      #31
+                    bne       co1
+                    leax      1024-32,x
+co1                 stx       <hptr
+                    rts
+
+* Bar - B = x, A = the top row; hbar = how full (0-96 px).  The
+*   browser's boss bar: a 98x7 outline, dark inside, the fill with a
+*   light top line.
+Bar                 stb       <hx0
+                    lbsr      PixCol
+                    stx       <hptr
+                    clr       <hcnt               column 0..97
+br1                 ldx       <hptr
+                    lda       #CI.Out
+                    sta       ,x                  top and bottom: the outline
+                    sta       6*32,x
+                    ldb       <hcnt
+                    beq       br4                 the ends: all outline
+                    cmpb      #97
+                    beq       br4
+                    decb                          inside: lit up to hbar
+                    cmpb      <hbar
+                    bhs       br3
+                    lda       #CI.BarHi
+                    sta       32,x
+                    lda       #CI.BarFg
+                    bra       br3a
+br3                 lda       #CI.BarBk
+                    sta       32,x
+br3a                sta       2*32,x
+                    sta       3*32,x
+                    sta       4*32,x
+                    sta       5*32,x
+                    bra       br5
+br4                 sta       32,x
+                    sta       2*32,x
+                    sta       3*32,x
+                    sta       4*32,x
+                    sta       5*32,x
+br5                 bsr       Col
+                    inc       <hcnt
+                    lda       <hcnt
+                    cmpa      #98
+                    blo       br1
+                    rts
+
+* BarLen - A = health (signed), B = the most: A = 96 * health / most
+BarLen              tsta
+                    bpl       bl1
+                    clra
+bl1                 pshs      b
+                    ldb       #96
+                    mul                           D = 96 * hp
+                    clr       <hcnt
+bl2                 cmpb      ,s                  divide by the most (D < 96 * 255)
+                    bhs       bl3
+                    tsta
+                    beq       bl4
+bl3                 subb      ,s
+                    sbca      #0
+                    inc       <hcnt
+                    bra       bl2
+bl4                 leas      1,s
+                    lda       <hcnt
+                    rts
+
+********************************************************************
+* Hud - redraw whatever changed (once a pass, before Draw).
+*   Exit: carry = error
+********************************************************************
+Hud                 lda       <lhitt              the enemy's bar runs down
+                    beq       hd0
+                    dec       <lhitt
+                    bne       hd0
+                    clr       <lhit
+hd0                 clr       <hmapd              map the HUD block only if something changed
+                    leay      pu,u                a queued points popup first: that's this pass's part
+                    ldb       #NPu
+hdp1                tst       PU.L,y
+                    beq       hdp2
+                    lda       PU.K,y
+                    cmpa      #2
+                    bne       hdp2
+                    lbra      PtsDraw
+hdp2                leay      PU.Size,y
+                    decb
+                    bne       hdp1
+* the hero's name (once)
+                    tst       <hudnm
+                    beq       hd1
+                    lbsr      HudMap
+                    lbcs      hdq
+                    clr       <hudnm
+                    lda       #CI.Yel
+                    sta       <hcol
+                    leax      SName,pcr
+                    ldb       #8
+                    clra
+                    lbsr      Text
+                    lbra      hd6                 one part a pass
+* his health
+hd1                 lda       <hhp
+                    cmpa      <hudhp
+                    beq       hd2
+                    sta       <hudhp
+                    lbsr      HudMap
+                    lbcs      hdq
+                    lda       <hhp
+                    ldb       #MaxHp
+                    lbsr      BarLen
+                    sta       <hbar
+                    ldb       #7
+                    lda       #8
+                    lbsr      Bar
+                    lbra      hd6                 one part a pass
+* the score (seven digits)
+hd2                 ldd       <score
+                    cmpd      <hudsc
+                    bne       hd2x
+                    ldd       <score+2
+                    cmpd      <hudsc+2
+                    lbeq      hd3
+hd2x                ldd       <score
+                    std       <hudsc
+                    ldd       <score+2
+                    std       <hudsc+2
+                    lbsr      HudMap
+                    lbcs      hdq
+                    lda       #16
+                    clrb
+                    lbsr      Band
+                    leax      hbuf,u              "SCORE " and the digits
+                    leay      SScore,pcr
+hd2a                lda       ,y+
+                    beq       hd2b
+                    sta       ,x+
+                    bra       hd2a
+hd2b                lda       <score              the low nibble of the top byte, then three bytes
+                    anda      #$0F
+                    adda      #'0
+                    sta       ,x+
+                    leay      score+1,u
+                    ldb       #3
+hd2c                lda       ,y
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    adda      #'0
+                    sta       ,x+
+                    lda       ,y+
+                    anda      #$0F
+                    adda      #'0
+                    sta       ,x+
+                    decb
+                    bne       hd2c
+                    clr       ,x
+                    lda       #CI.Crm
+                    sta       <hcol
+                    leax      hbuf,u
+                    ldb       #6
+                    lda       #16
+                    lbsr      Text
+                    lbra      hd6                 one part a pass
+* the weapon: "WHIP n" or a bullet for each round
+hd3                 lda       <hwep
+                    ldb       <hammo
+                    lsla
+                    lsla
+                    lsla
+                    lsla
+                    pshs      b
+                    adda      ,s+
+                    cmpa      <hudwp
+                    beq       hd4
+                    sta       <hudwp
+                    lbsr      HudMap
+                    lbcs      hdq
+                    lda       #24
+                    clrb
+                    lbsr      Band
+                    lda       <hwep
+                    cmpa      #WP.Whip
+                    bne       hd3b
+                    leax      hbuf,u
+                    leay      SWhip,pcr
+hd3a                lda       ,y+
+                    sta       ,x+
+                    bne       hd3a
+                    leax      -1,x
+                    lda       <hammo
+                    lbsr      Num
+                    lda       #CI.Yel
+                    sta       <hcol
+                    leax      hbuf,u
+                    ldb       #6
+                    lda       #24
+                    lbsr      Text
+                    lbra      hd6                 one part a pass
+                    bra       hd4
+hd3b                cmpa      #WP.Gun
+                    bne       hd4
+                    lda       <hammo              a bullet for each round left: "!" stamps
+                    beq       hd4
+                    leax      hbuf,u
+hd3c                ldb       #'!
+                    stb       ,x+
+                    deca
+                    bne       hd3c
+                    clr       ,x
+                    lda       #CI.Yel
+                    sta       <hcol
+                    leax      hbuf,u
+                    ldb       #8
+                    lda       #24
+                    lbsr      Text
+                    lbra      hd6                 one part a pass
+* the enemy last hit: its name and bar (the boss's while he's about)
+hd4                 lbsr      Target              X = it (0 = nobody), A = its id
+                    sta       <tmpk
+                    beq       hd4a
+                    ldb       EN.Hp,x
+                    stb       <tmpf
+hd4a                lda       <tmpk
+                    cmpa      <hudeid
+                    bne       hd4b
+                    tsta
+                    beq       hd5
+                    lda       <tmpf
+                    cmpa      <hudehp
+                    beq       hd5
+                    sta       <hudehp             the same one, hurt: the bar only
+                    pshs      x
+                    lbsr      HudMap
+                    puls      x
+                    lbcs      hdq
+                    bra       hd4c
+hd4b                sta       <hudeid             a new one (or nobody): the name too
+                    lda       <tmpf
+                    sta       <hudehp
+                    pshs      x
+                    lbsr      HudMap
+                    puls      x
+                    lbcs      hdq
+                    clra
+                    ldb       #4
+                    lbsr      Band
+                    lda       #8
+                    ldb       #4
+                    lbsr      Band
+                    tst       <hudeid
+                    beq       hd5
+                    pshs      x
+                    lbsr      EName               Y = its name
+                    tfr       y,x
+                    lda       #CI.Yel
+                    sta       <hcol
+                    ldb       #128+24
+                    clra
+                    lbsr      Text
+                    puls      x
+hd4c                lda       EN.Hp,x
+                    lbsr      EMax                B = its full health
+                    lbsr      BarLen
+                    sta       <hbar
+                    ldb       #128+23
+                    lda       #8
+                    lbsr      Bar
+                    lbra      hd6                 one part a pass
+* the combo: "n HIT COMBO!" while it runs, from two hits
+hd5                 clra
+                    tst       <combot
+                    beq       hd5a
+                    lda       <combo
+                    cmpa      #2
+                    bhs       hd5a
+                    clra
+hd5a                cmpa      <hudcb
+                    beq       hd6
+                    sta       <hudcb
+                    lbsr      HudMap
+                    bcs       hdq
+                    lda       #16
+                    ldb       #4
+                    lbsr      Band
+                    lda       <hudcb
+                    beq       hd6
+                    leax      hbuf,u
+                    lbsr      Num
+                    leay      SCombo,pcr
+hd5b                lda       ,y+
+                    sta       ,x+
+                    bne       hd5b
+                    lda       #CI.Yel
+                    sta       <hcol
+                    leax      hbuf,u
+                    ldb       #128+75
+                    lda       #16
+                    lbsr      Text
+hd6                 tst       <hmapd
+                    beq       hd7
+                    lbsr      UnmapDyn
+hd7                 andcc     #$FE
+hdq                 rts
+
+* HudMap - map the HUD block, once a pass.  Exit: carry = error
+HudMap              tst       <hmapd
+                    bne       hm9
+                    clra
+                    lbsr      MapDyn
+                    bcs       hm8
+                    inc       <hmapd
+hm9                 andcc     #$FE
+hm8                 rts
+
+* Num - A = 0-99 written at X as digits; X = past them
+Num                 clrb
+nm1                 cmpa      #10
+                    blo       nm2
+                    suba      #10
+                    incb
+                    bra       nm1
+nm2                 tstb
+                    beq       nm3
+                    addb      #'0
+                    stb       ,x+
+nm3                 adda      #'0
+                    sta       ,x+
+                    clr       ,x
+                    rts
+
+* Target - the enemy whose bar shows: the last one hit, while it's
+*   still about.  Exit: X = it, A = its id (0 = nobody)
+Target              lda       <lhit
+                    beq       tg9
+                    leax      en,u
+                    ldb       #NEn
+tg1                 cmpa      EN.Id,x
+                    beq       tg2
+                    leax      EN.Size,x
+                    decb
+                    bne       tg1
+tg8                 clra
+tg9                 rts
+tg2                 ldb       EN.St,x             KO'd or gone: nobody
+                    beq       tg8
+                    cmpb      #ES.Ko
+                    beq       tg8
+                    rts
+
+* EName - X = an enemy: Y = its name
+EName               lda       EN.Ty,x
+                    beq       enm1
+                    leay      SDillo,pcr
+                    rts
+enm1                lda       EN.Nm,x             a skeleton: one of the dead names
+                    leay      DeadNames,pcr
+enm2                tsta
+                    beq       enm4
+enm3                tst       ,y+
+                    bne       enm3
+                    deca
+                    bra       enm2
+enm4                rts
+
+* EMax - X = an enemy: B = its full health
+EMax                ldb       #SkHp
+                    tst       EN.Ty,x
+                    beq       ex1
+                    ldb       #DlHp
+ex1                 rts
+
+SName               fcn       "SHITKICKERS"
+SScore              fcn       "SCORE "
+SWhip               fcn       "WHIP "
+SCombo              fcn       " HIT COMBO!"
+SDillo              fcn       "DILLO"
+DeadNames           fcn       "DEAD EYE"
+                    fcn       "BONES"
+                    fcn       "OL' RATTLER"
+                    fcn       "HOLLOW JACK"
+                    fcn       "GRAVES"
+                    fcn       "MORT"
+                    fcn       "BLACKHAT"
+                    fcn       "BONEY"
+
+********************************************************************
+* Popups - words and points that float up from where they happened
+********************************************************************
+* PopAt - a popup of puk/puf at pux, puy for pul passes
+PopAt               leay      pu,u
+                    ldb       #NPu
+pq1                 tst       PU.L,y
+                    beq       pq2
+                    leay      PU.Size,y
+                    decb
+                    bne       pq1
+                    leay      pu,u                full: the first one goes
+pq2                 lda       <pul
+                    sta       PU.L,y
+                    lda       <puk
+                    sta       PU.K,y
+                    ldd       <puf
+                    std       PU.F,y
+                    ldd       <pux
+                    std       PU.X,y
+                    ldd       <puy
+                    lslb
+                    rola
+                    std       PU.Y,y
+                    lda       <puw
+                    sta       PU.W,y
+                    rts
+
+* PopPlace - X = an enemy: pux = its x (px), puy = its feet's screen y
+*   less A px
+PopPlace            pshs      a
+                    ldd       EN.X,x
+                    lbsr      Asr4
+                    std       <pux
+                    ldd       EN.Z,x
+                    lbsr      Asr4
+                    addd      #FLOOR.Y
+                    subb      ,s+
+                    sbca      #0
+                    std       <puy
+                    rts
+
+* PopSxz - A = px: pux, puy at sx, sz (12.4) less A px up
+PopSxz              pshs      a
+                    ldd       <sx
+                    lbsr      Asr4
+                    std       <pux
+                    ldd       <sz
+                    lbsr      Asr4
+                    addd      #FLOOR.Y
+                    subb      ,s+
+                    sbca      #0
+                    std       <puy
+                    rts
+
+* PopHero - A = px above his feet: pux, puy at him
+PopHero             pshs      a
+                    ldd       <hx
+                    lbsr      Asr4
+                    std       <pux
+                    ldd       <hz
+                    lbsr      Asr4
+                    addd      #FLOOR.Y
+                    subb      ,s+
+                    sbca      #0
+                    std       <puy
+                    rts
+
+* PopWord - D = a TX frame at pux, puy
+PopWord             std       <puf
+                    clr       <puk
+                    lda       #PopLife
+                    sta       <pul
+                    bra       PopAt
+
+* PopPts - D = points: a popup of "n" (or "n Xm" in a combo) at pux,
+*   puy.  It's queued (PU.K = 2) and drawn into the next popup cell by Hud,
+*   so a hit's pass never draws text.  X and Y are kept.
+PopPts              pshs      x,y
+                    std       <puf
+                    lda       #2
+                    sta       <puk
+                    lda       <combo
+                    sta       <puw
+                    lda       #PopLife
+                    sta       <pul
+                    lbsr      PopAt
+                    puls      x,y,pc
+
+* PtsDraw - Y = a queued points popup: its text into the next popup cell.
+*   Exit: carry = error
+PtsDraw             pshs      y
+                    ldd       PU.F,y
+                    std       <scw
+                    leax      hbuf,u              the text
+                    lbsr      Dec5
+                    ldy       ,s
+                    lda       PU.W,y
+                    cmpa      #2
+                    blo       pz1
+                    ldb       #$20
+                    stb       ,x+
+                    ldb       #'X
+                    stb       ,x+
+                    lbsr      Num
+pz1                 tfr       x,d                 its width: 4 a character
+                    pshs      u
+                    subd      ,s++
+                    subd      #hbuf
+                    lslb
+                    lslb
+                    ldy       ,s
+                    stb       PU.W,y
+                    lda       #1                  map the popups' block
+                    lbsr      MapDyn
+                    bcs       pz9
+                    lda       <popn               the next cell, round robin
+                    inca
+                    anda      #7
+                    sta       <popn
+                    ldb       #32                 clear it
+                    mul
+                    lda       #0
+                    lbsr      PixCol
+                    ldb       #7
+pz2                 lbsr      Row0
+                    leax      32,x
+                    decb
+                    bne       pz2
+                    lda       #CI.Crm
+                    sta       <hcol
+                    lda       <popn
+                    ldb       #32
+                    mul
+                    clra
+                    leax      hbuf,u
+                    lbsr      Text
+                    lbsr      UnmapDyn
+                    ldy       ,s
+                    lda       #1
+                    sta       PU.K,y
+                    ldb       <popn
+                    clra
+                    addd      #PopCell
+                    std       PU.F,y
+                    andcc     #$FE
+pz9                 puls      y,pc
+
+* Dec5 - scw written at X in decimal, no leading zeros.  Exit: X = past it
+Dec5                stx       <hstr
+                    ldd       <scw
+                    std       <bcd
+                    clr       <hcn2               1 = a digit's been written
+                    leay      DecTab,pcr
+dc1                 ldx       ,y++
+                    beq       dc4
+                    pshs      y
+                    lbsr      Dig                 A = the digit, bcd = the rest
+                    puls      y
+                    tsta
+                    bne       dc2
+                    tst       <hcn2
+                    beq       dc1
+dc2                 inc       <hcn2
+                    adda      #'0
+                    ldx       <hstr
+                    sta       ,x+
+                    stx       <hstr
+                    bra       dc1
+dc4                 lda       <bcd+1              the ones, always
+                    adda      #'0
+                    ldx       <hstr
+                    sta       ,x+
+                    clr       ,x
+                    rts
+DecTab              fdb       10000,1000,100,10,0
+
+* Pops - one pass for each popup: it rises and its life runs down
+Pops                leax      pu,u
+                    ldb       #NPu
+po1                 tst       PU.L,x
+                    beq       po2
+                    dec       PU.L,x
+                    pshs      b
+                    ldd       PU.Y,x
+                    subd      #1
+                    std       PU.Y,x
+                    puls      b
+po2                 leax      PU.Size,x
+                    decb
+                    bne       po1
+                    rts
+
+********************************************************************
+* DrawTop - the records drawn over everything, first in the table (a
+*   lower record is in front): the HUD, his hats, the titles, popups.
+*   Entry: Y = the first record.  Exit: Y = the next.
+********************************************************************
+DrawTop             lda       #CTL.Spr            the HUD
+                    sta       <bctl
+                    ldd       #HudY               (BuildRaw takes the top-left corner)
+                    std       <bcy
+                    clr       <tmpi               the hero's strip: cells 0-3
+dt1                 lda       <tmpi
+                    ldb       #32
+                    mul
+                    std       <bcx
+                    ldb       <tmpi
+                    clra
+                    addd      #DynCell
+                    lbsr      BuildRaw
+                    inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #4
+                    blo       dt1
+                    lda       <hudeid             the enemy's strip, when it shows something
+                    ora       <hudcb
+                    beq       dt3
+dt2                 lda       <tmpi
+                    ldb       #32
+                    mul
+                    addd      #64                 cells 4-7 at x 192..319
+                    std       <bcx
+                    ldb       <tmpi
+                    clra
+                    addd      #DynCell
+                    lbsr      BuildRaw
+                    inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #8
+                    blo       dt2
+* his hats: one a life
+dt3                 lda       <hlives
+                    beq       dt5
+                    sta       <tmpn
+                    ldd       #108+16             the hat's origin is its brim's middle
+                    std       <bcx
+dt4                 ldd       #6+14
+                    std       <bcy
+                    ldd       #PR.hat
+                    lbsr      BuildChar
+                    ldd       <bcx
+                    addd      #24
+                    std       <bcx
+                    dec       <tmpn
+                    bne       dt4
+* the titles, GO, the end, game over
+dt5                 lbsr      Titles
+* the popups
+                    leax      pu,u
+                    lda       #NPu
+                    sta       <tmpn
+dt6                 tst       PU.L,x
+                    beq       dt8
+                    lda       PU.L,x              blinking out
+                    cmpa      #12
+                    bhs       dt6a
+                    bita      #2
+                    bne       dt8
+dt6a                ldd       PU.Y,x
+                    asra
+                    rorb
+                    std       <bcy
+                    ldd       PU.X,x
+                    subd      <cam
+                    cmpd      #24                 kept on the screen
+                    bge       dt6b
+                    ldd       #24
+dt6b                cmpd      #296
+                    ble       dt6c
+                    ldd       #296
+dt6c                std       <bcx
+                    lda       PU.K,x
+                    cmpa      #2                  still queued
+                    beq       dt8
+                    pshs      x
+                    tst       PU.K,x
+                    bne       dt7
+                    ldd       PU.F,x              a word: its origin's its top centre
+                    lbsr      BuildChar
+                    puls      x
+                    bra       dt8
+dt7                 ldb       PU.W,x              points: a cell, centred
+                    lsrb
+                    clra
+                    pshs      d
+                    ldd       <bcx
+                    subd      ,s++
+                    std       <bcx
+                    ldd       PU.F,x
+                    lbsr      BuildRaw
+                    puls      x
+dt8                 leax      PU.Size,x
+                    dec       <tmpn
+                    bne       dt6
+                    rts
+
+* Titles - the stage's name as it begins, GO >>, the clear, the end
+Titles              lda       <phase
+                    cmpa      #PH.Play
+                    bne       ti3
+                    ldd       <titlet             the stage's name
+                    cmpd      #TitleLen
+                    bhs       ti2
+                    ldx       #TX.texas
+                    ldd       #50
+                    bsr       Ttl
+                    ldx       #TX.shitk
+                    ldd       #78
+                    bsr       Ttl
+                    ldx       #TX.boothill
+                    ldd       #114
+                    bsr       Ttl
+                    ldx       #TX.midnight
+                    ldd       #132
+                    bsr       Ttl
+ti2                 tst       <got                GO >>, blinking, once a wave's beaten
+                    beq       ti9
+                    tst       <lock
+                    bne       ti9
+                    lda       <got
+                    bita      #16
+                    beq       ti9
+                    ldx       #TX.go
+                    ldd       #70
+                    pshs      d
+                    ldd       #281
+                    std       <bcx
+                    puls      d
+                    bra       Ttl2
+ti3                 cmpa      #PH.Clear
+                    bne       ti4
+                    ldx       #TX.clear
+                    ldd       #70
+                    bra       Ttl
+ti4                 cmpa      #PH.End
+                    bne       ti6
+                    ldx       #TX.tbc
+                    ldd       #80
+                    bsr       Ttl
+                    lda       <phaset+1
+                    bita      #32
+                    beq       ti9
+                    ldx       #TX.ride
+                    ldd       #110
+                    bra       Ttl
+ti6                 lbsr      HeroGone            game over: the words where he fell
+                    ldd       <phaset
+                    cmpd      #60
+                    blo       ti9
+                    ldx       #TX.again
+                    ldd       #120
+                    bra       Ttl
+ti9                 rts
+
+* Ttl - X = a TX frame, D = its screen y: centred
+Ttl                 pshs      d
+                    ldd       #160
+                    std       <bcx
+                    puls      d
+Ttl2                std       <bcy
+                    lda       #CTL.Spr
+                    sta       <bctl
+                    tfr       x,d
+                    lbra      BuildChar
+
+* HeroGone - game over: GAME OVER above where he fell
+HeroGone            ldd       <hx
+                    lbsr      Asr4
+                    subd      <cam
+                    std       <bcx
+                    ldd       <hz
+                    lbsr      Asr4
+                    addd      #FLOOR.Y-60
+                    std       <bcy
+                    lda       #CTL.Spr
+                    sta       <bctl
+                    ldd       #TX.over
+                    lbra      BuildChar
+
+********************************************************************
+* What the combat code calls
+********************************************************************
+* ScoreAt - X = an enemy, D = points: scored, and shown above it.
+*   X is kept.
+ScoreAt             pshs      d,x
+                    lbsr      EHgt
+                    adda      #12
+                    lbsr      PopPlace
+                    puls      d
+                    lbsr      AddScore            D = the points with the combo
+                    lbsr      PopPts
+                    puls      x,pc
+
+* KoWord - X = an enemy KO'd: a word over it (a bone word for a
+*   skeleton).  X is kept.
+KoWord              pshs      x
+                    lbsr      EHgt
+                    adda      #16
+                    lbsr      PopPlace
+                    ldx       ,s
+                    tst       EN.Ty,x
+                    bne       kw1
+                    lda       #5
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #TX.bone0
+                    bra       kw2
+kw1                 lda       #6
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #TX.ko0
+kw2                 lbsr      PopWord
+                    puls      x,pc
+
+* WordE - X = an enemy, A = px above its feet, Y = a TX frame.  X kept.
+WordE               pshs      x
+                    pshs      y
+                    lbsr      PopPlace
+                    puls      d
+                    lbsr      PopWord
+                    puls      x,pc
+
+* WordH - X = a TX frame, A = px above his feet
+WordH               pshs      x
+                    lbsr      PopHero
+                    puls      d
+                    lbra      PopWord
+
+* EHgt - X = an enemy: A = how tall it is (px)
+EHgt                lda       #SkTall
+                    tst       EN.Ty,x
+                    beq       eg9
+                    lda       #DlTall
+eg9                 rts

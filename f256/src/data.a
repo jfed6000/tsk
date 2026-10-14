@@ -4,7 +4,7 @@
 ********************************************************************
 
 * sizes
-NRecs               equ       96                  sprite records we own (SS.SprReg)
+NRecs               equ       128                 sprite records we own (SS.SprReg): all of them
 NEn                 equ       5                   enemies at once
 NSl                 equ       4                   loose skulls
 NEb                 equ       6                   the posse's bullets in the air
@@ -43,10 +43,16 @@ EN.Hit              equ       21                  the hero's attack that last hi
 EN.Id               equ       22                  its slot number + 1 (a skull's owner)
 EN.Ty               equ       23                  what it is: TY.Skel, TY.Dillo
 EN.Sd               equ       24                  the side it came in from: 1 right, -1 left
-EN.Size             equ       25
+EN.Nm               equ       25                  a skeleton's name (DeadNames)
+EN.Size             equ       26
 
 TY.Skel             equ       0
 TY.Dillo            equ       1
+
+* the hero's weapon (hwep)
+WP.None             equ       0
+WP.Whip             equ       1
+WP.Gun              equ       2
 
 * a loose skull: knocked off, on the ground, or kicked down the lane
 SL.St               equ       0                   SL.Fly, SL.Grnd, SL.Kick; 0 = free
@@ -148,6 +154,37 @@ scw                 rmb       2                   AddScore: the points
 scn                 rmb       1                   AddScore: a counter, then a BCD byte
 scd                 rmb       1                   AddScore: a digit
 bcd                 rmb       2                   AddScore: what's left to convert
+* the HUD (hud.a): what each part shows now, to redraw only on a change
+hudsc               rmb       4                   the score shown
+hudhp               rmb       1                   his health shown
+hudwp               rmb       1                   the weapon shown (type << 4 + rounds)
+hudeid              rmb       1                   the enemy shown (its id, 0 = nobody)
+hudehp              rmb       1                   its health shown
+hudcb               rmb       1                   the combo shown (0 = none)
+hudnm               rmb       1                   1 = his name's still to draw
+hmapd               rmb       1                   1 = the HUD block is mapped this pass
+lhit                rmb       1                   the enemy last hit (its id)
+lhitt               rmb       1                   passes its bar still shows
+dmap                rmb       2                   where a dynamic block is mapped
+hcnt                rmb       1                   counters
+hcn2                rmb       1
+hcol                rmb       1                   Text: the fill colour
+hx0                 rmb       1                   Text, Bar: x
+hy0                 rmb       1                   and the row
+hbar                rmb       1                   Bar: how full (px)
+hstr                rmb       2                   Text: the next character
+hptr                rmb       2                   Text, Bar: the column pointer
+nptr                rmb       2                   Text: the next character's column
+nx0                 rmb       1
+popn                rmb       1                   the last popup cell used
+pux                 rmb       2                   a new popup: x in the level (px)
+puy                 rmb       2                   its screen y
+puf                 rmb       2                   its frame or cell
+puk                 rmb       1                   0 = a word (TX), 1 = points (a dynamic cell)
+pul                 rmb       1                   its life
+puw                 rmb       1                   points: the text's width
+hwep                rmb       1                   his weapon (WP.*)
+hammo               rmb       1                   its rounds (or the whip's lashes)
 nbolt               rmb       2                   passes to the next lightning
 * the hero (positions and velocities 12.4)
 hx                  rmb       2                   x in the level
@@ -226,6 +263,8 @@ dlord               rmb       NDL                 the entries, nearest first
 en                  rmb       NEn*EN.Size         the enemies
 sl                  rmb       NSl*SL.Size         loose skulls
 eb                  rmb       NEb*EB.Size         the posse's bullets
+pu                  rmb       NPu*PU.Size         popups
+hbuf                rmb       24                  text being built
 pt                  rmb       NPt*PT.Size         particles
 frames              rmb       FRM.Size            frames.bin
 clutbuf             rmb       1024                sprite CLUT, then the all-white hit-flash CLUT

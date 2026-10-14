@@ -234,7 +234,8 @@ T.runExport = function (A) {
   }
   // GlyTab: the HUD font (brawler.js drawText, 3x5 with a 1-pixel outline) as 5x7 stamps, ASCII 32..90:
   // 35 bytes each, row by row, 0 = clear, 1 = outline, 2 = fill (the colours come from the caller)
-  TB.push('', '* GlyTab: the HUD font as 5x7 stamps for ASCII 32-90, 35 bytes each: 0 clear, 1 outline, 2 fill.', 'GlyTab');
+  TB.push('', '* GlyTab: the HUD font as 5x7 stamps for ASCII 32-90, 35 bytes each, column by column (7 rows down each of',
+    '* 5 columns): 0 clear, 1 outline, 2 fill.', 'GlyTab');
   for (let c = 32; c <= 90; c++) {
     const g = T.GLYPH[String.fromCharCode(c)] || T.GLYPH['?'], st = new Array(35).fill(0);
     for (let p = 0; p < 15; p++) if (g[p] === '#') {
@@ -242,7 +243,7 @@ T.runExport = function (A) {
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!st[(y + dy) * 5 + x + dx]) st[(y + dy) * 5 + x + dx] = 1;
     }
     for (let p = 0; p < 15; p++) if (g[p] === '#') st[(Math.floor(p / 3) + 1) * 5 + (p % 3) + 1] = 2;
-    for (let r = 0; r < 7; r++) TB.push(`                    fcb       ${st.slice(r * 5, r * 5 + 5).join(',')}` + (r ? '' : `               '${c === 39 ? '`' : String.fromCharCode(c)}'`));
+    for (let col = 0; col < 5; col++) TB.push(`                    fcb       ${[0, 1, 2, 3, 4, 5, 6].map(r => st[r * 5 + col]).join(',')}` + (col ? '' : `           '${c === 39 ? '`' : String.fromCharCode(c)}'`));
   }
   // the HUD's colours, as sprite CLUT indices
   const ci = h => T.CLUT.spr.add(h);
