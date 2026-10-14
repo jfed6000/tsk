@@ -17,6 +17,8 @@ ST.Snap             equ       6                   X: the snap kick, three to a c
 ST.Side             equ       7                   C or back + X: the side kick
 ST.Taunt            equ       8
 ST.Hurt             equ       9                   hit: knocked back, then free again
+ST.Whip             equ       10                  X with the whip
+ST.Shoot            equ       11                  X with the six-shooter
 
 * speeds, 12.4 per pass (browser: px/s at 60 passes)
 WalkX               equ       28                  105 px/s
@@ -144,12 +146,32 @@ hf5                 stx       <hvz
                     rorb
                     std       <hvz
                     lbra      hsw
-hp1                 bita      #IN.Side            C: the side kick
+hp1                 bita      #IN.Kick            X over a weapon picks it up
+                    beq       hp1a
+                    lbsr      Underfoot
+                    bcs       hp1a
+                    lbsr      PickUp
+                    lbra      hsw
+hp1a                lda       <ipress
+                    bita      #IN.Side            C: the side kick
                     bne       hpside
                     bita      #IN.Kick
                     beq       hp3
                     tst       <hback              back + X: the side kick
                     bne       hpside
+                    lda       <hwep               X with a weapon: use it
+                    cmpa      #WP.Whip
+                    bne       hp1b
+                    lda       #ST.Whip
+                    lbsr      SetS
+                    lbra      hsw
+hp1b                cmpa      #WP.Gun
+                    bne       hp1c
+                    lda       #ST.Shoot
+                    lbsr      SetS
+                    lbsr      HeroFire
+                    lbra      hsw
+hp1c
                     lda       <hchain             X: the next snap kick of the combo
                     beq       hp2a
                     lda       <hstep
@@ -190,6 +212,10 @@ hsw                 lda       <hst
                     lbeq      sTaunt
                     cmpa      #ST.Land
                     lbeq      sLand
+                    cmpa      #ST.Whip
+                    lbeq      sLash
+                    cmpa      #ST.Shoot
+                    lbeq      sFire
                     cmpa      #ST.Hurt
                     lbeq      sHurt
                     cmpa      #ST.Jump
@@ -259,6 +285,37 @@ sTaunt              ldd       #0
                     cmpa      #TauntDur
                     lblo      hmove
                     lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
+* the whip: it cracks on its second frame
+sLash               ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lda       <hfr
+                    cmpa      #1
+                    bne       sl1
+                    tst       <hft
+                    bne       sl1
+                    lbsr      WhipHit
+sl1                 lda       <ht
+                    cmpa      #WhipDur
+                    lblo      hmove
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
+* the six-shooter: out of rounds, he tosses it
+sFire              ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lda       <ht
+                    cmpa      #ShootDur
+                    lblo      hmove
+                    tst       <hammo
+                    bne       sf9
+                    lbsr      EmptyGun
+sf9                 lda       #ST.Idle
                     lbsr      SetS
                     lbra      hmove
 
@@ -477,7 +534,13 @@ AnTab               fdb       AnIdle-AnTab
                     fdb       AnSide-AnTab
                     fdb       AnTaunt-AnTab
                     fdb       AnHurt-AnTab
+                    fdb       AnWhip-AnTab
+                    fdb       AnShoot-AnTab
 
+AnWhip              fdb       HR.whip
+                    fcb       HR.whip.N,HR.whip.T,0
+AnShoot             fdb       HR.shoot
+                    fcb       HR.shoot.N,HR.shoot.T,0
 AnIdle              fdb       HR.idle
                     fcb       HR.idle.N,HR.idle.T,1
 AnTurn              fdb       HR.turn

@@ -100,6 +100,8 @@ mn1                 lbsr      Stage               the clocks, the phase, the her
                     lbsr      Skulls
                     lbsr      EBullets
                     lbsr      Parts
+                    lbsr      Items
+                    lbsr      HBullets
                     lbsr      Pops
                     lbsr      Camera
                     tst       <shake

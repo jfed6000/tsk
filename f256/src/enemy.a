@@ -1036,6 +1036,7 @@ KO                  lda       #5
 ko0                 ldd       #350
                     lbsr      ScoreAt
                     lbsr      KoWord
+                    lbsr      GunDrop             its six-shooter, sometimes
                     ldd       EN.X,x
                     std       <sx
                     ldd       EN.Z,x
@@ -1134,6 +1135,7 @@ HurtHero            tst       <hinv
                     sta       <hinv
                     lda       #ST.Hurt
                     lbsr      SetS
+                    lbsr      DropWhip            the whip falls from his hand
                     ldd       <sx                 knocked away from it
                     cmpd      <hx
                     bgt       hu1
@@ -1159,7 +1161,8 @@ hu7                 ldx       #TX.ouch
                     lda       #52
                     lbsr      WordH
                     bra       hu4
-hu5                 ldx       #TX.dagnab
+hu5                 clr       <hwep              a life gone takes the weapon too
+                    ldx       #TX.dagnab
                     lda       #56
                     lbsr      WordH
                     lda       #MaxHp
@@ -1308,6 +1311,7 @@ ha2                 addd      <hxp
                     std       <bh0
                     lda       <hface
                     sta       <hdir
+                    lbsr      BarHit              a barrel in the way breaks
 * the posse
                     leax      en,u
                     lda       #NEn
@@ -2117,9 +2121,13 @@ bs1                 lda       EN.St,y
 bs2                 leay      EN.Size,y
                     dec       <aloop
                     bne       bs1
+                    lbsr      BotItem             a weapon lying near: get it
+                    lbcc      bs9
                     ldy       <bnear
                     bne       bs2a
-                    lda       #IN.Right           nobody to fight: on to the next wave
+                    lbsr      BotBar              nobody to fight: a barrel to break,
+                    lbcc      bs9
+                    lda       #IN.Right           or on to the next wave
                     sta       <binp
                     lbra      bs9
 bs2a
@@ -2138,8 +2146,18 @@ bs4                 ldd       EN.X,y
                     subd      <hx
                     std       <tdx
                     lbsr      AbsD
-                    cmpd      #28*16
-                    bls       bs6
+                    pshs      d
+                    lda       <hwep               his reach: a kick, the whip, the gun
+                    ldx       #28*16
+                    cmpa      #WP.Whip
+                    bne       bs4a
+                    ldx       #50*16
+bs4a                cmpa      #WP.Gun
+                    bne       bs4b
+                    ldx       #200*16
+bs4b                tfr       x,d
+                    cmpd      ,s++
+                    bhs       bs6                 in reach
                     lda       #IN.Right
                     tst       <tdx
                     bpl       bs5
@@ -2169,3 +2187,132 @@ bs8                 orb       <binp
                     sta       <bott
 bs9                 ldb       <binp
                     rts
+
+* BotItem - the autopilot, unarmed, goes for a weapon within 120 px when
+*   nothing's within 50 of him.  Exit: carry clear = binp set
+BotItem             tst       <hwep
+                    bne       bi9
+                    leay      it,u
+                    ldb       #NIt
+bi1                 lda       IT.Ty,y
+                    beq       bi2
+                    cmpa      #IT.Beans
+                    beq       bi2
+                    pshs      b
+                    ldd       IT.X,y
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #120*16
+                    puls      b
+                    blo       bi3
+bi2                 leay      IT.Size,y
+                    decb
+                    bne       bi1
+bi9                 comb
+                    rts
+bi3                 pshs      y                   anyone close?
+                    leay      en,u
+                    ldb       #NEn
+bi4                 lda       EN.St,y
+                    beq       bi5
+                    cmpa      #ES.Enter
+                    beq       bi4a
+                    lbsr      Hitbl
+                    bcs       bi5
+bi4a                pshs      b
+                    ldd       EN.X,y
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #50*16
+                    puls      b
+                    bhs       bi5
+                    puls      y
+                    bra       bi9
+bi5                 leay      EN.Size,y
+                    decb
+                    bne       bi4
+                    puls      y
+                    ldd       IT.X,y              to it, and X when on it
+                    std       <tdx
+                    ldd       IT.Z,y
+                    std       <tdz
+                    ldd       #10*16
+                    std       <tcap
+                    bsr       BotTo
+                    andcc     #$FE
+                    rts
+
+* BotBar - nobody to fight: the first standing barrel on the screen,
+*   from 22 px to its left.  Exit: carry clear = binp set
+BotBar              leay      br,u
+                    ldb       #NBr
+bb5                 tst       BR.St,y
+                    beq       bb6
+                    pshs      b
+                    ldd       BR.X,y
+                    lbsr      Asr4
+                    subd      <cam
+                    puls      b
+                    ble       bb6
+                    cmpd      #320
+                    blt       bb7
+bb6                 leay      BR.Size,y
+                    decb
+                    bne       bb5
+                    comb
+                    rts
+bb7                 ldd       BR.X,y
+                    subd      #22*16
+                    std       <tdx
+                    ldd       BR.Z,y
+                    std       <tdz
+                    ldd       #6*16
+                    std       <tcap
+                    clr       <hface              (facing it)
+                    bsr       BotTo
+                    andcc     #$FE
+                    rts
+
+* BotTo - walk to tdx, tdz (12.4); within tcap of it, X
+BotTo               ldd       <tdx
+                    subd      <hx
+                    std       <tmp
+                    lbsr      AbsD
+                    cmpd      #5*16
+                    bls       bt2
+                    lda       #IN.Right
+                    tst       <tmp
+                    bpl       bt1
+                    lda       #IN.Left
+bt1                 ora       <binp
+                    sta       <binp
+bt2                 ldd       <tdz
+                    subd      <hz
+                    std       <tmp+0
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bls       bt4
+                    lda       #IN.Down
+                    tst       <tmp
+                    bpl       bt3
+                    lda       #IN.Up
+bt3                 ora       <binp
+                    sta       <binp
+bt4                 ldd       <tdx                close enough: X
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      <tcap
+                    bhs       bt9
+                    ldd       <tdz
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    bhs       bt9
+                    tst       <bott
+                    bne       bt9
+                    lda       <binp
+                    ora       #IN.Kick
+                    sta       <binp
+                    lda       #20
+                    sta       <bott
+bt9                 rts

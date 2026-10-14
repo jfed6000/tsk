@@ -1,0 +1,699 @@
+********************************************************************
+* pickup.a - barrels, what's in them, and the hero's weapons: beans
+*   (+7 health), the bullwhip (14 lashes, a long reach), the six-shooter
+*   (six shots, "with just six shots").  brawler.js breakBarrel, items,
+*   underfoot, the whip and shoot states, fire, updateShots (yours),
+*   dropWeapon.
+********************************************************************
+
+NBr                 equ       5                   barrels on the stage
+NIt                 equ       6                   items lying about
+NHb                 equ       3                   his bullets in the air
+
+* a barrel
+BR.St               equ       0                   1 = standing
+BR.X                equ       1                   12.4
+BR.Z                equ       3
+BR.It               equ       5                   what's in it (IT.*)
+BR.Size             equ       6
+
+* an item
+IT.Ty               equ       0                   what: WP.Whip, WP.Gun, IT.Beans; 0 = free
+IT.X                equ       1
+IT.Z                equ       3
+IT.H                equ       5
+IT.VH               equ       7
+IT.Am               equ       9                   a weapon's rounds (0 = a full one)
+IT.Size             equ       10
+IT.Beans            equ       3
+
+* one of his bullets
+HB.St               equ       0                   1 = flying
+HB.X                equ       1
+HB.Z                equ       3
+HB.H                equ       5
+HB.VX               equ       7
+HB.Size             equ       9
+
+WhipN               equ       14                  lashes in a whip
+GunN                equ       6
+HbV                 equ       101                 380 px/s
+WhipDur             equ       HR.whip.N*HR.whip.T+3
+ShootDur            equ       HR.shoot.N*HR.shoot.T+3
+
+* PickInit - the stage's barrels standing again
+PickInit            leax      br,u
+                    leay      BarTab,pcr
+                    lda       #NBr
+                    sta       <tmpn
+kpi1                 lda       #1
+                    sta       BR.St,x
+                    ldd       ,y++                x
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       BR.X,x
+                    lda       ,y+                 z
+                    ldb       #16
+                    mul
+                    std       BR.Z,x
+                    lda       ,y+
+                    sta       BR.It,x
+                    leax      BR.Size,x
+                    dec       <tmpn
+                    bne       kpi1
+                    rts
+
+* Boot Hill's barrels: x, z, what's in it (brawler.js STAGES.boothill.barrels)
+BarTab              fdb       300
+                    fcb       64,IT.Beans
+                    fdb       700
+                    fcb       20,WP.Whip
+                    fdb       1100
+                    fcb       60,IT.Beans
+                    fdb       1350
+                    fcb       30,WP.Gun
+                    fdb       1560
+                    fcb       50,IT.Beans
+
+********************************************************************
+* Items - one pass: they fall and settle; beans are eaten walking over
+********************************************************************
+Items               leax      it,u
+                    lda       #NIt
+                    sta       <ploop
+kim1                 lda       IT.Ty,x
+                    lbeq      kim9
+                    ldd       IT.H,x              falling
+                    bne       kim2
+                    ldd       IT.VH,x
+                    beq       kim3
+kim2                 ldd       IT.VH,x
+                    subd      #Grav
+                    std       IT.VH,x
+                    addd      IT.H,x
+                    std       IT.H,x
+                    bgt       kim3
+                    ldd       #0
+                    std       IT.H,x
+                    std       IT.VH,x
+kim3                 lda       IT.Ty,x             beans: walked over
+                    cmpa      #IT.Beans
+                    bne       kim9
+                    tst       <phase
+                    bne       kim9
+                    ldd       IT.H,x
+                    bne       kim9
+                    ldd       IT.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       kim9
+                    ldd       IT.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       kim9
+                    clr       IT.Ty,x
+                    lda       <hhp
+                    adda      #7
+                    cmpa      #MaxHp
+                    ble       kim4
+                    lda       #MaxHp
+kim4                 sta       <hhp
+                    ldd       IT.X,x
+                    std       <sx
+                    ldd       IT.Z,x
+                    std       <sz
+                    pshs      x
+                    lda       #30
+                    lbsr      PopSxz
+                    ldd       #TX.beans
+                    lbsr      PopWord
+                    puls      x
+kim9                 leax      IT.Size,x
+                    dec       <ploop
+                    lbne      kim1
+                    rts
+
+* NewItem - A = what, B = rounds, sx/sz = where, D' : sh = height,
+*   tdx = its upward speed (12.4)
+NewItem             leay      it,u
+                    pshs      b
+                    ldb       #NIt
+kni1                 tst       IT.Ty,y
+                    beq       kni2
+                    leay      IT.Size,y
+                    decb
+                    bne       kni1
+                    puls      b,pc                no room
+kni2                 sta       IT.Ty,y
+                    puls      b
+                    stb       IT.Am,y
+                    ldd       <sx
+                    std       IT.X,y
+                    ldd       <sz
+                    std       IT.Z,y
+                    ldd       <sh
+                    std       IT.H,y
+                    ldd       <tdx
+                    std       IT.VH,y
+                    rts
+
+* Underfoot - a weapon lying at his feet.  Exit: Y = it, carry clear
+Underfoot           leay      it,u
+                    ldb       #NIt
+kuf1                 lda       IT.Ty,y
+                    beq       kuf2
+                    cmpa      #IT.Beans
+                    beq       kuf2
+                    pshs      b
+                    ldd       IT.H,y
+                    bne       kuf1a
+                    ldd       IT.X,y
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       kuf1a
+                    ldd       IT.Z,y
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       kuf1a
+                    puls      b
+                    andcc     #$FE
+                    rts
+kuf1a                puls      b
+kuf2                 leay      IT.Size,y
+                    decb
+                    bne       kuf1
+                    comb
+                    rts
+
+* PickUp - Y = the weapon he's standing on: it's his
+PickUp              lda       IT.Ty,y
+                    sta       <hwep
+                    clr       IT.Ty,y
+                    ldb       IT.Am,y
+                    bne       kpk2
+                    ldb       #GunN
+                    cmpa      #WP.Gun
+                    beq       kpk2
+                    ldb       #WhipN
+kpk2                 stb       <hammo
+                    ldx       #TX.sixsh
+                    cmpa      #WP.Gun
+                    beq       kpk3
+                    ldx       #TX.bwhip
+kpk3                 lda       #54
+                    lbra      WordH
+
+* DropWhip - hurt with the whip in hand: it falls behind him
+DropWhip            lda       <hwep
+                    cmpa      #WP.Whip
+                    bne       kdw9
+                    ldd       #-10*16
+                    tst       <hface
+                    beq       kdp1
+                    ldd       #10*16
+kdp1                 addd      <hx
+                    std       <sx
+                    ldd       <hz
+                    std       <sz
+                    ldd       #20*16
+                    std       <sh
+                    ldd       #32
+                    std       <tdx
+                    lda       #WP.Whip
+                    ldb       <hammo
+                    lbsr      NewItem
+                    clr       <hwep
+kdw9                 rts
+
+* GunDrop - X = a skeleton coming apart: about a third of the time its
+*   six-shooter falls, with 2 to 6 rounds in it.  X is kept.
+GunDrop             lbsr      Rand
+                    cmpa      #90                 35%
+                    bhs       kgd9
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       #20*16
+                    std       <sh
+                    ldd       #37
+                    std       <tdx
+                    lda       #5
+                    lbsr      RandN
+                    adda      #2
+                    tfr       a,b
+                    lda       #WP.Gun
+                    pshs      x
+                    lbsr      NewItem
+                    puls      x
+kgd9                 rts
+
+********************************************************************
+* Barrels: a kick, the whip or a bullet breaks one open
+********************************************************************
+* BreakBar - Y = a barrel: splinters, 50 points, what was inside.
+*   X is kept.
+BreakBar            pshs      x
+                    clr       BR.St,y
+                    lda       #3
+                    sta       <hitstop
+                    lda       #4
+                    lbsr      Shk
+                    ldd       BR.X,y
+                    std       <sx
+                    ldd       BR.Z,y
+                    std       <sz
+                    pshs      y
+                    lda       #10
+                    sta       <kcnt
+kbk1                 lda       #14                 a splinter: 10-24 px up
+                    lbsr      RandN
+                    adda      #10
+                    ldb       #16
+                    mul
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       kbk2
+                    lda       #FX.chunk.N
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #FX.chunk
+                    std       PT.F,y
+                    lda       #60
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #27
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #48
+                    lbsr      RandN
+                    adda      #27
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+kbk2                 dec       <kcnt
+                    bne       kbk1
+                    puls      y
+                    ldd       #10*16              what was inside pops out
+                    std       <sh
+                    ldd       #43
+                    std       <tdx
+                    lda       BR.It,y
+                    clrb
+                    pshs      y
+                    lbsr      NewItem
+                    lda       #24                 50 points
+                    lbsr      PopSxz
+                    ldd       #50
+                    lbsr      AddScore
+                    lbsr      PopPts
+                    puls      y
+                    puls      x,pc
+
+* BarHit - the hero's attack box (bx0, bx1; pixels) against the barrels
+*   in his lane.  X is kept.
+BarHit              pshs      x
+                    leay      br,u
+                    ldb       #NBr
+kbh1                 tst       BR.St,y
+                    beq       kbh2
+                    pshs      b
+                    ldd       BR.Z,y
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #Lane*16
+                    bhs       kbh1a
+                    ldd       BR.X,y
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #9                  x0 < bx + 9
+                    cmpd      <bx0
+                    ble       kbh1a
+                    ldd       <tmp                x1 > bx - 9
+                    subd      #9
+                    cmpd      <bx1
+                    bge       kbh1a
+                    lbsr      BreakBar
+kbh1a                puls      b
+kbh2                 leay      BR.Size,y
+                    decb
+                    bne       kbh1
+                    puls      x,pc
+
+********************************************************************
+* The weapons
+********************************************************************
+* HeroFire - a shot from the six-shooter
+HeroFire            dec       <hammo
+                    lda       #2
+                    lbsr      Shk
+                    leay      hb,u
+                    ldb       #NHb
+khf1                 tst       HB.St,y
+                    beq       khf2
+                    leay      HB.Size,y
+                    decb
+                    bne       khf1
+                    rts
+khf2                 inc       HB.St,y
+                    ldd       #24*16
+                    ldx       #HbV
+                    tst       <hface
+                    beq       khf3
+                    ldd       #-24*16
+                    ldx       #-HbV
+khf3                 addd      <hx
+                    std       HB.X,y
+                    stx       HB.VX,y
+                    ldd       <hz
+                    std       HB.Z,y
+                    ldd       <hh
+                    addd      #22*16
+                    std       HB.H,y
+                    rts
+
+* WhipHit - the lash lands (the whip's second frame): 2 and a stagger
+*   to everything in a 60 px reach in his lane (16 px either side), a
+*   barrel there breaks, and bullets in the way are knocked down
+WhipHit             ldd       <hx                 the reach, pixels
+                    lbsr      Asr4
+                    std       <tmp
+                    tst       <hface
+                    bne       kwh1
+                    addd      #6
+                    std       <bx0
+                    addd      #60
+                    std       <bx1
+                    bra       kwh2
+kwh1                 subd      #66
+                    std       <bx0
+                    addd      #60
+                    std       <bx1
+kwh2                 ldd       <hh
+                    lbsr      Asr4
+                    addd      #8
+                    std       <bh0
+                    addd      #32
+                    std       <kbh1
+                    lda       <hface
+                    sta       <hdir
+                    leax      en,u
+                    lda       #NEn
+                    sta       <aloop
+kwh3                 lda       EN.St,x
+                    lbsr      Hitbl
+                    bcs       kwh5
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       kwh5
+                    ldd       EN.X,x
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #11
+                    cmpd      <bx0
+                    ble       kwh5
+                    ldd       <tmp
+                    subd      #11
+                    cmpd      <bx1
+                    bge       kwh5
+                    ldd       EN.H,x
+                    lbsr      Asr4
+                    std       <tmp
+                    lbsr      ETall
+                    cmpd      <bh0
+                    ble       kwh5
+                    ldd       <tmp
+                    cmpd      <kbh1
+                    bge       kwh5
+                    lda       #2
+                    clrb
+                    lbsr      HitE
+kwh5                 leax      EN.Size,x
+                    dec       <aloop
+                    bne       kwh3
+                    leay      br,u                barrels: 36 px ahead, within 32
+                    ldb       #NBr
+kwh6                 tst       BR.St,y
+                    beq       kwh7
+                    pshs      b
+                    ldd       BR.Z,y
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       kwh6a
+                    ldd       BR.X,y
+                    lbsr      Asr4
+                    subd      <bx0                bx0 + 30 is the reach's middle
+                    subd      #30
+                    lbsr      AbsD
+                    cmpd      #32
+                    bhs       kwh6a
+                    lbsr      BreakBar
+kwh6a                puls      b
+kwh7                 leay      BR.Size,y
+                    decb
+                    bne       kwh6
+                    leax      eb,u                their bullets in the reach: knocked down
+                    ldb       #NEb
+kwh8                 tst       EB.St,x
+                    beq       kwh9
+                    pshs      b
+                    ldd       EB.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       kwh8a
+                    ldd       EB.X,x
+                    lbsr      Asr4
+                    cmpd      <bx0
+                    ble       kwh8a
+                    cmpd      <bx1
+                    bge       kwh8a
+                    clr       EB.St,x
+kwh8a                puls      b
+kwh9                 leax      EB.Size,x
+                    decb
+                    bne       kwh8
+                    dec       <hammo              a lash used
+                    bne       whx
+                    clr       <hwep
+                    ldx       #TX.wbroke
+                    lda       #54
+                    lbsr      WordH
+whx                 rts
+
+* EmptyGun - the last shot's gone: he tosses the gun away
+EmptyGun            clr       <hwep
+                    ldd       <hx
+                    std       <sx
+                    ldd       <hz
+                    std       <sz
+                    ldd       #26*16
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       keg8
+                    ldd       #PR.gun
+                    std       PT.F,y
+                    lda       #72
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    ldd       #-24
+                    tst       <hface
+                    beq       keg7
+                    ldd       #24
+keg7                 std       PT.VX,y
+                    ldd       #53
+                    std       PT.VH,y
+keg8                 ldx       #TX.click
+                    lda       #54
+                    lbra      WordH
+
+* HBullets - his bullets: 4 and a knockdown to the first thing in their
+*   lane, a barrel breaks, gone off the screen
+HBullets            leax      hb,u
+                    lda       #NHb
+                    sta       <bloop
+khu1                 tst       HB.St,x
+                    lbeq      khu9
+                    ldd       HB.X,x
+                    addd      HB.VX,x
+                    std       HB.X,x
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #-20
+                    lblt      khu8
+                    cmpd      #340
+                    lbgt      khu8
+                    clr       <hdir
+                    tst       HB.VX,x
+                    bpl       khu2
+                    inc       <hdir
+khu2                 leay      en,u                the posse
+                    lda       #NEn
+                    sta       <aloop
+khu3                 lda       EN.St,y
+                    lbsr      Hitbl
+                    bcs       khu4
+                    ldd       EN.Z,y
+                    subd      HB.Z,x
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       khu4
+                    ldd       EN.X,y
+                    subd      HB.X,x
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       khu4
+                    pshs      x
+                    tfr       y,x
+                    lda       #4
+                    ldb       #1
+                    lbsr      HitE
+                    puls      x
+                    bra       khu8
+khu4                 leay      EN.Size,y
+                    dec       <aloop
+                    bne       khu3
+                    leay      br,u                barrels
+                    ldb       #NBr
+khu5                 tst       BR.St,y
+                    beq       khu6
+                    pshs      b
+                    ldd       BR.Z,y
+                    subd      HB.Z,x
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       khu5a
+                    ldd       BR.X,y
+                    subd      HB.X,x
+                    lbsr      AbsD
+                    cmpd      #9*16
+                    bhs       khu5a
+                    lbsr      BreakBar
+                    puls      b
+                    bra       khu8
+khu5a                puls      b
+khu6                 leay      BR.Size,y
+                    decb
+                    bne       khu5
+                    bra       khu9
+khu8                 clr       HB.St,x
+khu9                 leax      HB.Size,x
+                    dec       <bloop
+                    lbne      khu1
+                    rts
+
+********************************************************************
+* Drawing
+********************************************************************
+DrawPick            leax      br,u                barrels
+                    lda       #NBr
+                    sta       <dloop
+kdq1                 tst       BR.St,x
+                    beq       kdq2
+                    pshs      x
+                    ldd       #PR.barrel
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #2
+                    sta       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       BR.X,x
+                    std       <ex
+                    ldd       BR.Z,x
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+kdq2                 leax      BR.Size,x
+                    dec       <dloop
+                    bne       kdq1
+                    leax      it,u                items, and a blinking X over a weapon
+                    lda       #NIt
+                    sta       <dloop
+kdq3                 lda       IT.Ty,x
+                    beq       kdq5
+                    pshs      x
+                    ldy       #PR.whip
+                    cmpa      #WP.Whip
+                    beq       kdq3a
+                    ldy       #PR.gun
+                    cmpa      #WP.Gun
+                    beq       kdq3a
+                    ldy       #PR.beans
+kdq3a                sty       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       IT.X,x
+                    std       <ex
+                    ldd       IT.Z,x
+                    std       <ez
+                    ldd       IT.H,x
+                    std       <eh
+                    lbsr      Ent
+                    ldx       ,s
+                    lda       IT.Ty,x
+                    cmpa      #IT.Beans
+                    beq       kdq4
+                    lda       <ticks+1
+                    bita      #8
+                    beq       kdq4
+                    ldd       #TX.x
+                    std       <efrm
+                    lda       #$FF
+                    sta       <ekey
+                    ldd       IT.H,x
+                    addd      #18*16
+                    std       <eh
+                    lbsr      Ent
+kdq4                 puls      x
+kdq5                 leax      IT.Size,x
+                    dec       <dloop
+                    bne       kdq3
+                    leax      hb,u                his bullets
+                    lda       #NHb
+                    sta       <dloop
+kdq6                 tst       HB.St,x
+                    beq       kdq7
+                    pshs      x
+                    ldd       #PR.bullet
+                    tst       HB.VX,x
+                    bpl       kdq6a
+                    addd      #PR.Mir
+kdq6a                std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       HB.X,x
+                    std       <ex
+                    ldd       HB.Z,x
+                    std       <ez
+                    ldd       HB.H,x
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+kdq7                 leax      HB.Size,x
+                    dec       <dloop
+                    bne       kdq6
+                    rts

@@ -107,7 +107,7 @@ T.runExport = function (A) {
   addGroup('FX', [['shadow', [shadow], 1, false], ['shadowS', [shadowS], 1, false, 12, 4],
     ['star', FXA.star, 1, false, 16, 16], ['bit', FXA.bit, 1, false, 4, 4], ['dust', FXA.dust.map(d => d[0]), 1, false, 4, 4],
     ['skull', SKEL.skull, 12, true, 8, 8], ['hat', [SKEL.hat], 1, false, 12, 12], ['bone', SKEL.bones, 1, false, 6, 6],
-    ['ebul', [SKEL.bullet], 1, false, 4, 4]], 16, 4);
+    ['ebul', [SKEL.bullet], 1, false, 4, 4], ['chunk', FXA.chunk, 1, false, 1, 1]], 16, 4);
   // sprint 3: the dillo, Two-Bit (the coyote art), and the props and pickups
   const E = T.ENEMY, B = T.BOSS, PROPS = T.buildProps(), PICK = T.buildPick(), HAT = T.buildHat();
   addGroup('DL', [['walk', DILLO.walk, 8, true], ['ball', DILLO.ball, 24, true]], E.OX, E.OY);

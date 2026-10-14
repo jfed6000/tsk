@@ -264,6 +264,9 @@ en                  rmb       NEn*EN.Size         the enemies
 sl                  rmb       NSl*SL.Size         loose skulls
 eb                  rmb       NEb*EB.Size         the posse's bullets
 pu                  rmb       NPu*PU.Size         popups
+br                  rmb       NBr*BR.Size         barrels
+it                  rmb       NIt*IT.Size         items lying about
+hb                  rmb       NHb*HB.Size         his bullets
 hbuf                rmb       24                  text being built
 pt                  rmb       NPt*PT.Size         particles
 frames              rmb       FRM.Size            frames.bin

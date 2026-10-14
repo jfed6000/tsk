@@ -34,6 +34,7 @@ gi2                 std       <rnd
                     lbsr      HeroInit
                     lbsr      CamInit
                     lbsr      HudInit
+                    lbsr      PickInit
                     clr       <hwep
                     clr       <hammo
                     ldd       #0
