@@ -1,6 +1,6 @@
 # Texas Shitkickers: status
 
-*The handoff document: what exists, what's verified, what's next. Last updated 2026-10-12.*
+*The handoff document: what exists, what's verified, what's next. Last updated 2026-10-13.*
 
 Tracked in PPM as `texas-shitkickers` (id 658): the roadmap, the user's tasks, and a journal entry after each session.
 
@@ -25,8 +25,8 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 | **Stage 2: Main Street at dusk** | False fronts, sunset, night falling a step per wave (a CLUT fade that spares the lights), mangy coyotes and skeleton gunslingers, five waves, then "TO BE CONTINUED..." |
 | **Brawler systems** | Depth band with shadows, waves with screen lock and "GO >>", 3-kick combo, side kick, flying kick, stomp, grab/knee/throw, weapon pickups, beans, health bar plus lives (hats), last-hit enemy bar, combos, game over |
 | **Skeleton gunslinger** | Keeps distance, aligns to your lane, aims (eyes flare), fires dodgeable bullets, reloads after six; heap and reassemble; skull knocked off, headless body gropes for it, skull kickable into others; shatters into bones; sometimes drops its gun |
-| **F256: asset exporter** | `f256/tools/export.py` + `game/js/export.js`: Boot Hill → tiles.bin (576 tiles, 3 sets), maps.bin, sprites.bin (514 cells), frames.bin (186 frames), CLUTs, generated `f256/src/tskassets.d`; preview PNGs rebuilt from the binaries |
-| **F256: tsk (the game)** | `f256/src/tsk.asm` + `.a` files, P4 sprint 1: the hero on Boot Hill with every move, camera, display list, shadow, `tsk d` demo. Verified on the host 6809 (`make host`) and in MAME; K2 run pending |
+| **F256: asset exporter** | `f256/tools/export.py` + `game/js/export.js`: Boot Hill → tiles.bin (576 tiles, 3 sets), maps.bin, sprites.bin (551 cells), frames.bin (234 frames, with the combat effects), CLUTs, generated `f256/src/tskassets.d` and `tsktabs.a` (the hero's attack boxes); preview PNGs rebuilt from the binaries |
+| **F256: tsk (the game)** | `f256/src/tsk.asm` + `.a` files. Sprint 1: the hero on Boot Hill with every move, camera, display list, shadow, `tsk d` demo. Sprint 2: the skeleton gunslingers and combat (skulls, bullets, shatter, hitstop, flash, shake), the hero's health and lives, the `tsk b` autopilot. Verified on the host 6809 and in MAME; K2 run pending |
 | **F256: tskview** | `f256/src/tskview.asm`: the asset viewer and graphics harness. Three scrolling tile layers, hero and skeleton as metasprites cycling their animations, mirrored frames, lightning and hit flash as CLUT swaps, clean exit. **Runs in MAME** (`make mame`) **and on the K2** (user, 2026-10-12: "looks pretty smooth"; no visible 8 px tile offset) |
 | **Platformer** | `?mode=platformer`: the earlier Boot Hill (pits, platforms, buzzards, Two-Bit) and the desert test range |
 
@@ -57,8 +57,12 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 
 - **Nobody has played the brawler by hand with the skeletons.** Difficulty is unknown: skeleton fire rate, bullet
   speed (230 px/s), aim time 0.55 s, Two-Bit's 36 HP.
-- On the F256 the viewer runs on the K2 (smooth); the game (`tsk`, P4 sprint 1) moves the hero on Boot Hill in MAME
-  and on the host 6809, no enemies yet, not yet run on the K2.
+- On the F256 the viewer runs on the K2 (smooth); the game (`tsk`, P4 sprint 2) fights skeletons on Boot Hill in
+  MAME and on the host 6809, not yet run on the K2.
+- **Skeletons stack:** every skeleton heads for the same spot (100 px from you, in your lane), so two or three left
+  alone merge into one figure. True in the browser too; a matter for the playtest and tuning.
+- **Fixed 2026-10-13**, found by the port: a hit in mid-air froze the hero's height (no gravity in the hurt state),
+  so he could be left walking in the air.
 - **Fixed 2026-10-12**, found by the port: in the brawler the jump button stomped at once (no jumping at all since
   the stomp was added in 45d1f15), and one tap of X gave two snap kicks. Each press now queues one kick.
 - SNES pad support is untested on real pads (`port-guide.md` section 9).
@@ -67,8 +71,9 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 
 1. **Playtest** both stages, ideally on an SNES-style pad, and tune.
 2. **Two-player co-op** (two SNES pads, `SS.Joy` reads both): a second pair of boots.
-3. ~~Run tskview on a K2~~: done. **P4 has started** (`f256/docs/port-plan.md`): sprint 1, the hero moving on
-   Boot Hill, is done. Next: the skeleton gunslinger and combat.
+3. ~~Run tskview on a K2~~: done. **P4** (`f256/docs/port-plan.md`): sprint 1 (the hero on Boot Hill) and sprint 2
+   (skeletons and combat) are done. Next, sprint 3: waves and screen lock, GO, barrels and pickups, dillos, the HUD,
+   the opening, Two-Bit.
 4. A per-stage sprite CLUT (118 colours already, all enemies in one).
 5. A boss for Main Street, and the next stages from `story.md` reworked for the brawler.
 6. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).

@@ -1,0 +1,1811 @@
+********************************************************************
+* enemy.a - the undead posse: skeleton gunslingers, their bullets,
+*   their skulls, and the bits that fly when they're kicked.
+*   A translation of brawler.js: updateEnemies (the skeleton's
+*   states), hitE, koE, shatter, spark, puff, hurtPlayer,
+*   updateSkulls, updateShots and updateParts.  Per-second numbers
+*   become per-pass ones as in hero.a (60 passes a second, 12.4).
+*   Until the waves come (sprint 3), a gang of skeletons rises
+*   whenever the street is empty (Spawner).
+********************************************************************
+
+* skeleton states: ES.Appr..ES.Air are the hittable ones (brawler.js hittable)
+ES.Rise             equ       1                   clawing up out of the ground
+ES.Appr             equ       2                   keeping its distance, lining up in your lane
+ES.Aim              equ       3                   the eyes flare
+ES.Shoot            equ       4
+ES.Reload           equ       5                   after six
+ES.Stag             equ       6                   a light hit
+ES.Headl            equ       7                   skull knocked off: groping for it
+ES.Air              equ       8                   knocked down: the arc
+ES.Down             equ       9                   a heap of bones
+ES.Getup            equ       10                  reassembling
+
+* a skull's states
+SL.Fly              equ       1
+SL.Grnd             equ       2
+SL.Kick             equ       3
+
+* particle kinds: the first four don't fall; Dust and later sort behind characters
+PK.Star             equ       1                   the impact star, small
+PK.StarB            equ       2                   and big
+PK.Bit              equ       3                   a spark flying off
+PK.Dust             equ       4
+PK.Chunk            equ       5                   a bone, the hat: they fall and bounce
+PK.Skull            equ       6                   a chunk that spins
+
+CTL.Fls             equ       %00000001+CLUT.Fls*2    the hit flash: all white
+
+* the skeleton, per pass (browser: per second)
+SkHp                equ       7
+SkSpd               equ       12                  46 px/s
+SkSpdZ              equ       11                  42 px/s
+SkRange             equ       100                 it keeps this far from you, px
+SkTall              equ       46                  its height for hits, px
+AimT                equ       33                  0.55 s
+ShootT              equ       21                  0.35 s
+ReloadT             equ       90                  1.5 s
+RiseT               equ       54                  0.9 s
+StagT               equ       24                  0.4 s
+DownT               equ       54                  0.9 s
+GetupT              equ       36                  0.6 s
+BulV                equ       61                  230 px/s
+BulH                equ       28                  a bullet's height, px
+FlashT              equ       6                   0.1 s
+Lane                equ       12                  px either side of you that counts as your lane
+GravP               equ       4                   particles and skulls fall at 0.8 g
+* the hero's side of it
+MaxHp               equ       16
+InvT                equ       54                  untouchable after a hit (0.9 s)
+RespT               equ       132                 and after losing a life (2.2 s)
+HurtT               equ       24                  the hurt state (0.4 s)
+
+********************************************************************
+* CombatInit - a fresh street
+********************************************************************
+CombatInit          lda       #MaxHp
+                    sta       <hhp
+                    lda       #3
+                    sta       <hlives
+                    lda       #1
+                    sta       <hatk
+                    ldd       #$ACE1
+                    std       <rnd
+                    lda       #60
+                    sta       <spawnt
+                    leax      en,u                each slot's id
+                    lda       #1
+ci1                 sta       EN.Id,x
+                    leax      EN.Size,x
+                    inca
+                    cmpa      #NEn
+                    bls       ci1
+                    rts
+
+********************************************************************
+* the small tools
+********************************************************************
+* Rand - a 16-bit xorshift (7, 9, 8).  Exit: D = the new number
+Rand                ldd       <rnd
+                    lsra
+                    rorb                          B = (x >> 1) low byte, carry = bit 0
+                    clra
+                    rora                          A = bit 0 << 7
+                    eora      <rnd+1              x ^= x << 7
+                    eorb      <rnd
+                    sta       <rnd+1
+                    stb       <rnd
+                    lsrb                          x ^= x >> 9
+                    eorb      <rnd+1
+                    stb       <rnd+1
+                    eorb      <rnd                x ^= x << 8
+                    stb       <rnd
+                    ldd       <rnd
+                    rts
+
+* RandN - A = n -> A = 0..n-1
+RandN               pshs      a
+                    bsr       Rand
+                    puls      b
+                    mul
+                    rts
+
+* RandS - A = m (up to 127) -> D = -m..m
+RandS               pshs      a
+                    lsla
+                    inca
+                    bsr       RandN
+                    suba      ,s+
+                    tfr       a,b
+                    sex
+                    rts
+
+NegD                coma
+                    comb
+                    addd      #1
+                    rts
+
+AbsD                tsta
+                    bpl       ab1
+                    bsr       NegD
+ab1                 rts
+
+* Asr4 - D (12.4) -> pixels, signed
+Asr4                asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    rts
+
+* Decay - D = D - D/16 (a speed dying away)
+Decay               pshs      d
+                    bsr       Asr4
+                    pshs      d
+                    ldd       2,s
+                    subd      ,s++
+                    leas      2,s
+                    rts
+
+* ByDir - D = D, negated when hdir = 1 (left)
+ByDir               tst       <hdir
+                    beq       bd1
+                    bsr       NegD
+bd1                 rts
+
+* ByFace - X = an enemy: D negated when it faces left
+ByFace              tst       EN.Fc,x
+                    beq       bf1
+                    bsr       NegD
+bf1                 rts
+
+* Div - A / B -> A (the animation clocks; small numbers)
+Div                 pshs      b
+                    clrb
+dv1                 cmpa      ,s
+                    blo       dv2
+                    suba      ,s
+                    incb
+                    bra       dv1
+dv2                 tfr       b,a
+                    puls      b,pc
+
+* Shk - A = a shake, half pixels: the bigger of it and what's running
+Shk                 cmpa      <shake
+                    bls       sk1
+                    sta       <shake
+sk1                 rts
+
+* Toward - D = how far (12.4) -> D = a speed that way: the distance
+*   over 16 (browser: x4 a second), at most tcap
+Toward              tsta
+                    bmi       tw1
+                    bsr       Asr4
+                    cmpd      <tcap
+                    bls       tw0
+                    ldd       <tcap
+tw0                 rts
+tw1                 bsr       NegD
+                    bsr       Toward
+                    bra       NegD
+
+* FaceHero - X = an enemy: it turns to face him
+FaceHero            ldd       <hx
+                    cmpd      EN.X,x
+                    beq       fh2
+                    blt       fh1
+                    clr       EN.Fc,x
+                    rts
+fh1                 lda       #1
+                    sta       EN.Fc,x
+fh2                 rts
+
+* SetE - X = an enemy, A = its new state
+SetE                sta       EN.St,x
+                    clr       EN.T,x
+                    rts
+
+EStop               ldd       #0
+                    std       EN.VX,x
+                    std       EN.VZ,x
+                    rts
+
+* AfterHit - X = an enemy back on its feet, A = its cool-down: on with
+*   the fight, or groping for its skull if it's lost it
+AfterHit            sta       EN.Cd,x
+                    lda       #ES.Appr
+                    tst       EN.Sk,x
+                    bne       ah1
+                    lda       #ES.Headl
+ah1                 bra       SetE
+
+********************************************************************
+* Spawner - while the street is empty a gang rises: two skeletons,
+*   three every other time (brawler.js 'skel@': on screen, anywhere)
+********************************************************************
+Spawner             leax      en,u
+                    ldb       #NEn
+sp1                 tst       EN.St,x
+                    bne       spx
+                    leax      EN.Size,x
+                    decb
+                    bne       sp1
+                    dec       <spawnt
+                    bne       spx
+                    lda       #120
+                    sta       <spawnt
+                    inc       <gangn
+                    bsr       NewSkel
+                    bsr       NewSkel
+                    lda       <gangn
+                    lsra
+                    bcc       spx
+                    bsr       NewSkel
+spx                 rts
+
+* NewSkel - a skeleton claws up out of the ground somewhere on screen
+NewSkel             leax      en,u
+                    ldb       #NEn
+ns1                 tst       EN.St,x
+                    beq       ns2
+                    leax      EN.Size,x
+                    decb
+                    bne       ns1
+                    rts                           no room
+ns2                 lda       EN.Id,x             clear it, keeping its id
+                    pshs      a
+                    ldb       #EN.Size
+                    tfr       x,y
+ns3                 clr       ,y+
+                    decb
+                    bne       ns3
+                    puls      a
+                    sta       EN.Id,x
+                    lda       #ES.Rise
+                    sta       EN.St,x
+                    lda       #220                x = camera + 50 + 0..219
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      <cam
+                    addd      #50
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       EN.X,x
+                    std       <sx
+                    lda       #64                 z = 8 + 0..63
+                    lbsr      RandN
+                    adda      #8
+                    ldb       #16
+                    mul
+                    std       EN.Z,x
+                    std       <sz
+                    lbsr      FaceHero
+                    lda       #SkHp
+                    sta       EN.Hp,x
+                    lda       #6
+                    sta       EN.Am,x
+                    lda       #1
+                    sta       EN.Sk,x
+                    lda       #84                 0.6 to 2 s before its first shot
+                    lbsr      RandN
+                    adda      #36
+                    sta       EN.Cd,x
+                    lbsr      Rand
+                    sta       EN.An,x
+                    lda       #6                  the ground breaks
+                    lbra      Puff
+
+********************************************************************
+* Enemies - one pass for each
+********************************************************************
+Enemies             clr       <lock
+                    leax      en,u
+                    lda       #NEn
+                    sta       <eloop
+es1                 tst       EN.St,x
+                    beq       es2
+                    stx       <ecur
+                    bsr       Enemy
+                    ldx       <ecur
+                    lda       EN.St,x             any left: the screen stays locked
+                    beq       es2
+                    sta       <lock
+es2                 leax      EN.Size,x
+                    dec       <eloop
+                    bne       es1
+                    rts
+
+Enemy               lda       EN.T,x              the clocks
+                    inca
+                    beq       ey1
+                    sta       EN.T,x
+ey1                 inc       EN.An,x
+                    tst       EN.Cd,x
+                    beq       ey2
+                    dec       EN.Cd,x
+ey2                 tst       EN.Fl,x
+                    beq       ey3
+                    dec       EN.Fl,x
+ey3                 lda       EN.St,x
+                    leay      EnTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+
+EnTab               fdb       EnMove-EnTab
+                    fdb       ERise-EnTab
+                    fdb       EAppr-EnTab
+                    fdb       EAim-EnTab
+                    fdb       EShoot-EnTab
+                    fdb       EReload-EnTab
+                    fdb       EStag-EnTab
+                    fdb       EHeadl-EnTab
+                    fdb       EAir-EnTab
+                    fdb       EDown-EnTab
+                    fdb       EGetup-EnTab
+
+ERise               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #RiseT
+                    lbls      EnMove
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #48
+                    sta       EN.Cd,x
+                    lbra      EnMove
+
+* keep 100 px from him on whichever side it's on, in his lane; when
+*   lined up and cooled down, aim
+EAppr               ldd       <hx
+                    cmpd      EN.X,x
+                    bgt       ea1
+                    addd      #SkRange*16
+                    bra       ea2
+ea1                 subd      #SkRange*16
+ea2                 subd      EN.X,x
+                    std       <tdx
+                    ldd       #SkSpd
+                    std       <tcap
+                    ldd       <tdx
+                    lbsr      Toward
+                    std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #SkSpdZ
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+                    lbsr      FaceHero
+                    tst       EN.Cd,x
+                    lbne      EnMove
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #5*16
+                    lbhs      EnMove
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #40*16
+                    lbhs      EnMove
+                    lda       #ES.Aim
+                    lbsr      SetE
+                    lbsr      EStop
+                    lbra      EnMove
+
+EAim                lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #AimT
+                    lbls      EnMove
+                    lda       #ES.Shoot
+                    lbsr      SetE
+                    dec       EN.Am,x
+                    bsr       Fire
+                    lbra      EnMove
+
+* Fire - X = the skeleton: a bullet from the muzzle, down its lane
+Fire                leay      eb,u
+                    ldb       #NEb
+fi1                 tst       EB.St,y
+                    beq       fi2
+                    leay      EB.Size,y
+                    decb
+                    bne       fi1
+                    rts
+fi2                 inc       EB.St,y
+                    ldd       EN.Z,x
+                    std       EB.Z,y
+                    ldd       #22*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       EB.X,y
+                    ldd       #BulV
+                    lbsr      ByFace
+                    std       EB.VX,y
+                    rts
+
+EShoot              lda       EN.T,x
+                    cmpa      #ShootT
+                    lbls      EnMove
+                    tst       EN.Am,x
+                    bne       eh1
+                    lda       #ES.Reload
+                    lbsr      SetE
+                    lbra      EnMove
+eh1                 lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #60                 0.8 to 1.8 s to the next shot
+                    lbsr      RandN
+                    adda      #48
+                    sta       EN.Cd,x
+                    lbra      EnMove
+
+EReload             lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #ReloadT
+                    lbls      EnMove
+                    lda       #6
+                    sta       EN.Am,x
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #18
+                    sta       EN.Cd,x
+                    lbra      EnMove
+
+EStag               ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #StagT
+                    lbls      EnMove
+                    lda       #24
+                    lbsr      AfterHit
+                    lbra      EnMove
+
+* headless: blind, groping toward its skull (a wobble on top); with no
+*   skull to find, it falls apart
+EHeadl              lda       EN.T,x              the wobble: +-7, flipping every 21 passes
+                    ldb       #21
+                    lbsr      Div
+                    ldb       #7
+                    lsra
+                    bcc       eg1
+                    negb
+eg1                 sex
+                    std       <tdx
+                    lbsr      FindSkull
+                    bcs       eg5
+                    ldd       SL.X,y              toward the skull
+                    subd      EN.X,x
+                    std       <tmp
+                    ldd       #8
+                    tst       <tmp
+                    bpl       eg2
+                    ldd       #-8
+eg2                 addd      <tdx
+                    std       EN.VX,x
+                    ldd       SL.Z,y
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #5
+                    tst       <tdz
+                    bpl       eg3
+                    ldd       #-5
+eg3                 std       EN.VZ,x
+                    lda       SL.St,y             found it: on with its head
+                    cmpa      #SL.Grnd
+                    lbne      EnMove
+                    ldd       <tmp
+                    lbsr      AbsD
+                    cmpd      #7*16
+                    lbhs      EnMove
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #6*16
+                    lbhs      EnMove
+                    clr       SL.St,y
+                    lda       #1
+                    sta       EN.Sk,x
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #60
+                    sta       EN.Cd,x
+                    lbra      EnMove
+eg5                 ldd       <tdx                no skull: it staggers about
+                    std       EN.VX,x
+                    lda       EN.T,x
+                    anda      #%00100000
+                    beq       eg5a
+                    ldd       #-5
+                    bra       eg6
+eg5a                ldd       #5
+eg6                 std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #30
+                    lbls      EnMove
+                    clr       <hdir
+                    lbsr      KO
+                    lbra      EnMove
+
+EAir                ldd       EN.VH,x             the arc
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    lbgt      EnMove
+                    ldd       #0                  down
+                    std       EN.H,x
+                    std       EN.VH,x
+                    std       EN.VX,x
+                    lda       #ES.Down
+                    lbsr      SetE
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #4
+                    lbsr      Puff
+                    ldx       <ecur
+                    lbra      EnMove
+
+EDown               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #DownT
+                    bls       EnMove
+                    lda       #ES.Getup
+                    lbsr      SetE
+                    bra       EnMove
+
+EGetup              lda       EN.T,x
+                    cmpa      #GetupT
+                    bls       EnMove
+                    lda       #36
+                    lbsr      AfterHit
+
+* EnMove - X = an enemy: move it, and keep it on the screen (it's locked
+*   while there are enemies about: brawler.js lock + 6 .. lock + 314)
+EnMove              ldd       <cam
+                    addd      #6
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       <tmp
+                    ldd       EN.X,x
+                    addd      EN.VX,x
+                    cmpd      <tmp
+                    bge       em1
+                    ldd       <tmp
+em1                 pshs      d
+                    ldd       <tmp
+                    addd      #(320-12)*16
+                    cmpd      ,s
+                    bge       em2
+                    std       ,s
+em2                 puls      d
+                    std       EN.X,x
+                    ldd       EN.Z,x
+                    addd      EN.VZ,x
+                    bpl       em3
+                    ldd       #0
+em3                 cmpd      #ZMax*16
+                    ble       em4
+                    ldd       #ZMax*16
+em4                 std       EN.Z,x
+                    rts
+
+* FindSkull - X = an enemy -> Y = its loose skull, carry set if none
+FindSkull           leay      sl,u
+                    ldb       #NSl
+fs1                 tst       SL.St,y
+                    beq       fs2
+                    lda       SL.Own,y
+                    cmpa      EN.Id,x
+                    beq       fs3
+fs2                 leay      SL.Size,y
+                    decb
+                    bne       fs1
+                    coma
+                    rts
+fs3                 andcc     #$FE
+                    rts
+
+********************************************************************
+* HitE - X = an enemy, A = damage, B = 1 to knock it down; hdir = the
+*   way it goes.  A light hit staggers; a knockdown sends it flying, or
+*   half the time takes its skull clean off; out of health it's KO'd.
+*   X is kept.
+********************************************************************
+HitE                sta       <dmg
+                    stb       <knock
+                    ldb       EN.Hp,x
+                    subb      <dmg
+                    stb       EN.Hp,x
+                    lda       #FlashT
+                    sta       EN.Fl,x
+                    ldd       #-6*16              the spark, on the near side of it
+                    lbsr      ByDir
+                    addd      EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       EN.H,x
+                    addd      #28*16
+                    std       <sh
+                    pshs      x
+                    lda       #1
+                    lbsr      Spark
+                    puls      x
+                    tst       EN.Hp,x
+                    lble      KO
+                    tst       <knock
+                    beq       hi3
+                    tst       EN.Sk,x
+                    beq       hi2
+                    lbsr      Rand
+                    tsta
+                    bmi       hi2
+                    clr       EN.Sk,x             heads up: the skull comes off
+                    lda       #ES.Headl
+                    lbsr      SetE
+                    ldd       #11
+                    lbsr      ByDir
+                    std       EN.VX,x
+                    bsr       NewSkull
+                    lda       #4
+                    sta       <hitstop
+                    lda       #6
+                    lbra      Shk
+hi2                 lda       #ES.Air             knocked flying
+                    lbsr      SetE
+                    ldd       #40
+                    lbsr      ByDir
+                    std       EN.VX,x
+                    ldd       #59
+                    std       EN.VH,x
+                    lda       #4
+                    sta       <hitstop
+                    lda       #6
+                    lbra      Shk
+hi3                 lda       EN.St,x             staggered (a headless one gropes on)
+                    cmpa      #ES.Headl
+                    beq       hi4
+                    lda       #ES.Stag
+                    lbsr      SetE
+hi4                 ldd       #19
+                    lbsr      ByDir
+                    std       EN.VX,x
+                    lda       #2
+                    sta       <hitstop
+                    lda       #3
+                    lbra      Shk
+
+* NewSkull - X = an enemy: its skull flies off (hdir)
+NewSkull            leay      sl,u
+                    ldb       #NSl
+nk1                 tst       SL.St,y
+                    beq       nk2
+                    leay      SL.Size,y
+                    decb
+                    bne       nk1
+                    rts
+nk2                 lda       #SL.Fly
+                    sta       SL.St,y
+                    ldd       EN.X,x
+                    std       SL.X,y
+                    ldd       EN.Z,x
+                    std       SL.Z,y
+                    ldd       #44*16
+                    std       SL.H,y
+                    ldd       #29
+                    lbsr      ByDir
+                    std       SL.VX,y
+                    ldd       #53
+                    std       SL.VH,y
+                    lda       EN.Id,x
+                    sta       SL.Own,y
+                    clr       SL.T,y
+                    clr       SL.Hit,y
+                    rts
+
+********************************************************************
+* KO - X = an enemy: it comes apart.  Nine bones, the hat, and the
+*   skull if it still has one fly off; any loose skull of its own is
+*   nobody's now; the slot is free.  X is kept.
+********************************************************************
+KO                  lda       #5
+                    sta       <hitstop
+                    lda       #8
+                    lbsr      Shk
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    pshs      x
+                    lda       #9
+                    sta       <kcnt
+ko1                 lda       #30                 a bone: 10-40 px up
+                    lbsr      RandN
+                    adda      #10
+                    ldb       #16
+                    mul
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       ko2
+                    lda       #3
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #FX.bone
+                    std       PT.F,y
+                    lda       #78                 1.3 s
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #29
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #58
+                    lbsr      RandN
+                    adda      #32
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+ko2                 dec       <kcnt
+                    bne       ko1
+                    ldd       #44*16              the hat
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       ko3
+                    ldd       #FX.hat
+                    std       PT.F,y
+                    lda       #96
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #21
+                    lbsr      RandS
+                    std       PT.VX,y
+                    ldd       #69
+                    std       PT.VH,y
+ko3                 ldx       ,s
+                    tst       EN.Sk,x             the skull, spinning
+                    beq       ko4
+                    ldd       #40*16
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       ko4
+                    ldd       #FX.skull
+                    std       PT.F,y
+                    lda       #96
+                    ldb       #PK.Skull
+                    std       PT.L,y
+                    lda       #43
+                    lbsr      RandS
+                    std       PT.VX,y
+                    ldd       #80
+                    std       PT.VH,y
+ko4                 ldx       ,s                  its loose skulls are nobody's now
+                    lda       EN.Id,x
+                    leay      sl,u
+                    ldb       #NSl
+ko5                 cmpa      SL.Own,y
+                    bne       ko6
+                    clr       SL.Own,y
+ko6                 leay      SL.Size,y
+                    decb
+                    bne       ko5
+                    puls      x
+                    clr       EN.St,x
+                    rts
+
+********************************************************************
+* HurtHero - A = damage, sx = where it came from (12.4).
+*   Exit: A = 1 if it hurt him (he wasn't untouchable)
+********************************************************************
+HurtHero            tst       <hinv
+                    bne       hu0
+                    tst       <god
+                    bne       hu0
+                    sta       <dmg
+                    lda       <hhp
+                    suba      <dmg
+                    sta       <hhp
+                    lda       #InvT
+                    sta       <hinv
+                    lda       #ST.Hurt
+                    lbsr      SetS
+                    ldd       <sx                 knocked away from it
+                    cmpd      <hx
+                    bgt       hu1
+                    blt       hu2
+                    tst       <hface
+                    bne       hu2
+hu1                 ldd       #-32
+                    bra       hu3
+hu2                 ldd       #32
+hu3                 std       <hvx
+                    ldd       #0
+                    std       <hvz
+                    std       <hvh
+                    lda       #6
+                    lbsr      Shk
+                    tst       <hhp
+                    bgt       hu4
+                    dec       <hlives             a life gone: full health, a while untouchable,
+                    bne       hu5                 (game over comes with sprint 3: the lives go round)
+                    lda       #3
+                    sta       <hlives
+hu5                 lda       #MaxHp
+                    sta       <hhp
+                    lda       #RespT
+                    sta       <hinv
+                    bsr       Blowback            and everyone near him blown back
+                    leay      eb,u                and the bullets gone
+                    ldb       #NEb
+hu6                 clr       EB.St,y
+                    leay      EB.Size,y
+                    decb
+                    bne       hu6
+hu4                 lda       #1
+                    rts
+hu0                 clra
+                    rts
+
+* Blowback - every hittable enemy within 120 px of him is knocked away
+Blowback            leax      en,u
+                    lda       #NEn
+                    sta       <aloop
+bb1                 lda       EN.St,x
+                    cmpa      #ES.Appr
+                    blo       bb3
+                    cmpa      #ES.Air
+                    bhi       bb3
+                    ldd       EN.X,x
+                    subd      <hx
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #120*16
+                    bhs       bb3
+                    lda       #ES.Air
+                    lbsr      SetE
+                    ldd       #43
+                    tst       <tdx
+                    bpl       bb2
+                    ldd       #-43
+bb2                 std       EN.VX,x
+                    ldd       #53
+                    std       EN.VH,x
+bb3                 leax      EN.Size,x
+                    dec       <aloop
+                    bne       bb1
+                    rts
+
+********************************************************************
+* StompShock - the stomp lands: everything close to him and on the
+*   ground is knocked flying, away from him
+********************************************************************
+StompShock          lda       #12
+                    lbsr      Shk
+                    lda       #3
+                    sta       <hitstop
+                    leax      en,u
+                    lda       #NEn
+                    sta       <aloop
+sm1                 lda       EN.St,x
+                    cmpa      #ES.Appr
+                    blo       sm3
+                    cmpa      #ES.Air
+                    bhi       sm3
+                    ldd       EN.H,x
+                    cmpd      #10*16
+                    bge       sm3
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #24*16
+                    bhs       sm3
+                    ldd       EN.X,x
+                    subd      <hx
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #64*16
+                    bhs       sm3
+                    clr       <hdir
+                    tst       <tdx
+                    bpl       sm2
+                    inc       <hdir
+sm2                 lda       #2
+                    ldb       #1
+                    lbsr      HitE
+sm3                 leax      EN.Size,x
+                    dec       <aloop
+                    bne       sm1
+                    rts
+
+********************************************************************
+* HeroAtk - his attack box this pass (tsktabs.a HitTab, from the frame
+*   he shows) against the posse, loose skulls and bullets in his lane.
+*   brawler.js resolveHeroAttacks.  Each attack hits each thing once.
+********************************************************************
+HeroAtk             lda       <hst
+                    cmpa      #ST.JKick
+                    beq       ha1
+                    cmpa      #ST.Snap
+                    beq       ha1
+                    cmpa      #ST.Side
+                    beq       ha1
+                    rts
+ha1                 ldx       <hdesc
+                    bne       ha1a
+                    rts
+ha1a                ldd       ,x                  the frame, facing right
+                    addb      <hfr
+                    adca      #0
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    leay      HitTab,pcr
+                    leay      d,y
+                    tst       2,y
+                    bne       ha1b
+                    rts
+ha1b                ldd       <hx                 the box in pixels: x0..x1 along, h0..h1 up
+                    lbsr      Asr4
+                    std       <hxp
+                    ldd       <hh
+                    lbsr      Asr4
+                    std       <hhpx
+                    ldb       ,y                  x0 = x + dx, or x - dx - w facing left
+                    sex
+                    tst       <hface
+                    beq       ha2
+                    addb      2,y
+                    adca      #0
+                    lbsr      NegD
+ha2                 addd      <hxp
+                    std       <bx0
+                    ldb       2,y
+                    clra
+                    addd      <bx0
+                    std       <bx1
+                    ldb       1,y                 h1 = h - dy, h0 = h1 - hh
+                    sex
+                    lbsr      NegD
+                    addd      <hhpx
+                    std       <bh1
+                    ldb       3,y
+                    clra
+                    pshs      d
+                    ldd       <bh1
+                    subd      ,s++
+                    std       <bh0
+                    lda       <hface
+                    sta       <hdir
+* the posse
+                    leax      en,u
+                    lda       #NEn
+                    sta       <aloop
+ha3                 lda       EN.St,x
+                    cmpa      #ES.Appr
+                    lblo      ha8
+                    cmpa      #ES.Air
+                    lbhi      ha8
+                    lda       EN.Hit,x
+                    cmpa      <hatk
+                    lbeq      ha8
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #Lane*16
+                    lbhs      ha8
+                    ldd       EN.X,x
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #11                 x0 < ex + 11
+                    cmpd      <bx0
+                    ble       ha8
+                    ldd       <tmp                x1 > ex - 11
+                    subd      #11
+                    cmpd      <bx1
+                    bge       ha8
+                    ldd       EN.H,x
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #SkTall             h0 < eh + 46
+                    cmpd      <bh0
+                    ble       ha8
+                    ldd       <tmp                h1 > eh
+                    cmpd      <bh1
+                    bge       ha8
+                    lda       <hatk
+                    sta       EN.Hit,x
+                    lda       <hst                the damage: snap 2 (the third 3, a knockdown),
+                    ldb       #1                  side kick 4, flying kick 3, both knockdowns
+                    cmpa      #ST.Side
+                    bne       ha4
+                    lda       #4
+                    bra       ha6
+ha4                 cmpa      #ST.JKick
+                    beq       ha5
+                    lda       <hstep
+                    cmpa      #3
+                    bhs       ha5
+                    lda       #2
+                    clrb
+                    bra       ha6
+ha5                 lda       #3
+ha6                 lbsr      HitE
+ha8                 leax      EN.Size,x
+                    dec       <aloop
+                    lbne      ha3
+* a skull on the ground: kick it down the lane
+                    leax      sl,u
+                    lda       #NSl
+                    sta       <aloop
+ha9                 lda       SL.St,x
+                    cmpa      #SL.Grnd
+                    lbne      ha12
+                    lda       SL.Hit,x
+                    cmpa      <hatk
+                    lbeq      ha12
+                    ldd       SL.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #Lane*16
+                    lbhs      ha12
+                    ldd       <bh0
+                    cmpd      #14
+                    bge       ha12
+                    ldd       SL.X,x
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #6
+                    cmpd      <bx0
+                    ble       ha12
+                    ldd       <tmp
+                    subd      #6
+                    cmpd      <bx1
+                    bge       ha12
+                    lda       <hatk
+                    sta       SL.Hit,x
+                    lda       #SL.Kick
+                    sta       SL.St,x
+                    ldd       #88                 330 px/s
+                    lbsr      ByDir
+                    std       SL.VX,x
+                    ldd       #19
+                    std       SL.VH,x
+                    ldd       #6*16
+                    std       SL.H,x
+                    ldd       SL.X,x
+                    std       <sx
+                    ldd       SL.Z,x
+                    std       <sz
+                    ldd       #6*16
+                    std       <sh
+                    pshs      x
+                    lda       #1
+                    lbsr      Spark
+                    puls      x
+ha12                leax      SL.Size,x
+                    dec       <aloop
+                    lbne      ha9
+* a bullet: kicked out of the air
+                    leax      eb,u
+                    lda       #NEb
+                    sta       <aloop
+ha13                tst       EB.St,x
+                    beq       ha15
+                    ldd       EB.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #Lane*16
+                    bhs       ha15
+                    ldd       <bh0                h0 < BulH < h1
+                    cmpd      #BulH
+                    bge       ha15
+                    ldd       <bh1
+                    cmpd      #BulH
+                    ble       ha15
+                    ldd       EB.X,x              x0 - 4 < bx < x1 + 4
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #4
+                    cmpd      <bx0
+                    ble       ha15
+                    ldd       <tmp
+                    subd      #4
+                    cmpd      <bx1
+                    bge       ha15
+                    clr       EB.St,x
+                    ldd       EB.X,x
+                    std       <sx
+                    ldd       EB.Z,x
+                    std       <sz
+                    ldd       #BulH*16
+                    std       <sh
+                    pshs      x
+                    clra
+                    lbsr      Spark
+                    puls      x
+ha15                leax      EB.Size,x
+                    dec       <aloop
+                    bne       ha13
+                    rts
+
+********************************************************************
+* Skulls - knocked off, they bounce to the floor and wait for their
+*   body; kicked, they bowl over whoever's in the lane.  One left lying
+*   with no owner for 4 s crumbles.
+********************************************************************
+Skulls              leax      sl,u
+                    lda       #NSl
+                    sta       <sloop
+sk2                 lda       SL.St,x
+                    lbeq      sk9
+                    cmpa      #SL.Grnd
+                    beq       sk7
+                    ldd       SL.X,x              in the air
+                    addd      SL.VX,x
+                    std       SL.X,x
+                    ldd       SL.VH,x
+                    subd      #GravP
+                    std       SL.VH,x
+                    addd      SL.H,x
+                    std       SL.H,x
+                    lda       SL.St,x
+                    cmpa      #SL.Kick
+                    bne       sk3
+                    lbsr      Bowl
+                    tst       SL.St,x
+                    beq       sk9
+sk3                 ldd       SL.H,x
+                    bgt       sk5
+                    ldd       #0
+                    std       SL.H,x
+                    lda       SL.St,x
+                    cmpa      #SL.Fly
+                    bne       sk4
+                    lda       #SL.Grnd            landed
+                    sta       SL.St,x
+                    ldd       #0
+                    std       SL.VX,x
+                    std       SL.VH,x
+                    bra       sk5
+sk4                 ldd       #19                 a kicked one bounces along
+                    std       SL.VH,x
+sk5                 ldd       SL.X,x              off the screen: gone
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #-20
+                    blt       sk8
+                    cmpd      #340
+                    bgt       sk8
+                    bra       sk9
+sk7                 tst       SL.Own,x
+                    bne       sk9
+                    inc       SL.T,x
+                    lda       SL.T,x
+                    cmpa      #240
+                    blo       sk9
+sk8                 bsr       SkDie
+sk9                 leax      SL.Size,x
+                    dec       <sloop
+                    lbne      sk2
+                    rts
+
+* SkDie - X = a skull: it breaks into bones, and its body, if it's still
+*   groping for it, falls apart too.  X is kept.
+SkDie               clr       SL.St,x
+                    ldd       SL.X,x
+                    std       <sx
+                    ldd       SL.Z,x
+                    std       <sz
+                    ldd       SL.H,x
+                    addd      #4*16
+                    std       <sh
+                    lda       #4
+                    sta       <kcnt
+kd1                 lbsr      NewPt
+                    bcs       kd2
+                    lda       #3
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #FX.bone
+                    std       PT.F,y
+                    lda       #60
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #21
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #40
+                    lbsr      RandN
+                    adda      #27
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+kd2                 dec       <kcnt
+                    bne       kd1
+                    lda       SL.Own,x            its body
+                    beq       kd4
+                    pshs      x
+                    deca
+                    ldb       #EN.Size
+                    mul
+                    leay      en,u
+                    leay      d,y
+                    lda       EN.St,y
+                    cmpa      #ES.Headl
+                    bne       kd3
+                    ldx       ,s
+                    clr       <hdir
+                    ldd       SL.VX,x
+                    bpl       kd2a
+                    inc       <hdir
+kd2a                tfr       y,x
+                    lbsr      KO
+kd3                 puls      x
+kd4                 rts
+
+* Bowl - X = a kicked skull: the first hittable enemy it reaches (not its
+*   own body) takes 3 and a knockdown, and the skull is done
+Bowl                leay      en,u
+                    lda       #NEn
+                    sta       <aloop
+bw1                 lda       EN.St,y
+                    cmpa      #ES.Appr
+                    blo       bw3
+                    cmpa      #ES.Air
+                    bhi       bw3
+                    lda       EN.Id,y
+                    cmpa      SL.Own,x
+                    beq       bw3
+                    ldd       EN.H,y
+                    cmpd      #30*16
+                    bge       bw3
+                    ldd       EN.Z,y
+                    subd      SL.Z,x
+                    lbsr      AbsD
+                    cmpd      #Lane*16
+                    bhs       bw3
+                    ldd       EN.X,y
+                    subd      SL.X,x
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       bw3
+                    clr       <hdir
+                    ldd       SL.VX,x
+                    bpl       bw2
+                    inc       <hdir
+bw2                 pshs      x
+                    tfr       y,x
+                    lda       #3
+                    ldb       #1
+                    lbsr      HitE
+                    puls      x
+                    lbra      SkDie
+bw3                 leay      EN.Size,y
+                    dec       <aloop
+                    bne       bw1
+                    rts
+
+********************************************************************
+* EBullets - the posse's bullets: step out of the lane, or jump them
+********************************************************************
+EBullets            leax      eb,u
+                    lda       #NEb
+                    sta       <bloop
+eu1                 tst       EB.St,x
+                    beq       eu9
+                    ldd       EB.X,x
+                    addd      EB.VX,x
+                    std       EB.X,x
+                    subd      <hx                 |x| < 9, in his lane (8), between his feet
+                    lbsr      AbsD                and 40 px above them
+                    cmpd      #9*16
+                    bhs       eu5
+                    ldd       EB.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    bhs       eu5
+                    ldd       <hh
+                    cmpd      #BulH*16
+                    bge       eu5
+                    cmpd      #(BulH-40)*16
+                    ble       eu5
+                    ldd       EB.X,x
+                    std       <sx
+                    pshs      x
+                    lda       #2
+                    lbsr      HurtHero
+                    puls      x
+                    tsta
+                    beq       eu5
+                    clr       EB.St,x
+                    bra       eu9
+eu5                 ldd       EB.X,x              off the screen: gone
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #-20
+                    blt       eu6
+                    cmpd      #340
+                    ble       eu9
+eu6                 clr       EB.St,x
+eu9                 leax      EB.Size,x
+                    dec       <bloop
+                    bne       eu1
+                    rts
+
+********************************************************************
+* Particles
+********************************************************************
+* NewPt - a free particle at sx, sz, sh, standing still.
+*   Exit: Y = it, carry set if there's none (the caller sets PT.L)
+NewPt               leay      pt,u
+                    ldb       #NPt
+np1                 tst       PT.L,y
+                    beq       np2
+                    leay      PT.Size,y
+                    decb
+                    bne       np1
+                    coma
+                    rts
+np2                 ldd       <sx
+                    std       PT.X,y
+                    ldd       <sz
+                    std       PT.Z,y
+                    ldd       <sh
+                    std       PT.H,y
+                    ldd       #0
+                    std       PT.VX,y
+                    std       PT.VH,y
+                    andcc     #$FE
+                    rts
+
+* Spark - A = 1 for a big one: the impact star at sx, sz, sh and bits
+*   flying off it (3, or 6 for a big one)
+Spark               pshs      a
+                    bsr       NewPt
+                    bcs       sq1
+                    lda       #7
+                    ldb       #PK.Star
+                    tst       ,s
+                    beq       sq0
+                    lda       #11
+                    ldb       #PK.StarB
+sq0                 std       PT.L,y
+sq1                 lda       #3
+                    tst       ,s+
+                    beq       sq2
+                    lda       #6
+sq2                 sta       <kcnt
+sq3                 bsr       NewPt
+                    bcs       sq4
+                    lda       <kcnt
+                    anda      #1
+                    tfr       a,b
+                    clra
+                    addd      #FX.bit
+                    std       PT.F,y
+                    lda       #13
+                    ldb       #PK.Bit
+                    std       PT.L,y
+                    lda       #48
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #48
+                    lbsr      RandS
+                    std       PT.VH,y
+sq4                 dec       <kcnt
+                    bne       sq3
+                    rts
+
+* Puff - A = how many: dust at sx, sz
+Puff                sta       <kcnt
+                    ldd       #2*16
+                    std       <sh
+pf1                 bsr       NewPt
+                    bcs       pf2
+                    lda       #3
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #FX.dust
+                    std       PT.F,y
+                    lda       #27
+                    ldb       #PK.Dust
+                    std       PT.L,y
+                    lda       #21
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #11
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+pf2                 dec       <kcnt
+                    bne       pf1
+                    rts
+
+* Parts - one pass for every particle: move, fall (the chunks), bounce
+Parts               leay      pt,u
+                    lda       #NPt
+                    sta       <ploop
+pp1                 lda       PT.L,y
+                    beq       pp9
+                    deca
+                    sta       PT.L,y
+                    beq       pp9
+                    ldd       PT.X,y
+                    addd      PT.VX,y
+                    std       PT.X,y
+                    lda       PT.K,y
+                    cmpa      #PK.Chunk
+                    blo       pp2
+                    ldd       PT.VH,y
+                    subd      #GravP
+                    std       PT.VH,y
+pp2                 ldd       PT.H,y
+                    addd      PT.VH,y
+                    std       PT.H,y
+                    bge       pp9
+                    ldd       #0                  the floor: bounce a little, slide less
+                    std       PT.H,y
+                    ldd       PT.VH,y
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    lbsr      NegD
+                    std       PT.VH,y
+                    ldd       PT.VX,y
+                    asra
+                    rorb
+                    std       PT.VX,y
+pp9                 leay      PT.Size,y
+                    dec       <ploop
+                    bne       pp1
+                    rts
+
+********************************************************************
+* Drawing: each thing's display list entry (draw.a Ent)
+********************************************************************
+DrawEn              leax      en,u
+                    lda       #NEn
+                    sta       <dloop
+de1                 tst       EN.St,x
+                    beq       de9
+                    pshs      x
+                    bsr       EnFrame
+                    std       <efrm
+                    lda       #CTL.Spr
+                    tst       EN.Fl,x
+                    beq       de2
+                    lda       #CTL.Fls
+de2                 sta       <ectl
+                    lda       #1
+                    sta       <eshk
+                    sta       <ekey
+                    ldd       EN.X,x
+                    std       <ex
+                    ldd       EN.Z,x
+                    std       <ez
+                    ldd       EN.H,x
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+de9                 leax      EN.Size,x
+                    dec       <dloop
+                    bne       de1
+                    rts
+
+* EnFrame - X = a skeleton -> D = the frame to show (brawler.js enemyImg)
+EnFrame             lda       EN.St,x
+                    tst       EN.Sk,x
+                    bne       ef1
+                    cmpa      #ES.Air             headless (except flat on the ground)
+                    bhs       ef1
+                    lda       EN.An,x
+                    ldb       #12
+                    lbsr      Div
+                    anda      #1
+                    adda      #SK.headless-SK.First
+                    lbra      efx
+ef1                 leay      EfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+EfTab               fdb       EfIdle-EfTab
+                    fdb       EfRise-EfTab
+                    fdb       EfAppr-EfTab
+                    fdb       EfAim-EfTab
+                    fdb       EfShoot-EfTab
+                    fdb       EfReload-EfTab
+                    fdb       EfHurt-EfTab
+                    fdb       EfIdle-EfTab
+                    fdb       EfHurt-EfTab
+                    fdb       EfHeap-EfTab
+                    fdb       EfGetup-EfTab
+EfAppr              ldd       EN.VX,x             moving: walk; else stand
+                    lbsr      AbsD
+                    pshs      d
+                    ldd       EN.VZ,x
+                    lbsr      AbsD
+                    addd      ,s++
+                    cmpd      #1
+                    bls       EfIdle
+                    lda       EN.An,x
+                    ldb       #9
+                    lbsr      Div
+                    anda      #3
+                    adda      #SK.walk-SK.First
+                    lbra      efx
+EfIdle              lda       EN.An,x
+                    ldb       #30
+                    lbsr      Div
+                    anda      #1
+                    adda      #SK.idle-SK.First
+                    lbra      efx
+EfShoot             lda       EN.T,x
+                    cmpa      #6
+                    bhs       EfAim
+                    lda       #SK.shoot-SK.First
+                    lbra      efx
+EfAim               lda       #SK.aim-SK.First
+                    lbra      efx
+EfReload            lda       EN.An,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #SK.reload-SK.First
+                    lbra      efx
+EfHurt              lda       #SK.hurt-SK.First
+                    lbra      efx
+EfHeap              lda       #SK.heap-SK.First
+                    lbra      efx
+EfGetup             ldb       #8
+                    bra       efr
+EfRise              ldb       #11
+efr                 lda       EN.T,x
+                    lbsr      Div
+                    cmpa      #4
+                    bls       efr1
+                    lda       #4
+efr1                adda      #SK.rise-SK.First
+efx                 tst       EN.Fc,x
+                    beq       efx1
+                    adda      #SK.Mir
+efx1                tfr       a,b
+                    clra
+                    addd      #SK.First
+                    rts
+
+DrawSl              leax      sl,u
+                    lda       #NSl
+                    sta       <dloop
+dk1                 tst       SL.St,x
+                    beq       dk9
+                    pshs      x
+                    clrb                          still on the ground; spinning in the air
+                    lda       SL.St,x
+                    cmpa      #SL.Grnd
+                    beq       dk2
+                    ldb       <ticks+1
+                    lsrb
+                    lsrb
+                    andb      #3
+dk2                 clra
+                    addd      #FX.skull
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #2
+                    sta       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       SL.X,x
+                    std       <ex
+                    ldd       SL.Z,x
+                    std       <ez
+                    ldd       SL.H,x
+                    addd      #6*16
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+dk9                 leax      SL.Size,x
+                    dec       <dloop
+                    bne       dk1
+                    rts
+
+DrawEb              leax      eb,u
+                    lda       #NEb
+                    sta       <dloop
+db1                 tst       EB.St,x
+                    beq       db9
+                    pshs      x
+                    ldd       #FX.ebul
+                    tst       EB.VX,x
+                    bpl       db2
+                    addd      #FX.Mir
+db2                 std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #2
+                    sta       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       EB.X,x
+                    std       <ex
+                    ldd       EB.Z,x
+                    std       <ez
+                    ldd       #BulH*16
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+db9                 leax      EB.Size,x
+                    dec       <dloop
+                    bne       db1
+                    rts
+
+DrawPt              leax      pt,u
+                    lda       #NPt
+                    sta       <dloop
+dp1                 tst       PT.L,x
+                    lbeq      dp9
+                    pshs      x
+                    clr       <eshk
+                    clr       <ekey               dust and chunks: behind characters
+                    lda       PT.K,x
+                    cmpa      #PK.Bit
+                    bhi       dp4
+                    dec       <ekey               stars and bits: on top of everything
+                    cmpa      #PK.Bit
+                    beq       dp6
+                    ldb       #FX.star-FX.First+2 a small star shrinks 3, 2
+                    cmpa      #PK.StarB
+                    bne       dp2
+                    ldb       #FX.star-FX.First+3 a big one 5, 4, 3
+                    lda       PT.L,x
+                    cmpa      #7
+                    bls       dp2
+                    incb
+dp2                 lda       PT.L,x
+                    cmpa      #3
+                    bls       dp3
+                    incb
+dp3                 clra
+                    addd      #FX.First
+                    bra       dp7
+dp4                 cmpa      #PK.Skull
+                    bne       dp5
+                    ldb       <ticks+1
+                    lsrb
+                    lsrb
+                    andb      #3
+                    clra
+                    addd      #FX.skull
+                    bra       dp7
+dp5                 cmpa      #PK.Dust            dust grows as it fades
+                    bne       dp6
+                    ldb       PT.L,x
+                    cmpb      #14
+                    ldd       PT.F,x              (LDD leaves the carry alone)
+                    bhs       dp7
+                    addd      #1
+                    bra       dp7
+dp6                 ldd       PT.F,x
+dp7                 std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    ldd       PT.X,x
+                    std       <ex
+                    ldd       PT.Z,x
+                    std       <ez
+                    ldd       PT.H,x
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+dp9                 leax      PT.Size,x
+                    dec       <dloop
+                    lbne      dp1
+                    rts
+
+********************************************************************
+* BotStep - the autopilot (tsk b; brawler.js ?bot): after the nearest
+*   enemy that can be hit, into its lane, up close, and kick (a side
+*   kick three times in ten).  Exit: B = the input
+********************************************************************
+BotStep             tst       <bott
+                    beq       bs0
+                    dec       <bott
+bs0                 clr       <binp
+                    ldd       #0
+                    std       <bnear
+                    ldd       #$7FFF
+                    std       <bbest
+                    leay      en,u
+                    lda       #NEn
+                    sta       <aloop
+bs1                 lda       EN.St,y
+                    cmpa      #ES.Appr
+                    blo       bs2
+                    cmpa      #ES.Air
+                    bhi       bs2
+                    ldd       EN.X,y
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      <bbest
+                    bhs       bs2
+                    std       <bbest
+                    sty       <bnear
+bs2                 leay      EN.Size,y
+                    dec       <aloop
+                    bne       bs1
+                    ldy       <bnear
+                    beq       bs9                 nobody: stand
+                    ldd       EN.Z,y
+                    subd      <hz
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #4*16
+                    bls       bs4
+                    lda       #IN.Down
+                    tst       <tdz
+                    bpl       bs3
+                    lda       #IN.Up
+bs3                 sta       <binp
+bs4                 ldd       EN.X,y
+                    subd      <hx
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #28*16
+                    bls       bs6
+                    lda       #IN.Right
+                    tst       <tdx
+                    bpl       bs5
+                    lda       #IN.Left
+bs5                 ora       <binp
+                    sta       <binp
+                    bra       bs9
+bs6                 tst       <bott
+                    bne       bs9
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    bhs       bs9
+                    clra                          face it, and kick
+                    tst       <tdx
+                    bpl       bs7
+                    inca
+bs7                 sta       <hface
+                    lbsr      Rand
+                    ldb       #IN.Kick
+                    cmpa      #77
+                    bhs       bs8
+                    ldb       #IN.Side
+bs8                 orb       <binp
+                    stb       <binp
+                    lda       #13
+                    sta       <bott
+bs9                 ldb       <binp
+                    rts

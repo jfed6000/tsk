@@ -16,6 +16,7 @@ ST.Land             equ       5
 ST.Snap             equ       6                   X: the snap kick, three to a combo
 ST.Side             equ       7                   C or back + X: the side kick
 ST.Taunt            equ       8
+ST.Hurt             equ       9                   hit: knocked back, then free again
 
 * speeds, 12.4 per pass (browser: px/s at 60 passes)
 WalkX               equ       28                  105 px/s
@@ -49,12 +50,16 @@ HeroInit            ldd       #70*16
                     sta       <ht
                     rts
 
-* SetS - A = the new state.  Its time starts at 0, its animation from frame 0.
+* SetS - A = the new state.  Its time starts at 0, its animation from frame 0,
+*   and it's a new attack (hatk: each attack hits each thing once; never 0)
 SetS                sta       <hst
                     clr       <ht
                     clr       <hdesc
                     clr       <hdesc+1
-                    rts
+                    inc       <hatk
+                    bne       ss0
+                    inc       <hatk
+ss0                 rts
 
 ********************************************************************
 * Hero - one pass
@@ -63,7 +68,10 @@ Hero                lda       <ht                 the state's time, held at 255
                     inca
                     beq       h0
                     sta       <ht
-h0                  lda       <hchain
+h0                  lda       <hinv
+                    beq       h0a
+                    dec       <hinv
+h0a                 lda       <hchain
                     beq       h1
                     dec       <hchain
 * dx, dz: -1, 0 or 1 from what is held
@@ -182,6 +190,8 @@ hsw                 lda       <hst
                     lbeq      sTaunt
                     cmpa      #ST.Land
                     lbeq      sLand
+                    cmpa      #ST.Hurt
+                    lbeq      sHurt
                     cmpa      #ST.Jump
                     lblo      hmove
                     cmpa      #ST.Stomp
@@ -258,6 +268,30 @@ sLand               ldd       <hvx                he skids to a stop
                     std       <hvx
                     lbra      hmove
 
+* hurt: knocked back, sliding to a stop; if he was in the air he falls
+sHurt               ldd       <hvx
+                    lbsr      Decay
+                    std       <hvx
+                    ldd       <hh
+                    bne       shu1
+                    ldd       <hvh
+                    beq       shu2
+shu1                ldd       <hvh
+                    subd      #Grav
+                    std       <hvh
+                    addd      <hh
+                    std       <hh
+                    bgt       shu2
+                    ldd       #0
+                    std       <hh
+                    std       <hvh
+shu2                lda       <ht
+                    cmpa      #HurtT
+                    lblo      hmove
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
 * the air: X turns a jump into the flying kick, Z into the stomp - but not
 *   on the pass the jump began, or its own press would stomp at once
 sAir                tst       <ht
@@ -301,11 +335,22 @@ sa3                 ldd       <hvh                gravity
                     std       <hvh
                     std       <hvx
                     std       <hvz
+                    lda       <hst
+                    cmpa      #ST.Stomp
+                    bne       sa4
+                    lbsr      StompShock
+sa4                 ldd       <hx                 a puff of dust
+                    std       <sx
+                    ldd       <hz
+                    std       <sz
+                    lda       #3
+                    lbsr      Puff
                     lda       #ST.Land
                     lbsr      SetS
 
 * move, and keep him in the street: z 0..ZMax, x from the camera's left
-*   edge + 10 to the level's end - 10
+*   edge + 10 to the level's end - 10 (the screen's right edge - 10 while
+*   the screen is locked)
 hmove               ldd       <hx
                     addd      <hvx
                     std       <hx
@@ -332,10 +377,16 @@ hm2                 std       <hz
                     cmpd      <tmp
                     bge       hm3
                     ldd       <tmp
-hm3                 cmpd      #(LEVEL.W-10)*16
-                    ble       hm4
-                    ldd       #(LEVEL.W-10)*16
-hm4                 std       <hx
+hm3                 std       <hx                 and to the level's end, or the screen's
+                    ldd       #(LEVEL.W-10)*16    while it's locked
+                    tst       <lock
+                    beq       hm3a
+                    ldd       <tmp
+                    addd      #(320-20)*16
+hm3a                cmpd      <hx
+                    bge       hm4
+                    std       <hx
+hm4                 lbsr      HeroAtk             his kicks against everything in his lane
 
 ********************************************************************
 * PickAnim - the animation for the state, and its frame.  Descriptors:
@@ -409,6 +460,7 @@ AnTab               fdb       AnIdle-AnTab
                     fdb       AnSnap-AnTab
                     fdb       AnSide-AnTab
                     fdb       AnTaunt-AnTab
+                    fdb       AnHurt-AnTab
 
 AnIdle              fdb       HR.idle
                     fcb       HR.idle.N,HR.idle.T,1
@@ -434,3 +486,5 @@ AnSide              fdb       HR.side
                     fcb       HR.side.N,HR.side.T,0
 AnTaunt             fdb       HR.taunt
                     fcb       HR.taunt.N,HR.taunt.T,0
+AnHurt              fdb       HR.hurt
+                    fcb       2,12,0

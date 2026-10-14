@@ -8,13 +8,17 @@
 *
 *   tsk        play (arrows move, Z or space jump, X kick, C side kick,
 *              T taunt, Q quit; back + X is the side kick too)
-*   tsk d      the demo: a scripted input sequence (the MAME test path)
+*   tsk d      the demo: a scripted input sequence
+*   tsk b      the autopilot fights (the MAME test path for combat)
+*   tsk g      nothing hurts him (with b: tsk bg)
 *
 * Run from the asset directory: chd /dd/TSK ; tsk
 *
 * Files: data.a (the data area), platform.a (start-up, loading, the
 * display, the frame loop, input, pause, exit), hero.a (the Shitkickers),
-* draw.a (camera, display list, sprite records).
+* enemy.a (the skeleton gunslingers, combat, particles, the autopilot),
+* draw.a (camera, display list, sprite records), tsktabs.a (generated:
+* the hero's attack boxes).
 ********************************************************************
 
                     nam       tsk
@@ -39,7 +43,9 @@ name                fcs       /tsk/
 
                     use       platform.a
                     use       hero.a
+                    use       enemy.a
                     use       draw.a
+                    use       tsktabs.a
 
                     emod
 eom                 equ       *

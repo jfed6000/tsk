@@ -22,7 +22,10 @@ CamInit             ldd       #0
 *   easing in by 1/8 of the gap a pass; then the three maps' scroll:
 *   street 1x, hill 1/2, sky 1/4.
 ********************************************************************
-Camera              ldd       <hx
+Camera              tst       <lock               locked: it holds
+                    beq       cm0
+                    rts
+cm0                 ldd       <hx
                     subd      #CamLead*16
                     bcc       cm1
                     ldd       #0
@@ -57,61 +60,83 @@ cm5                 ldd       <camf
 * Draw - the display list, the records, one push, the maps' scroll.
 *   Exit: carry = error in B
 ********************************************************************
-Draw                clr       <dln
-                    leay      dl,u
-* the hero
+Draw                lbsr      ShakeXY
+                    clr       <dln
+* the hero: on alternate beats while he's untouchable only his shadow
                     lbsr      HeroFrame
-                    std       DL.Frm,y
+                    std       <efrm
                     lda       #CTL.Spr
-                    sta       DL.Ctl,y
+                    ldb       <hinv
+                    bitb      #4
+                    beq       dw0
+                    clra
+dw0                 sta       <ectl
+                    lda       #1
+                    sta       <eshk
+                    sta       <ekey
                     ldd       <hx
-                    ldx       <hz
-                    pshs      x
-                    ldx       <hh
-                    lbsr      Place
-                    leas      2,s
-                    inc       <dln
-* (enemies, pickups and effects go here)
+                    std       <ex
+                    ldd       <hz
+                    std       <ez
+                    ldd       <hh
+                    std       <eh
+                    lbsr      Ent
+* the posse, loose skulls, bullets, particles (enemy.a)
+                    lbsr      DrawEn
+                    lbsr      DrawSl
+                    lbsr      DrawEb
+                    lbsr      DrawPt
                     lbsr      SortDL
-* the characters, nearest first
+* everything, nearest first
                     leay      recs,u
+                    clr       <tmpi
+dw1                 ldb       <tmpi
+                    cmpb      <dln
+                    bhs       dw2
+                    leax      dlord,u
+                    lda       b,x
+                    ldb       #DL.Size
+                    mul
                     leax      dl,u
-                    lda       <dln
-                    sta       <tmpn
-                    beq       dw2
-dw1                 pshs      x
+                    leax      d,x
+                    lda       DL.Ctl,x
+                    beq       dw1n
+                    sta       <bctl
                     ldd       DL.X,x
                     std       <bcx
                     ldd       DL.Y,x
                     std       <bcy
-                    lda       DL.Ctl,x
-                    sta       <bctl
                     ldd       DL.Frm,x
                     lbsr      BuildChar
-                    puls      x
-                    leax      DL.Size,x
-                    dec       <tmpn
-                    bne       dw1
-* then their shadows
-                    leax      dl,u
+dw1n                inc       <tmpi
+                    bra       dw1
+* then the shadows, behind it all
+dw2                 leax      dl,u
                     lda       <dln
                     sta       <tmpn
-dw1s                ldd       DL.Shy,x
-                    beq       dw1t
+                    beq       dw3
+dw2a                lda       DL.Shk,x
+                    beq       dw2n
                     pshs      x
+                    ldd       DL.Shy,x
                     std       <bcy
                     ldd       DL.X,x
                     std       <bcx
                     lda       #CTL.Spr
                     sta       <bctl
-                    ldd       #FX.shadow
+                    lda       DL.Shk,x
+                    ldx       #FX.shadow
+                    cmpa      #1
+                    beq       dw2b
+                    ldx       #FX.shadowS
+dw2b                tfr       x,d
                     lbsr      BuildChar
                     puls      x
-dw1t                leax      DL.Size,x
+dw2n                leax      DL.Size,x
                     dec       <tmpn
-                    bne       dw1s
+                    bne       dw2a
 * switch off what was used last pass and not this one, and push them all
-dw2                 tfr       y,d
+dw3                 tfr       y,d
                     pshs      u
                     subd      ,s++
                     subd      #recs
@@ -122,109 +147,154 @@ dw2                 tfr       y,d
                     lsra
                     rorb                          B = records used
                     stb       <tmpn
-dw3                 cmpb      <nrec
-                    bhs       dw4
+dw4                 cmpb      <nrec
+                    bhs       dw5
                     clr       ,y
                     leay      8,y
                     incb
-                    bra       dw3
-dw4                 lda       <tmpn               push max(this pass, last pass)
+                    bra       dw4
+dw5                 lda       <tmpn               push max(this pass, last pass)
                     ldb       <nrec
                     sta       <nrec
                     pshs      a
                     cmpb      ,s+
-                    bhs       dw5
+                    bhs       dw6
                     tfr       a,b
-dw5                 clra
+dw6                 clra
                     tstb
-                    beq       dw6
+                    beq       dw7
                     ldy       #0
                     lbsr      SprPush
                     bcs       dwx
-dw6                 lbra      MapScrl
+dw7                 lbra      MapScrl
 dwx                 rts
 
-* Place - fill a display entry's position.  Entry: Y = the entry,
-*   D = x (12.4), X = h (12.4), 2,s = z (12.4).
-*   Screen x = x - camera, y = FLOOR.Y + z - h; the shadow at h = 0.
-Place               lsra                          x in pixels
-                    rorb
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    lsra
-                    rorb
+********************************************************************
+* Ent - one thing into the display list: ex, ez, eh (12.4), efrm, ectl,
+*   eshk, ekey.  Screen x = x - camera, y = FLOOR.Y + z - h, both
+*   shaken; the shadow at h = 0.  Things well off the screen are left
+*   out.  Sort key: z * 2 + ekey (0 = behind characters at that depth,
+*   1 = a character), or $FF for ekey $FF (on top).
+********************************************************************
+Ent                 lda       <dln
+                    cmpa      #NDL
+                    bhs       entx
+                    ldd       <ex
+                    lbsr      Asr4
                     subd      <cam
+                    addd      <shx
+                    cmpd      #-48
+                    blt       entx
+                    cmpd      #368
+                    bgt       entx
+                    pshs      d
+                    lda       <dln
+                    ldb       #DL.Size
+                    mul
+                    leay      dl,u
+                    leay      d,y
+                    puls      d
                     std       DL.X,y
-                    ldd       2,s                 z in pixels
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    stb       DL.Z,y
+                    ldd       <efrm
+                    std       DL.Frm,y
+                    lda       <ectl
+                    sta       DL.Ctl,y
+                    lda       <eshk
+                    sta       DL.Shk,y
+                    ldd       <ez                 z in pixels
+                    lbsr      Asr4
+                    std       <tmp
+                    lda       <ekey               the sort key
+                    cmpa      #$FF
+                    beq       en1
+                    lda       <tmp+1
+                    lsla
+                    adda      <ekey
+en1                 ldb       <dln
+                    leax      dlkey,u
+                    sta       b,x
+                    leax      dlord,u
+                    stb       b,x
+                    ldd       <tmp                the shadow's y, then the feet's
                     addd      #FLOOR.Y
+                    subd      <shy
                     std       DL.Shy,y
-                    pshs      d
-                    tfr       x,d                 h in pixels (signed)
-                    asra
-                    rorb
-                    asra
-                    rorb
-                    asra
-                    rorb
-                    asra
-                    rorb
-                    pshs      d
-                    ldd       2,s
-                    subd      ,s++
+                    ldd       <eh
+                    lbsr      Asr4
+                    std       <tmp
+                    ldd       DL.Shy,y
+                    subd      <tmp
                     std       DL.Y,y
-                    leas      2,s
-                    rts
+                    inc       <dln
+entx                rts
 
-* SortDL - nearest (biggest z) first; a bubble sort, the list is short
+* SortDL - dlord, nearest (biggest key) first: an insertion sort of the
+*   entry numbers, stable, so equal keys keep the order they came in
 SortDL              lda       <dln
                     cmpa      #2
-                    blo       sox
-so0                 clr       <tmpf
-                    leax      dl,u
-                    lda       <dln
-                    deca
-                    sta       <tmpn
-so1                 lda       DL.Z,x
-                    cmpa      DL.Z+DL.Size,x
-                    bhs       so3
-                    ldb       #DL.Size            swap the pair
-so2                 lda       ,x
-                    pshs      a
-                    lda       DL.Size,x
-                    sta       ,x+
-                    puls      a
-                    sta       DL.Size-1,x
-                    decb
-                    bne       so2
-                    leax      -DL.Size,x
-                    inc       <tmpf
-so3                 leax      DL.Size,x
-                    dec       <tmpn
-                    bne       so1
-                    tst       <tmpf
-                    bne       so0
-sox                 rts
+                    blo       srx
+                    leax      dlord,u
+                    leay      dlkey,u
+                    ldb       #1                  i
+sr1                 stb       <tmpi
+                    lda       b,x                 v = ord[i], k = key[v]
+                    sta       <tmpf
+                    lda       a,y
+                    sta       <tmpk
+                    decb                          j = i - 1
+sr2                 bmi       sr3
+                    lda       b,x
+                    lda       a,y
+                    cmpa      <tmpk
+                    bhs       sr3                 key[ord[j]] >= k: it goes after
+                    lda       b,x                 ord[j+1] = ord[j]
+                    incb
+                    sta       b,x
+                    subb      #2                  j--
+                    bra       sr2
+sr3                 incb
+                    lda       <tmpf
+                    sta       b,x
+                    ldb       <tmpi
+                    incb
+                    cmpb      <dln
+                    blo       sr1
+srx                 rts
 
-* MapScrl - the three maps follow the camera.  Exit: carry = error in B
-MapScrl             ldx       <cam
+* ShakeXY - this pass's offsets from the shake: x -s..s, y 0..s (s in pixels)
+ShakeXY             ldd       #0
+                    std       <shx
+                    std       <shy
+                    lda       <shake
+                    lsra
+                    beq       shk9
+                    sta       <tmpn
+                    lsla
+                    inca
+                    lbsr      RandN
+                    suba      <tmpn
+                    tfr       a,b
+                    sex
+                    std       <shx
+                    lda       <tmpn
+                    inca
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    std       <shy
+shk9                rts
+
+* MapScrl - the three maps follow the camera, shaken with the sprites.
+*   Exit: carry = error in B
+MapScrl             ldd       <cam
+                    bsr       msh
                     ldy       #2
                     lbsr      Scrl
                     bcs       msx
                     ldd       <cam
                     lsra
                     rorb
-                    tfr       d,x
+                    bsr       msh
                     ldy       #1
                     lbsr      Scrl
                     bcs       msx
@@ -233,10 +303,15 @@ MapScrl             ldx       <cam
                     rorb
                     lsra
                     rorb
-                    tfr       d,x
+                    bsr       msh
                     ldy       #0
                     lbsr      Scrl
 msx                 rts
+msh                 subd      <shx                X = D - the shake, not below 0
+                    bpl       msh1
+                    ldd       #0
+msh1                tfr       d,x
+                    rts
 
 ********************************************************************
 * BuildChar - one frame as 32x32 sprite records.

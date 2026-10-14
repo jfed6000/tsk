@@ -17,18 +17,41 @@ KY.Space            equ       %10000000
 ********************************************************************
 * start - X = the parameters, U = DP = the data area
 ********************************************************************
-start               lda       ,x                  the first parameter character: d = demo
+start               clrb                          the parameters: d = demo, b = autopilot,
+st0                 lda       ,x+                 g = nothing hurts him
+                    cmpa      #$0D
+                    beq       st0d
+                    ora       #$20
+                    cmpa      #'d
+                    bne       st0a
+                    orb       #1
+st0a                cmpa      #'b
+                    bne       st0b
+                    orb       #2
+st0b                cmpa      #'g
+                    bne       st0
+                    orb       #4
+                    bra       st0
+st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
                     ldy       #StkBase
 st1                 clr       ,x+
                     leay      -1,y
                     bne       st1
                     stu       <dbase
-                    ora       #$20
-                    cmpa      #'d
-                    bne       st2
+                    puls      b
+                    lsrb
+                    bcc       st1a
                     inc       <demo
+                    pshs      b
                     lbsr      DemoStart
+                    puls      b
+st1a                lsrb
+                    bcc       st1b
+                    inc       <bot
+st1b                lsrb
+                    bcc       st2
+                    inc       <god
 st2                 leax      recs+NRecs*8,u
                     stx       <recend
                     lda       #FX_TXT             fallback if the mode cannot be read
@@ -56,6 +79,7 @@ st3                 lbsr      WSigSet             tell us when our terminal is h
                     lbcs      Fail
                     lbsr      HeroInit
                     lbsr      CamInit
+                    lbsr      CombatInit
 
 ********************************************************************
 * the frame loop: one pass a 60 Hz tick
@@ -69,9 +93,21 @@ Main                ldx       #2                  one tick (1 only yields)
                     lbsr      Input
                     tst       <qkey
                     lbne      Quit
-                    lbsr      Hero
+                    tst       <hitstop            a hit landing: everything holds still
+                    beq       mn1
+                    dec       <hitstop
+                    bra       mn2
+mn1                 lbsr      Hero
+                    lbsr      Enemies
+                    lbsr      Skulls
+                    lbsr      EBullets
+                    lbsr      Parts
+                    lbsr      Spawner
                     lbsr      Camera
-                    lbsr      Weather
+                    tst       <shake
+                    beq       mn2
+                    dec       <shake
+mn2                 lbsr      Weather
                     lbcs      Fail
                     lbsr      Draw
                     lbcs      Fail
@@ -197,8 +233,11 @@ in8                 dec       <tmpn
                     bne       in6
                     leas      6,s
                     tst       <demo
-                    beq       in9
+                    beq       in8a
                     lbsr      DemoStep            B = the script's input
+in8a                tst       <bot
+                    beq       in9
+                    lbsr      BotStep             B = the autopilot's
 in9                 stb       <inp
                     lda       <ilast
                     coma
@@ -577,9 +616,9 @@ ct1                 clr       ,x+
                     bne       ct1
                     rts
 
-* Scrl - Y = map number, X = X scroll (Y scroll 0)
+* Scrl - Y = map number, X = X scroll; the Y scroll is the shake's (shy)
 Scrl                pshs      u
-                    ldu       #0
+                    ldu       <shy
                     clra
                     ldb       #SS.TmScrl
                     os9       I$SetStt

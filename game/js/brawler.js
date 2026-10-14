@@ -232,7 +232,7 @@ T.runBrawler = function (A) {
     const p = player;
     if (p.inv > 0 || phase !== 'play' || params.has('god')) return false;
     if (p.held) { p.held.state = 'stagger'; p.held.t = 0; p.held = null; }
-    p.hp -= dmg; p.inv = 0.9; p.state = 'hurt'; p.t = 0; p.vx = -(Math.sign(from.x - p.x) || p.face) * 120; p.vz = 0;
+    p.hp -= dmg; p.inv = 0.9; p.state = 'hurt'; p.t = 0; p.vx = -(Math.sign(from.x - p.x) || p.face) * 120; p.vz = 0; p.vh = 0;
     sfx('hurt'); shake = Math.max(shake, 3);
     if (p.weapon && p.weapon.type === 'whip') dropWeapon();
     if (p.hp <= 0) {
@@ -362,7 +362,11 @@ T.runBrawler = function (A) {
           setS('idle');
         }
         break;
-      case 'hurt': p.vx *= Math.pow(0.02, dt); if (p.t > 0.4) setS('idle'); break;
+      case 'hurt':                                   // knocked back; hit in the air, he falls (he used to hang there)
+        p.vx *= Math.pow(0.02, dt);
+        if (p.h > 0 || p.vh) { p.vh -= GRAV * dt; p.h += p.vh * dt; if (p.h <= 0) { p.h = 0; p.vh = 0; } }
+        if (p.t > 0.4) setS('idle');
+        break;
     }
     p.x += p.vx * dt; p.z += p.vz * dt;
     p.z = Math.max(0, Math.min(ZMAX, p.z));

@@ -2,7 +2,7 @@
 """Export the game's assets for the F256.
 
 Runs the browser prototype headless with ?export (game/js/export.js does the drawing and packing), pulls the packed
-files out of the page, and writes them to f256/assets/ plus the generated defs file f256/src/tskassets.d.
+files out of the page, and writes them to f256/assets/ plus the generated defs file f256/src/tskassets.d and tables f256/src/tsktabs.a.
 
 Then it proves the data: it rebuilds pictures from the .bin files alone (tiles + maps + CLUT, cells + frame table
 + CLUT) into f256/assets/preview/, to compare with the browser before anything touches hardware.
@@ -34,6 +34,7 @@ def export():
     for name, b64 in data['files'].items():
         (ASSETS / name).write_bytes(base64.b64decode(b64))
     (SRC / 'tskassets.d').write_text(data['defs'])
+    (SRC / 'tsktabs.a').write_text(data['tabs'])
     r = data['report']
     print(f"tiles {r['tiles']} in {r['sets']} set(s); maps " + ', '.join(f"{m['name']} {m['w']}x15" for m in r['maps']))
     print(f"sprite cells {r['cells']} ({r['cells']} K), frames {r['frames']}; CLUTs: sprites {r['sprClut']}, tiles {r['tileClut']}")
@@ -104,7 +105,7 @@ def previews():
                     if p:
                         img.putpixel((ox + dx + x, oy + dy + y), sc[p])
         return n
-    for prefix in ('HR', 'SK'):
+    for prefix in ('HR', 'SK', 'FX'):
         first, mir = D[f'{prefix}.First'], D[f'{prefix}.Mir']
         img = Image.new('RGBA', (min(mir, 16) * 80 + 20, ((mir + 15) // 16) * 2 * 80 + 20), (40, 26, 16, 255))
         for i in range(mir):

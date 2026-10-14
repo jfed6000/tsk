@@ -4,20 +4,74 @@
 ********************************************************************
 
 * sizes
-NRecs               equ       32                  sprite records we own (SS.SprReg)
-NDL                 equ       12                  display list entries (characters) a pass
+NRecs               equ       96                  sprite records we own (SS.SprReg)
+NEn                 equ       5                   enemies at once
+NSl                 equ       4                   loose skulls
+NEb                 equ       6                   the posse's bullets in the air
+NPt                 equ       20                  particles: sparks, dust, bones
+NDL                 equ       1+NEn+NSl+NEb+NPt   display list entries a pass
 NTilBlk             equ       (TIL.Size+$1FFF)/$2000
 NSprBlk             equ       (SPR.Size+$1FFF)/$2000
 NMapBlk             equ       (MAP.Size+$1FFF)/$2000
 
-* a display list entry: one character
-DL.Z                equ       0                   depth: z in pixels (bigger = nearer = drawn on top)
-DL.Ctl              equ       1                   sprite CTRL byte (enable, CLUT)
-DL.Frm              equ       2                   frame number (mirrored already applied)
-DL.X                equ       4                   screen x of the feet
-DL.Y                equ       6                   screen y of the feet
-DL.Shy              equ       8                   screen y of its shadow (0 = none)
+* a display list entry: one thing drawn (its sort key is in dlkey)
+DL.Ctl              equ       0                   sprite CTRL byte (enable, CLUT); 0 = only its shadow
+DL.Frm              equ       1                   frame number (mirrored already applied)
+DL.X                equ       3                   screen x of the feet
+DL.Y                equ       5                   screen y of the feet
+DL.Shy              equ       7                   screen y of its shadow
+DL.Shk              equ       9                   its shadow: 0 none, 1 big, 2 small
 DL.Size             equ       10
+
+* an enemy (positions and velocities 12.4, like the hero's)
+EN.St               equ       0                   state (ES.*), 0 = a free slot
+EN.T                equ       1                   passes in the state (stops at 255)
+EN.X                equ       2
+EN.Z                equ       4
+EN.H                equ       6
+EN.VX               equ       8
+EN.VZ               equ       10
+EN.VH               equ       12
+EN.Fc               equ       14                  0 = facing right, 1 = left
+EN.Hp               equ       15                  health (signed)
+EN.Am               equ       16                  rounds left in the six-shooter
+EN.Cd               equ       17                  passes before it may attack again
+EN.Fl               equ       18                  passes of hit flash left
+EN.Sk               equ       19                  1 = its skull is on
+EN.An               equ       20                  the animation clock
+EN.Hit              equ       21                  the hero's attack that last hit it (hatk)
+EN.Id               equ       22                  its slot number + 1 (a skull's owner)
+EN.Size             equ       23
+
+* a loose skull: knocked off, on the ground, or kicked down the lane
+SL.St               equ       0                   SL.Fly, SL.Grnd, SL.Kick; 0 = free
+SL.X                equ       1
+SL.Z                equ       3
+SL.H                equ       5
+SL.VX               equ       7
+SL.VH               equ       9
+SL.Own              equ       11                  its body's EN.Id, 0 = nobody's
+SL.T                equ       12                  passes on the ground with no owner
+SL.Hit              equ       13                  the hero's attack that last kicked it
+SL.Size             equ       14
+
+* one of the posse's bullets (flies at BulH, straight down the lane)
+EB.St               equ       0                   1 = flying
+EB.X                equ       1
+EB.Z                equ       3
+EB.VX               equ       5
+EB.Size             equ       7
+
+* a particle
+PT.L                equ       0                   passes to live, 0 = free
+PT.K                equ       1                   kind (PK.*)
+PT.F                equ       2                   frame
+PT.X                equ       4
+PT.Z                equ       6
+PT.H                equ       8
+PT.VX               equ       10
+PT.VH               equ       12
+PT.Size             equ       14
 
 * held-input bits (INP); the game edge-detects them into IPRESS
 IN.Left             equ       %00000001
@@ -50,7 +104,13 @@ lmap                rmb       2                   LoadFile: where the block is m
 tmrec               rmb       12                  SS.TmSet record
 tsn                 rmb       1                   tile set counter
 * input
-demo                rmb       1                   1 = the demo script drives the hero
+demo                rmb       1                   1 = the demo script drives the hero (tsk d)
+bot                 rmb       1                   1 = the autopilot drives him (tsk b)
+god                 rmb       1                   1 = nothing hurts him (tsk g)
+bott                rmb       1                   autopilot: passes before its next kick
+binp                rmb       1                   autopilot: the input it builds
+bnear               rmb       2                   autopilot: the enemy it's after
+bbest               rmb       2                   autopilot: its distance
 dptr                rmb       2                   demo: the script entry
 dleft               rmb       1                   demo: ticks left in the entry
 inp                 rmb       1                   held now (IN.*)
@@ -62,6 +122,14 @@ ticks               rmb       2                   passes since start
 camf                rmb       2                   camera x, 12.4
 cam                 rmb       2                   camera x, pixels
 lflash              rmb       1                   lightning: passes left
+rnd                 rmb       2                   the random number generator
+hitstop             rmb       1                   passes the action is frozen (a hit landing)
+shake               rmb       1                   screen shake, half pixels; runs down a half a pass
+shx                 rmb       2                   this pass's shake: x (signed)
+shy                 rmb       2                   and y (0 up to the shake)
+spawnt              rmb       1                   passes before the next gang rises
+gangn               rmb       1                   gangs so far
+lock                rmb       1                   1 = the screen is locked: enemies about (the camera holds)
 * the hero (positions and velocities 12.4)
 hx                  rmb       2                   x in the level
 hz                  rmb       2                   depth into the street, 0 = back
@@ -81,8 +149,45 @@ hback               rmb       1                   1 = pressing away from his fac
 hdesc               rmb       2                   the animation playing (descriptor), 0 = restart
 hfr                 rmb       1                   its frame
 hft                 rmb       1                   passes into the frame
+hhp                 rmb       1                   health (signed)
+hlives              rmb       1                   lives (hats)
+hinv                rmb       1                   passes he can't be hurt
+hatk                rmb       1                   the attack: a new number each state, so a kick hits each foe once
+* combat (enemy.a)
+ecur                rmb       2                   the enemy being updated
+eloop               rmb       1                   loop counters, one per loop that can nest
+aloop               rmb       1
+sloop               rmb       1
+bloop               rmb       1
+ploop               rmb       1
+dloop               rmb       1
+kcnt                rmb       1
+hdir                rmb       1                   a hit's direction: 0 right, 1 left
+dmg                 rmb       1
+knock               rmb       1
+sx                  rmb       2                   where a spark, a puff or a particle goes (12.4)
+sz                  rmb       2
+sh                  rmb       2
+tdx                 rmb       2                   deltas (12.4)
+tdz                 rmb       2
+tcap                rmb       2                   Toward: the speed limit
+hxp                 rmb       2                   the hero in pixels: x, height
+hhpx                rmb       2
+bx0                 rmb       2                   the hero's attack box this pass, pixels
+bx1                 rmb       2
+bh0                 rmb       2
+bh1                 rmb       2
 * drawing
 dln                 rmb       1                   display list entries this pass
+ex                  rmb       2                   Ent: the thing's x, z, h (12.4)
+ez                  rmb       2
+eh                  rmb       2
+efrm                rmb       2                   its frame
+ectl                rmb       1                   its CTRL byte
+eshk                rmb       1                   its shadow (DL.Shk)
+ekey                rmb       1                   0 = behind characters at its depth, 1 = a character, $FF = on top
+tmpi                rmb       1
+tmpk                rmb       1
 nrec                rmb       1                   sprite records used last pass
 bcx                 rmb       2                   BuildChar: the feet, screen x
 bcy                 rmb       2                   and y
@@ -97,6 +202,12 @@ dpend               equ       .
 * ---------------------------------------------------------------- the rest
 recs                rmb       NRecs*8             our sprite table, registered with the driver
 dl                  rmb       NDL*DL.Size         the display list
+dlkey               rmb       NDL                 each entry's sort key: bigger = nearer = drawn on top
+dlord               rmb       NDL                 the entries, nearest first
+en                  rmb       NEn*EN.Size         the enemies
+sl                  rmb       NSl*SL.Size         loose skulls
+eb                  rmb       NEb*EB.Size         the posse's bullets
+pt                  rmb       NPt*PT.Size         particles
 frames              rmb       FRM.Size            frames.bin
 clutbuf             rmb       1024                sprite CLUT, then the all-white hit-flash CLUT
 tclut               rmb       1024                the tile CLUT

@@ -23,22 +23,27 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 | `frames.bin` | Frame count, a 16-bit offset per frame, then per frame: cell count, and per cell dx, dy (signed, from the feet) and cell number. Mirrored frames are separate data (no flip bit) |
 | `clut_spr.bin`, `clut_tile.bin`, `clut_flash.bin` | 256 × B,G,R,A. `clut_flash` is the lightning-lit tile CLUT |
 | `src/tskassets.d` | Generated equates: sizes, counts, map widths and offsets, animation frame ranges (`HR.run`, `HR.run.N`, `HR.run.T`, `HR.Mir`, ...) |
+| `src/tsktabs.a` | Generated tables: `HitTab`, the hero's attack box (dx, dy, w, h from the feet) for each frame |
 
 CLUT plan: 0 sprites, 1 hit flash (all white), 2 afterimage (ghost), 3 tiles.
 
-Boot Hill comes to 576 tiles (3 sets, 144K), 514 sprite cells (514K) and 186 frames: the hero's 74 and the
-skeleton's 19, each in both directions.
+Boot Hill comes to 576 tiles (3 sets, 144K), 551 sprite cells (551K) and 234 frames: the hero's 74, the
+skeleton's 19 and 24 effects (shadows, the impact star, sparks, dust, the loose skull, hat and bones, the bullet),
+each in both directions.
 
 ## tsk: the game
 
 ```
-make                 # tsk (2.9K of the 40,192-byte budget; data area 7K of 8K) and tskview
+make                 # tsk (7.0K of the 40,192-byte budget; data area 8.8K) and tskview
 make install DSK=/absolute/path/to/image.dsk
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
+make mamebot         # the autopilot fighting skeletons in MAME, a snapshot every 6 frames
+python3 tools/hostrun.py --args bg --passes 3000 --every 60 --watch hst,hx,hhp,hlives --enemies
 ```
 
-On the machine: `chd /dd/TSK`, then `tsk` to play or `tsk d` for the demo.
+On the machine: `chd /dd/TSK`, then `tsk` to play, `tsk d` for the demo, `tsk b` to watch the autopilot fight
+(`tsk bg`: he can't be hurt).
 
 | Key | Does |
 |---|---|
@@ -50,7 +55,15 @@ On the machine: `chd /dd/TSK`, then `tsk` to play or `tsk d` for the demo.
 | Q | Quit |
 
 Sprint 1 (2026-10-12): the hero on Boot Hill with every ground and air move, the camera, and the depth-sorted
-display list with his shadow. No enemies yet. Verified on the host and in MAME; not yet run on the K2.
+display list with his shadow.
+
+Sprint 2 (2026-10-13): the skeleton gunslingers. A gang of two or three claws up out of the ground whenever the
+street is empty (waves come in sprint 3), and the screen locks while they're about. They keep their distance, line up
+in your lane, aim (the eyes flare), fire, and reload after six. Kicks stagger them; the third of the combo, the side
+kick, the flying kick and the stomp knock them down, or knock the skull clean off: the headless body gropes for it,
+and you can kick the skull down the lane into its friends. Kick their bullets out of the air. Out of health they
+shatter into bones. Hits freeze the action for a moment (hitstop), flash the skeleton white and shake the screen.
+He has 16 health and three lives (no HUD yet: sprint 3). Verified on the host and in MAME; not yet run on the K2.
 
 ## tskview
 

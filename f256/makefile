@@ -4,6 +4,7 @@
 #   make                         build tsk (the game) and tskview (the asset viewer / graphics harness)
 #   make install DSK=/abs/x.dsk  tsk and tskview to CMDS, the assets to TSK, on a disk image
 #   make mame                    run the game's demo (tsk d) in the Wildbits MAME (wbjr2) headless, snapshots in mame/snap
+#   make mamebot                 the autopilot fighting the skeletons (tsk b), a snapshot every 6 frames
 #   make mameview                the same for tskview
 #   make host                    the demo on the host 6809 (tools/hostrun.py): the hero's state, pass by pass
 #
@@ -17,7 +18,7 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
 ASSETFILES  = tiles.bin sprites.bin maps.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin
-TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/draw.a src/tskassets.d
+TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/draw.a src/tskassets.d src/tsktabs.a
 BUDGET      = 40192
 
 all: tsk tskview
@@ -28,7 +29,7 @@ assets:
 tsk: $(TSKSRC)
 	$(AS) $(AFLAGS) --list=$@.list --map=$@.map -o $@ src/tsk.asm
 	@n=$$(stat -c %s $@); echo "tsk: $$n bytes of $(BUDGET)"; test $$n -le $(BUDGET) || { echo "tsk: over the module budget (port-guide section 3)"; exit 1; }
-	@printf 'tsk data area: %d bytes of 8192\n' 0x$$(grep "Symbol: size " $@.map | sed 's/.*= //')
+	@printf 'tsk data area: %d bytes\n' 0x$$(grep "Symbol: size " $@.map | sed 's/.*= //')
 
 tskview: src/tskview.asm src/tskassets.d
 	$(AS) $(AFLAGS) --list=$@.list --map=$@.map -o $@ src/tskview.asm
@@ -43,6 +44,9 @@ install: tsk tskview
 mame: tsk tskview
 	LUA=tools/tsk.lua tools/mame.sh
 
+mamebot: tsk tskview
+	LUA=tools/tskbot.lua tools/mame.sh
+
 mameview: tskview
 	tools/mame.sh
 
@@ -52,4 +56,4 @@ host: tsk
 clean:
 	rm -f tsk tsk.list tsk.map tskview tskview.list tskview.map
 
-.PHONY: all assets install mame mameview host clean
+.PHONY: all assets install mame mamebot mameview host clean

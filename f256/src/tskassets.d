@@ -26,12 +26,12 @@ MAP2.Of equ $0DB6        offset in maps.bin
 MAP.Size equ $1BE4
 
 * sprites.bin: 1K cells
-SPR.N    equ 515         cells
-SPR.Size equ $080C00    bytes
+SPR.N    equ 551         cells
+SPR.Size equ $089C00    bytes
 
 * frames.bin
-FRM.N    equ 188         frames
-FRM.Size equ $0BC6
+FRM.N    equ 234         frames
+FRM.Size equ $0D08
 
 * animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)
 * the mirrored (facing left) copy of frame f is f + <group>.Mir
@@ -123,8 +123,32 @@ SK.rise.N      equ 5
 SK.rise.T      equ 10
 
 FX.First equ 186
-FX.Mir equ 1
+FX.Mir equ 24
 FX.shadow      equ 186
 FX.shadow.N    equ 1
 FX.shadow.T    equ 60
+FX.shadowS     equ 187
+FX.shadowS.N   equ 1
+FX.shadowS.T   equ 60
+FX.star        equ 188
+FX.star.N      equ 6
+FX.star.T      equ 60
+FX.bit         equ 194
+FX.bit.N       equ 2
+FX.bit.T       equ 60
+FX.dust        equ 196
+FX.dust.N      equ 5
+FX.dust.T      equ 60
+FX.skull       equ 201
+FX.skull.N     equ 4
+FX.skull.T     equ 5
+FX.hat         equ 205
+FX.hat.N       equ 1
+FX.hat.T       equ 60
+FX.bone        equ 206
+FX.bone.N      equ 3
+FX.bone.T      equ 60
+FX.ebul        equ 209
+FX.ebul.N      equ 1
+FX.ebul.T      equ 60
 
