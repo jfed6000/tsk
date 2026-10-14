@@ -77,9 +77,7 @@ st3                 lbsr      WSigSet             tell us when our terminal is h
                     lbcs      Fail
                     lbsr      Display
                     lbcs      Fail
-                    lbsr      HeroInit
-                    lbsr      CamInit
-                    lbsr      CombatInit
+                    lbsr      GameInit
 
 ********************************************************************
 * the frame loop: one pass a 60 Hz tick
@@ -97,12 +95,11 @@ Main                ldx       #2                  one tick (1 only yields)
                     beq       mn1
                     dec       <hitstop
                     bra       mn2
-mn1                 lbsr      Hero
+mn1                 lbsr      Stage               the clocks, the phase, the hero, the waves
                     lbsr      Enemies
                     lbsr      Skulls
                     lbsr      EBullets
                     lbsr      Parts
-                    lbsr      Spawner
                     lbsr      Camera
                     tst       <shake
                     beq       mn2
@@ -634,10 +631,16 @@ Scrl                pshs      u
 Weather             ldd       <ticks
                     addd      #1
                     std       <ticks
-                    anda      #%00000001          every 512 ticks (~8.5 s)
+                    ldd       <nbolt              lightning every 7 to 16 s
+                    subd      #1
+                    std       <nbolt
                     bne       we1
-                    tstb
-                    bne       we1
+                    lda       #135
+                    lbsr      RandN
+                    ldb       #4
+                    mul
+                    addd      #420
+                    std       <nbolt
                     lbsr      Bolt
                     bcs       wex
 we1                 tst       <lflash

@@ -388,6 +388,22 @@ hm3a                cmpd      <hx
                     std       <hx
 hm4                 lbsr      HeroAtk             his kicks against everything in his lane
 
+* HeroPassive - out of play (the stage won): his state's clock, the
+*   taunt ending, the animation; no input, no moving
+HeroPassive         lda       <ht
+                    inca
+                    beq       hv1
+                    sta       <ht
+hv1                 lda       <hst
+                    cmpa      #ST.Taunt
+                    bne       hv2
+                    lda       <ht
+                    cmpa      #TauntDur
+                    blo       hv2
+                    lda       #ST.Idle
+                    lbsr      SetS
+hv2                 lbra      PickAnim
+
 ********************************************************************
 * PickAnim - the animation for the state, and its frame.  Descriptors:
 *   first frame (2), count, passes a frame, 1 = loops.  A new descriptor

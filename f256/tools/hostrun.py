@@ -120,15 +120,17 @@ class Host(CPU6809):
 
     def enemy_table(self):
         """Each live enemy: state, x and z in pixels, health, skull (h = headless)."""
-        e0, n, size = self.sym['en'], 5, 23
+        e0, n, size = self.sym['en'], self.sym.get('NEn', 5), self.sym.get('EN.Size', 23)
         out = []
         for i in range(n):
             b = self.mem[e0 + i * size:e0 + (i + 1) * size]
             if not b[0]:
                 continue
             w = lambda o: ((b[o] << 8 | b[o + 1]) ^ 0x8000) - 0x8000
-            st = ['-', 'rise', 'appr', 'aim', 'shoot', 'reload', 'stag', 'headl', 'air', 'down', 'getup'][b[0]]
-            out.append(f'{st}@{w(2) >> 4},{w(4) >> 4}{"/h" + str(w(6) >> 4) if w(6) else ""} hp{(b[15] ^ 0x80) - 0x80}{"" if b[19] else " H"}')
+            st = ['-', 'rise', 'appr', 'aim', 'shoot', 'reload', 'stag', 'headl', 'air', 'down', 'getup',
+                  'wind', 'strike', 'recov', 'enter', 'ko'][b[0]]
+            ty = 'D' if size > 23 and b[23] else 'S'
+            out.append(f'{ty}:{st}@{w(2) >> 4},{w(4) >> 4}{"/h" + str(w(6) >> 4) if w(6) else ""} hp{(b[15] ^ 0x80) - 0x80}{"" if b[19] or ty == "D" else " H"}')
         return ' | '.join(out)
 
     def dump_records(self):

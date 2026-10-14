@@ -5,8 +5,8 @@
 *   states), hitE, koE, shatter, spark, puff, hurtPlayer,
 *   updateSkulls, updateShots and updateParts.  Per-second numbers
 *   become per-pass ones as in hero.a (60 passes a second, 12.4).
-*   Until the waves come (sprint 3), a gang of skeletons rises
-*   whenever the street is empty (Spawner).
+*   Sprint 3 adds the dillo (it walks in, winds up, curls into a ball
+*   and rolls at you) and the waves that bring them (stage.a).
 ********************************************************************
 
 * skeleton states: ES.Appr..ES.Air are the hittable ones (brawler.js hittable)
@@ -20,6 +20,12 @@ ES.Headl            equ       7                   skull knocked off: groping for
 ES.Air              equ       8                   knocked down: the arc
 ES.Down             equ       9                   a heap of bones
 ES.Getup            equ       10                  reassembling
+* the dillo's own (not hittable: Enter, Ko; Hitbl has the list)
+ES.Wind             equ       11                  winding up
+ES.Strike           equ       12                  curled up, rolling at you
+ES.Recov            equ       13                  coming out of the roll
+ES.Enter            equ       14                  walking in from off the screen
+ES.Ko               equ       15                  kicked into the next county
 
 * a skull's states
 SL.Fly              equ       1
@@ -38,6 +44,15 @@ CTL.Fls             equ       %00000001+CLUT.Fls*2    the hit flash: all white
 
 * the skeleton, per pass (browser: per second)
 SkHp                equ       7
+DlHp                equ       4
+DlSpd               equ       19                  72 px/s
+DlEnter             equ       16                  60 px/s
+DlRoll              equ       51                  190 px/s
+DlTall              equ       16
+WindT               equ       18                  0.3 s
+StrikeT             equ       30                  0.5 s
+RecovT              equ       33                  0.55 s
+DGetupT             equ       21                  0.35 s
 SkSpd               equ       12                  46 px/s
 SkSpdZ              equ       11                  42 px/s
 SkRange             equ       100                 it keeps this far from you, px
@@ -71,8 +86,6 @@ CombatInit          lda       #MaxHp
                     sta       <hatk
                     ldd       #$ACE1
                     std       <rnd
-                    lda       #60
-                    sta       <spawnt
                     leax      en,u                each slot's id
                     lda       #1
 ci1                 sta       EN.Id,x
@@ -217,45 +230,27 @@ EStop               ldd       #0
 *   the fight, or groping for its skull if it's lost it
 AfterHit            sta       EN.Cd,x
                     lda       #ES.Appr
+                    tst       EN.Ty,x
+                    bne       ah1
                     tst       EN.Sk,x
                     bne       ah1
                     lda       #ES.Headl
 ah1                 bra       SetE
 
 ********************************************************************
-* Spawner - while the street is empty a gang rises: two skeletons,
-*   three every other time (brawler.js 'skel@': on screen, anywhere)
+* NewSlot - a free enemy slot, cleared (it keeps its id).
+*   Exit: X = it, carry set if there's none
 ********************************************************************
-Spawner             leax      en,u
-                    ldb       #NEn
-sp1                 tst       EN.St,x
-                    bne       spx
-                    leax      EN.Size,x
-                    decb
-                    bne       sp1
-                    dec       <spawnt
-                    bne       spx
-                    lda       #120
-                    sta       <spawnt
-                    inc       <gangn
-                    bsr       NewSkel
-                    bsr       NewSkel
-                    lda       <gangn
-                    lsra
-                    bcc       spx
-                    bsr       NewSkel
-spx                 rts
-
-* NewSkel - a skeleton claws up out of the ground somewhere on screen
-NewSkel             leax      en,u
+NewSlot             leax      en,u
                     ldb       #NEn
 ns1                 tst       EN.St,x
                     beq       ns2
                     leax      EN.Size,x
                     decb
                     bne       ns1
-                    rts                           no room
-ns2                 lda       EN.Id,x             clear it, keeping its id
+                    comb                          no room
+                    rts
+ns2                 lda       EN.Id,x
                     pshs      a
                     ldb       #EN.Size
                     tfr       x,y
@@ -264,6 +259,14 @@ ns3                 clr       ,y+
                     bne       ns3
                     puls      a
                     sta       EN.Id,x
+                    andcc     #$FE
+                    rts
+
+* NewSkel - a skeleton claws up out of the ground somewhere on screen
+NewSkel             bsr       NewSlot
+                    bcc       nk0
+                    rts
+nk0
                     lda       #ES.Rise
                     sta       EN.St,x
                     lda       #220                x = camera + 50 + 0..219
@@ -305,10 +308,79 @@ ns3                 clr       ,y+
                     lda       #6                  the ground breaks
                     lbra      Puff
 
+* NewDillo - B = i: the i-th of a gang walks in, even ones from the
+*   right, odd ones from the left, 18 px apart two by two
+NewDillo            pshs      b
+                    lbsr      NewSlot
+                    puls      b
+                    bcs       nd9
+                    lda       #TY.Dillo
+                    sta       EN.Ty,x
+                    lda       #ES.Enter
+                    sta       EN.St,x
+                    lda       #DlHp
+                    sta       EN.Hp,x
+                    lsrb                          i >> 1: how far back in the line
+                    pshs      b,cc                the carry: odd = from the left
+                    lda       #18
+                    mul
+                    std       <tmp
+                    puls      cc,b
+                    bcs       nd1
+                    ldd       <cam                from the right: cam + 344 + 18k
+                    addd      #344
+                    addd      <tmp
+                    pshs      d
+                    lda       #1                  facing left, side 1
+                    sta       EN.Fc,x
+                    sta       EN.Sd,x
+                    bra       nd2
+nd1                 ldd       <cam                from the left: cam - 24 - 18k
+                    subd      #24
+                    subd      <tmp
+                    pshs      d
+                    lda       #-1
+                    sta       EN.Sd,x
+nd2                 puls      d
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       EN.X,x
+                    lda       #64                 z = 8 + 0..63
+                    lbsr      RandN
+                    adda      #8
+                    ldb       #16
+                    mul
+                    std       EN.Z,x
+                    lda       #84                 0.6 to 2 s before it may roll
+                    lbsr      RandN
+                    adda      #36
+                    sta       EN.Cd,x
+                    lbsr      Rand
+                    sta       EN.An,x
+nd9                 rts
+
 ********************************************************************
 * Enemies - one pass for each
 ********************************************************************
-Enemies             clr       <lock
+Enemies             clr       <attackers          dillos winding up or rolling: two at most
+                    leax      en,u
+                    ldb       #NEn
+es0                 lda       EN.St,x
+                    cmpa      #ES.Wind
+                    beq       es0a
+                    cmpa      #ES.Strike
+                    bne       es0b
+es0a                inc       <attackers
+es0b                leax      EN.Size,x
+                    decb
+                    bne       es0
+                    clr       <eleft
                     leax      en,u
                     lda       #NEn
                     sta       <eloop
@@ -317,9 +389,11 @@ es1                 tst       EN.St,x
                     stx       <ecur
                     bsr       Enemy
                     ldx       <ecur
-                    lda       EN.St,x             any left: the screen stays locked
+                    lda       EN.St,x             still in the fight: the wave's not over
                     beq       es2
-                    sta       <lock
+                    cmpa      #ES.Ko
+                    beq       es2
+                    inc       <eleft
 es2                 leax      EN.Size,x
                     dec       <eloop
                     bne       es1
@@ -353,6 +427,11 @@ EnTab               fdb       EnMove-EnTab
                     fdb       EAir-EnTab
                     fdb       EDown-EnTab
                     fdb       EGetup-EnTab
+                    fdb       EWind-EnTab
+                    fdb       EStrike-EnTab
+                    fdb       ERecov-EnTab
+                    fdb       EEnter-EnTab
+                    fdb       EKo-EnTab
 
 ERise               lbsr      EStop
                     lda       EN.T,x
@@ -366,7 +445,9 @@ ERise               lbsr      EStop
 
 * keep 100 px from him on whichever side it's on, in his lane; when
 *   lined up and cooled down, aim
-EAppr               ldd       <hx
+EAppr               tst       EN.Ty,x
+                    lbne      DAppr
+                    ldd       <hx
                     cmpd      EN.X,x
                     bgt       ea1
                     addd      #SkRange*16
@@ -564,20 +645,201 @@ EAir                ldd       EN.VH,x             the arc
 EDown               lbsr      EStop
                     lda       EN.T,x
                     cmpa      #DownT
-                    bls       EnMove
+                    lbls      EnMove
                     lda       #ES.Getup
                     lbsr      SetE
-                    bra       EnMove
+                    lbra      EnMove
 
 EGetup              lda       EN.T,x
-                    cmpa      #GetupT
-                    bls       EnMove
+                    ldb       #GetupT
+                    tst       EN.Ty,x
+                    beq       eu0
+                    ldb       #DGetupT
+eu0                 pshs      b
+                    cmpa      ,s+
+                    lbls      EnMove
                     lda       #36
                     lbsr      AfterHit
 
+********************************************************************
+* The dillo (brawler.js updateEnemies, the dillo's cases): it walks in,
+*   takes a spot beside you in your lane (further off while two others
+*   are already at you), winds up, curls into a ball and rolls at you.
+********************************************************************
+EEnter              ldd       #DlEnter            in from its side, at 60 px/s
+                    tst       EN.Sd,x
+                    bmi       ee1
+                    lbsr      NegD
+ee1                 std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    ldd       EN.X,x              on the screen (20 px in): on with it
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #20
+                    lble      EnMove
+                    cmpd      #300
+                    lbge      EnMove
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lbra      EnMove
+
+DAppr               ldd       #28*16              its spot: 28 px beside him (80 while two
+                    pshs      d                   others are at him), on its side of him
+                    lda       <attackers
+                    cmpa      #2
+                    blo       da0
+                    ldd       #80*16
+                    std       ,s
+da0                 ldd       EN.X,x
+                    cmpd      <hx
+                    bgt       da2
+                    blt       da1
+                    tst       EN.Sd,x
+                    bpl       da2
+da1                 puls      d
+                    lbsr      NegD
+                    bra       da3
+da2                 puls      d
+da3                 addd      <hx
+                    subd      EN.X,x
+                    std       <tdx
+                    ldd       #DlSpd
+                    std       <tcap
+                    ldd       <tdx
+                    lbsr      Toward
+                    std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #SkSpdZ
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+                    lbsr      FaceHero
+                    tst       <phase
+                    lbne      EnMove
+                    lda       <attackers
+                    cmpa      #2
+                    lbhs      EnMove
+                    tst       EN.Cd,x
+                    lbne      EnMove
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    lbhs      EnMove
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #5*16
+                    lbhs      EnMove
+                    lda       #ES.Wind
+                    lbsr      SetE
+                    lbsr      EStop
+                    lbra      EnMove
+
+EWind               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #WindT
+                    lbls      EnMove
+                    lda       #ES.Strike
+                    lbsr      SetE
+                    clr       EN.Am,x             (a dillo's EN.Am: 1 = it's hit him this roll)
+                    lbra      EnMove
+
+EStrike             ldd       #DlRoll             rolling at him
+                    lbsr      ByFace
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    tst       EN.Am,x
+                    bne       st9
+                    ldd       EN.Z,x              in his lane, low enough, close
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       st9
+                    ldd       <hh
+                    cmpd      #14*16
+                    bge       st9
+                    ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       st9
+                    inc       EN.Am,x
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #1
+                    pshs      x
+                    lbsr      HurtHero
+                    puls      x
+st9                 lda       EN.T,x
+                    cmpa      #StrikeT
+                    lbls      EnMove
+                    lda       #ES.Recov
+                    lbsr      SetE
+                    lbra      EnMove
+
+ERecov              ldd       EN.VX,x             it skids to a stop
+                    lbsr      Asr4
+                    pshs      d
+                    ldd       EN.VX,x
+                    subd      ,s
+                    subd      ,s++
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #RecovT
+                    lbls      EnMove
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #72                 0.8 to 2 s before the next roll
+                    lbsr      RandN
+                    adda      #48
+                    sta       EN.Cd,x
+                    lbra      EnMove
+
+* EKo - a dillo kicked into the next county: up, over, and down through
+*   the floor out of sight, then the slot is free
+EKo                 ldd       EN.VH,x
+                    subd      #4                  0.7 g
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    cmpd      #-260*16
+                    lbgt      EnMove
+                    clr       EN.St,x
+                    rts
+
+* Hitbl - A = an enemy's state: carry clear if a kick can hit it
+*   (brawler.js hittable: not rising, down, getting up, walking in, KO'd)
+Hitbl               pshs      a,x
+                    leax      HitblT,pcr
+                    lda       a,x
+                    cmpa      #1
+                    puls      a,x,pc
+HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0
+
+* ETall - X = an enemy, tmp = its height off the floor (px):
+*   D = tmp + how tall it is
+ETall               ldb       #SkTall
+                    tst       EN.Ty,x
+                    beq       et1
+                    ldb       #DlTall
+et1                 clra
+                    addd      <tmp
+                    rts
+
 * EnMove - X = an enemy: move it, and keep it on the screen (it's locked
 *   while there are enemies about: brawler.js lock + 6 .. lock + 314)
-EnMove              ldd       <cam
+EnMove              lda       EN.St,x
+                    cmpa      #ES.Enter
+                    beq       em5
+                    cmpa      #ES.Ko
+                    beq       em5
+                    ldd       <cam
                     addd      #6
                     lslb
                     rola
@@ -609,6 +871,13 @@ em3                 cmpd      #ZMax*16
                     ble       em4
                     ldd       #ZMax*16
 em4                 std       EN.Z,x
+                    rts
+em5                 ldd       EN.X,x
+                    addd      EN.VX,x
+                    std       EN.X,x
+                    ldd       EN.Z,x
+                    addd      EN.VZ,x
+                    std       EN.Z,x
                     rts
 
 * FindSkull - X = an enemy -> Y = its loose skull, carry set if none
@@ -669,12 +938,16 @@ HitE                sta       <dmg
                     lbsr      ByDir
                     std       EN.VX,x
                     bsr       NewSkull
+                    ldd       #60
+                    lbsr      AddScore
                     lda       #4
                     sta       <hitstop
                     lda       #6
                     lbra      Shk
 hi2                 lda       #ES.Air             knocked flying
                     lbsr      SetE
+                    ldd       #30
+                    lbsr      AddScore
                     ldd       #40
                     lbsr      ByDir
                     std       EN.VX,x
@@ -689,7 +962,9 @@ hi3                 lda       EN.St,x             staggered (a headless one grop
                     beq       hi4
                     lda       #ES.Stag
                     lbsr      SetE
-hi4                 ldd       #19
+hi4                 ldd       #10
+                    lbsr      AddScore
+                    ldd       #19
                     lbsr      ByDir
                     std       EN.VX,x
                     lda       #2
@@ -734,6 +1009,21 @@ KO                  lda       #5
                     sta       <hitstop
                     lda       #8
                     lbsr      Shk
+                    tst       EN.Ty,x
+                    beq       ko0
+                    lda       #ES.Ko              a dillo: kicked into the next county
+                    lbsr      SetE
+                    ldd       #64
+                    lbsr      ByDir
+                    std       EN.VX,x
+                    ldd       #88
+                    std       EN.VH,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    ldd       #150
+                    lbra      AddScore
+ko0                 ldd       #350
+                    lbsr      AddScore
                     ldd       EN.X,x
                     std       <sx
                     ldd       EN.Z,x
@@ -820,6 +1110,8 @@ ko6                 leay      SL.Size,y
 ********************************************************************
 HurtHero            tst       <hinv
                     bne       hu0
+                    tst       <phase
+                    bne       hu0
                     tst       <god
                     bne       hu0
                     sta       <dmg
@@ -847,10 +1139,10 @@ hu3                 std       <hvx
                     lbsr      Shk
                     tst       <hhp
                     bgt       hu4
-                    dec       <hlives             a life gone: full health, a while untouchable,
-                    bne       hu5                 (game over comes with sprint 3: the lives go round)
-                    lda       #3
-                    sta       <hlives
+                    dec       <hlives             a life gone: full health, a while untouchable
+                    bne       hu5
+                    lbsr      GameOver            the last one
+                    bra       hu4
 hu5                 lda       #MaxHp
                     sta       <hhp
                     lda       #RespT
@@ -872,10 +1164,8 @@ Blowback            leax      en,u
                     lda       #NEn
                     sta       <aloop
 bb1                 lda       EN.St,x
-                    cmpa      #ES.Appr
-                    blo       bb3
-                    cmpa      #ES.Air
-                    bhi       bb3
+                    lbsr      Hitbl
+                    bcs       bb3
                     ldd       EN.X,x
                     subd      <hx
                     std       <tdx
@@ -908,10 +1198,8 @@ StompShock          lda       #12
                     lda       #NEn
                     sta       <aloop
 sm1                 lda       EN.St,x
-                    cmpa      #ES.Appr
-                    blo       sm3
-                    cmpa      #ES.Air
-                    bhi       sm3
+                    lbsr      Hitbl
+                    bcs       sm3
                     ldd       EN.H,x
                     cmpd      #10*16
                     bge       sm3
@@ -1003,10 +1291,8 @@ ha2                 addd      <hxp
                     lda       #NEn
                     sta       <aloop
 ha3                 lda       EN.St,x
-                    cmpa      #ES.Appr
-                    lblo      ha8
-                    cmpa      #ES.Air
-                    lbhi      ha8
+                    lbsr      Hitbl
+                    lbcs      ha8
                     lda       EN.Hit,x
                     cmpa      <hatk
                     lbeq      ha8
@@ -1028,7 +1314,7 @@ ha3                 lda       EN.St,x
                     ldd       EN.H,x
                     lbsr      Asr4
                     std       <tmp
-                    addd      #SkTall             h0 < eh + 46
+                    lbsr      ETall               h0 < eh + its height
                     cmpd      <bh0
                     ble       ha8
                     ldd       <tmp                h1 > eh
@@ -1272,10 +1558,8 @@ Bowl                leay      en,u
                     lda       #NEn
                     sta       <aloop
 bw1                 lda       EN.St,y
-                    cmpa      #ES.Appr
-                    blo       bw3
-                    cmpa      #ES.Air
-                    bhi       bw3
+                    lbsr      Hitbl
+                    bcs       bw3
                     lda       EN.Id,y
                     cmpa      SL.Own,x
                     beq       bw3
@@ -1504,8 +1788,15 @@ de1                 tst       EN.St,x
                     lda       #CTL.Fls
 de2                 sta       <ectl
                     lda       #1
-                    sta       <eshk
                     sta       <ekey
+                    tst       EN.Ty,x
+                    beq       de3
+                    inca
+de3                 ldb       EN.St,x
+                    cmpb      #ES.Ko
+                    bne       de4
+                    clra
+de4                 sta       <eshk
                     ldd       EN.X,x
                     std       <ex
                     ldd       EN.Z,x
@@ -1520,7 +1811,9 @@ de9                 leax      EN.Size,x
                     rts
 
 * EnFrame - X = a skeleton -> D = the frame to show (brawler.js enemyImg)
-EnFrame             lda       EN.St,x
+EnFrame             tst       EN.Ty,x
+                    lbne      DlFrame
+                    lda       EN.St,x
                     tst       EN.Sk,x
                     bne       ef1
                     cmpa      #ES.Air             headless (except flat on the ground)
@@ -1598,6 +1891,45 @@ efx                 tst       EN.Fc,x
 efx1                tfr       a,b
                     clra
                     addd      #SK.First
+                    rts
+
+* DlFrame - X = a dillo -> D = its frame: rolled up when it strikes, is
+*   knocked down or flies; the first ball frame winding up; standing
+*   when it's hit; else walking
+DlFrame             lda       EN.St,x
+                    cmpa      #ES.Wind
+                    beq       df2
+                    cmpa      #ES.Stag
+                    beq       df3
+                    cmpa      #ES.Strike
+                    beq       df1
+                    cmpa      #ES.Air
+                    beq       df1
+                    cmpa      #ES.Down
+                    beq       df1
+                    cmpa      #ES.Ko
+                    beq       df1
+                    lda       EN.An,x             walking, 8 frames a second
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #DL.walk-DL.First
+                    bra       df4
+df1                 lda       EN.An,x             the ball, about 24 a second
+                    ldb       #3
+                    lbsr      Div
+                    anda      #7
+                    adda      #DL.ball-DL.First
+                    bra       df4
+df2                 lda       #DL.ball-DL.First
+                    bra       df4
+df3                 lda       #DL.walk-DL.First
+df4                 tst       EN.Fc,x
+                    beq       df5
+                    adda      #DL.Mir
+df5                 tfr       a,b
+                    clra
+                    addd      #DL.First
                     rts
 
 DrawSl              leax      sl,u
@@ -1747,10 +2079,8 @@ bs0                 clr       <binp
                     lda       #NEn
                     sta       <aloop
 bs1                 lda       EN.St,y
-                    cmpa      #ES.Appr
-                    blo       bs2
-                    cmpa      #ES.Air
-                    bhi       bs2
+                    lbsr      Hitbl
+                    bcs       bs2
                     ldd       EN.X,y
                     subd      <hx
                     lbsr      AbsD
@@ -1762,7 +2092,11 @@ bs2                 leay      EN.Size,y
                     dec       <aloop
                     bne       bs1
                     ldy       <bnear
-                    beq       bs9                 nobody: stand
+                    bne       bs2a
+                    lda       #IN.Right           nobody to fight: on to the next wave
+                    sta       <binp
+                    lbra      bs9
+bs2a
                     ldd       EN.Z,y
                     subd      <hz
                     std       <tdz

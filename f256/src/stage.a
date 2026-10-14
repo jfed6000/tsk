@@ -1,0 +1,281 @@
+********************************************************************
+* stage.a - the stage: waves, the screen lock, GO, the phases (play,
+*   clear, the end, game over), the score, and starting over.
+*   brawler.js loadStage, startWave, updateWaves, stageClear, simulate.
+********************************************************************
+
+* phases
+PH.Play             equ       0
+PH.Clear            equ       1                   the stage is won: a taunt, the title
+PH.End              equ       2                   TO BE CONTINUED... (Main Street comes in sprint 4)
+PH.Over             equ       3                   game over
+
+TitleLen              equ       192                 the stage title shows 3.2 s
+GoLen               equ       180                 "GO >>" blinks 3 s after a wave
+ClearT              equ       210                 3.5 s of the clear before the end
+WaitT               equ       120                 the end and game over take a jump after 2 s
+ComboLen              equ       84                  1.4 s to land the next hit of a combo
+
+********************************************************************
+* GameInit - a new game: everything cleared, the hero at the start
+********************************************************************
+GameInit            leax      en,u                every table: enemies, skulls, bullets, particles
+                    ldy       #NEn*EN.Size+NSl*SL.Size+NEb*EB.Size+NPt*PT.Size
+gi1                 clr       ,x+
+                    leay      -1,y
+                    bne       gi1
+                    lbsr      CombatInit
+                    ldd       <ticks              a different fight each time
+                    eora      <rnd
+                    eorb      <rnd+1
+                    bne       gi2
+                    incb
+gi2                 std       <rnd
+                    lbsr      HeroInit
+                    lbsr      CamInit
+                    ldd       #0
+                    std       <score
+                    std       <score+2
+                    std       <phaset
+                    std       <titlet
+                    clr       <phase
+                    clr       <wavei
+                    clr       <got
+                    clr       <lock
+                    clr       <combo
+                    clr       <combot
+                    clr       <hitstop
+                    clr       <shake
+                    ldd       #420                the first bolt after 7 s
+                    std       <nbolt
+                    rts
+
+********************************************************************
+* Stage - one pass of the stage's clocks and phases (not while a hit
+*   holds the action still).  The hero runs only in play.
+********************************************************************
+Stage               ldd       <phaset
+                    addd      #1
+                    std       <phaset
+                    ldd       <titlet
+                    cmpd      #$FFFF
+                    beq       sg0
+                    addd      #1
+                    std       <titlet
+sg0                 tst       <combot
+                    beq       sg1
+                    dec       <combot
+sg1                 lda       <phase
+                    cmpa      #PH.Play
+                    bne       sg2
+                    lbsr      Hero
+                    lbra      Waves
+sg2                 cmpa      #PH.Clear
+                    bne       sg4
+                    lbsr      HeroPassive         the taunt, then standing
+                    ldd       <phaset
+                    cmpd      #ClearT
+                    blo       sgx
+                    lda       #PH.End
+                    bra       SetPh
+sg4                 ldd       <phaset             the end, game over: jump to go again
+                    cmpd      #WaitT
+                    blo       sgx
+                    lda       <ipress
+                    bita      #IN.Jump
+                    beq       sgx
+                    lbra      GameInit
+sgx                 rts
+
+* SetPh - A = the new phase
+SetPh               sta       <phase
+                    ldd       #0
+                    std       <phaset
+                    rts
+
+********************************************************************
+* Waves - walk right to trigger the next gang; clear it to get GO >>
+********************************************************************
+Waves               tst       <got
+                    beq       wv0
+                    dec       <got
+wv0                 tst       <lock
+                    beq       wv2
+                    tst       <eleft              the wave's on until they're all KO'd
+                    bne       wvx
+                    clr       <lock
+                    inc       <wavei
+                    lda       #GoLen
+                    sta       <got
+                    lda       <wavei
+                    cmpa      #NWaves
+                    lbhs      StageClear
+wvx                 rts
+wv2                 lda       <wavei              the camera reaching the next wave's spot
+                    cmpa      #NWaves
+                    bhs       wvx
+                    bsr       WaveRec
+                    ldd       <cam
+                    addd      #1
+                    cmpd      ,x
+                    blo       wvx
+* StartWave - X = the wave: the screen locks there and the gang comes
+StartWave           ldd       ,x++
+                    std       <cam                the camera holds at the wave's spot
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       <camf
+                    lda       #1
+                    sta       <lock
+                    lda       ,x+                 how many ($FF = the boss)
+                    cmpa      #$FF
+                    lbeq      StageClear          (Two-Bit comes later in sprint 3)
+                    sta       <tmpn
+                    clr       <tmpi               i
+sw1                 pshs      x
+                    lda       ,x                  the type
+                    ldb       <tmpi
+                    lbsr      Spawn
+                    puls      x
+                    leax      1,x
+                    inc       <tmpi
+                    dec       <tmpn
+                    bne       sw1
+                    rts
+
+* WaveRec - X = wave number wavei's record
+WaveRec             leax      WaveTab,pcr
+                    ldb       <wavei
+                    beq       wr2
+wr1                 lda       2,x                 skip a record: cam, count, types
+                    cmpa      #$FF
+                    bne       wr1a
+                    clra
+wr1a                leax      a,x
+                    leax      3,x
+                    decb
+                    bne       wr1
+wr2                 rts
+
+* Spawn - A = the type, B = i: the i-th of a gang.  Skeletons rise out
+*   of the ground on screen; the others walk in, even ones from the
+*   right and odd ones from the left, two by two (brawler.js spawn)
+Spawn               cmpa      #TY.Skel
+                    lbeq      NewSkel
+                    lbra      NewDillo
+
+* Boot Hill's waves: the camera's spot, how many, what (brawler.js
+*   STAGES.boothill.waves; 'skel@' = a skeleton rising)
+NWaves              equ       5
+WaveTab             fdb       0
+                    fcb       3,TY.Skel,TY.Dillo,TY.Skel
+                    fdb       360
+                    fcb       4,TY.Skel,TY.Skel,TY.Dillo,TY.Skel
+                    fdb       760
+                    fcb       4,TY.Dillo,TY.Skel,TY.Dillo,TY.Skel
+                    fdb       1160
+                    fcb       4,TY.Skel,TY.Skel,TY.Skel,TY.Skel
+                    fdb       1600
+                    fcb       $FF                 Two-Bit
+
+********************************************************************
+* StageClear - the stage is won: he taunts
+********************************************************************
+StageClear          clr       <lock
+                    lda       #PH.Clear
+                    lbsr      SetPh
+                    ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    std       <hvh
+                    std       <hh
+                    lda       #ST.Taunt
+                    lbra      SetS
+
+* GameOver - the last life is gone
+GameOver            lda       #PH.Over
+                    lbra      SetPh
+
+********************************************************************
+* AddScore - D = points.  A combo multiplies them: the hits landed
+*   within 1.4 s of each other, up to eight (brawler.js addScore).
+*   Exit: D = the points scored.  X and Y are kept.
+********************************************************************
+AddScore            pshs      x,y
+                    std       <scw
+                    lda       <combo
+                    tst       <combot
+                    bne       as1
+                    clra
+as1                 cmpa      #8
+                    bhs       as2
+                    inca
+as2                 sta       <combo
+                    sta       <scn
+                    lda       #ComboLen
+                    sta       <combot
+                    ldd       #0                  points x the combo
+as3                 addd      <scw
+                    dec       <scn
+                    bne       as3
+                    std       <scw
+                    bsr       AddBcd
+                    ldd       <scw
+                    puls      x,y,pc
+
+* AddBcd - scw = points (binary, below 10000) added to the BCD score
+AddBcd              ldd       <scw
+                    std       <bcd                the remainder as it goes
+                    ldx       #1000
+                    bsr       Dig
+                    lsla
+                    lsla
+                    lsla
+                    lsla
+                    sta       <scn
+                    ldx       #100
+                    bsr       Dig
+                    ora       <scn
+                    sta       <scn                thousands and hundreds
+                    ldx       #10
+                    bsr       Dig
+                    lsla
+                    lsla
+                    lsla
+                    lsla
+                    ora       <bcd+1              tens and ones
+                    adda      <score+3            add, low byte first
+                    daa
+                    sta       <score+3
+                    lda       <score+2
+                    adca      <scn
+                    daa
+                    sta       <score+2
+                    lda       <score+1
+                    adca      #0
+                    daa
+                    sta       <score+1
+                    lda       <score
+                    adca      #0
+                    daa
+                    sta       <score
+                    rts
+
+* Dig - X = a power of ten: A = bcd / X, bcd = the remainder
+Dig                 pshs      x
+                    clr       <scd
+                    ldd       <bcd
+dg1                 cmpd      ,s
+                    blo       dg2
+                    subd      ,s
+                    inc       <scd
+                    bra       dg1
+dg2                 std       <bcd
+                    lda       <scd
+                    puls      x,pc
