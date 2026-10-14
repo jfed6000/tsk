@@ -105,13 +105,20 @@ def previews():
                     if p:
                         img.putpixel((ox + dx + x, oy + dy + y), sc[p])
         return n
-    for prefix in ('HR', 'SK', 'FX'):
+    prefixes = [k[:-6] for k in D if k.endswith('.First')]
+    for n, prefix in enumerate(prefixes):           # every group: facing right, and below it mirrored (if it has mirrors)
         first, mir = D[f'{prefix}.First'], D[f'{prefix}.Mir']
-        img = Image.new('RGBA', (min(mir, 16) * 80 + 20, ((mir + 15) // 16) * 2 * 80 + 20), (40, 26, 16, 255))
-        for i in range(mir):
-            col, row = i % 16, (i // 16) * 2
-            draw_frame(img, first + i, 40 + col * 80, 72 + row * 80)
-            draw_frame(img, first + mir + i, 40 + col * 80, 72 + (row + 1) * 80)
+        last = D[f'{prefixes[n + 1]}.First'] if n + 1 < len(prefixes) else nf
+        cnt, rows = (mir, 2) if mir else (last - first, 1)
+        tx = prefix == 'TX'
+        cw, per = (200, 6) if tx else (80, 16)
+        img = Image.new('RGBA', (min(cnt, per) * cw + 20, ((cnt + per - 1) // per) * rows * 80 + 20), (40, 26, 16, 255))
+        for i in range(cnt):
+            col, row = i % per, (i // per) * rows
+            x0, y0 = (cw // 2, 16) if tx else (40, 72)
+            draw_frame(img, first + i, x0 + col * cw, y0 + row * 80)
+            if mir:
+                draw_frame(img, first + mir + i, x0 + col * cw, y0 + (row + 1) * 80)
         img.convert('RGB').save(PREVIEW / f'frames_{prefix}.png')
     print(f'previews: {PREVIEW} ({nf} frames checked)')
 

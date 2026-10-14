@@ -15,7 +15,7 @@
 const T = window.TSK;
 
 T.runExport = function (A) {
-  const { HERO } = A;
+  const { HERO, DILLO, COYOTE, BARREL } = A;
   const VW = 320, VH = 240, FLOOR = 150, TS = 16, MAP_H = 15, LEVEL_W = 1920;
   const CLUT_SPR = 0, CLUT_FLASH = 1, CLUT_GHOST = 2, CLUT_TILE = 3;   // the hardware CLUT plan (f256-plan.md)
 
@@ -77,14 +77,14 @@ T.runExport = function (A) {
   }
   // a group = one character: its animations, every frame facing right, then every frame mirrored.
   // An animation may carry its own origin (ox, oy), else the group's.
-  function addGroup(prefix, anims, ox, oy) {
+  function addGroup(prefix, anims, ox, oy, mirror = true) {
     const list = [];
     for (const [name, frames, fps, loop, aox = ox, aoy = oy] of anims) list.push({ name, frames, fps, loop, ox: aox, oy: aoy });
     const first = frameRecs.length;
     let n = 0;
     for (const a of list) { a.first = n; for (const f of a.frames) { addFrame(f, a.ox, a.oy, false); n++; } }
-    for (const a of list) for (const f of a.frames) addFrame(f, a.ox, a.oy, true);
-    groups.push({ prefix, first, n, list });
+    if (mirror) for (const a of list) for (const f of a.frames) addFrame(f, a.ox, a.oy, true);
+    groups.push({ prefix, first, n, list, mirror });
   }
   const H = T.HERO, S = T.SKEL;
   addGroup('HR', Object.values(HERO).map(a => [a.name, a.frames, a.fps, a.loop]), H.OX, H.OY);
@@ -108,6 +108,35 @@ T.runExport = function (A) {
     ['star', FXA.star, 1, false, 16, 16], ['bit', FXA.bit, 1, false, 4, 4], ['dust', FXA.dust.map(d => d[0]), 1, false, 4, 4],
     ['skull', SKEL.skull, 12, true, 8, 8], ['hat', [SKEL.hat], 1, false, 12, 12], ['bone', SKEL.bones, 1, false, 6, 6],
     ['ebul', [SKEL.bullet], 1, false, 4, 4]], 16, 4);
+  // sprint 3: the dillo, Two-Bit (the coyote art), and the props and pickups
+  const E = T.ENEMY, B = T.BOSS, PROPS = T.buildProps(), PICK = T.buildPick(), HAT = T.buildHat();
+  addGroup('DL', [['walk', DILLO.walk, 8, true], ['ball', DILLO.ball, 24, true]], E.OX, E.OY);
+  addGroup('TB', [['idle', COYOTE.idle, 3, true], ['walk', COYOTE.walk, 8, true], ['talk', COYOTE.talk, 6, true],
+    ['windup', [COYOTE.windup], 1, false], ['swing', [COYOTE.swing], 1, false], ['throw', [COYOTE.throw], 1, false],
+    ['dig', [COYOTE.dig], 1, false], ['pop', [COYOTE.pop], 1, false], ['daze', COYOTE.daze, 8, true],
+    ['hurt', [COYOTE.hurt], 1, false], ['ko', [COYOTE.ko], 1, false], ['down', [COYOTE.down], 1, false]], B.OX, B.OY);
+  addGroup('PR', [['stone', [PROPS.headstone], 1, false, PROPS.headstone.ox, PROPS.headstone.oy], ['mound', [PROPS.mound], 1, false, 20, 11],
+    ['hole', [PROPS.hole], 1, false, 20, 11], ['clod', [PROPS.clod], 1, false, 4, 4], ['digm', PROPS.digMound, 1, false, 16, 11],
+    ['barrel', [BARREL], 1, false, T.BARREL.OX, T.BARREL.OY], ['hat', [HAT], 1, false, T.HAT.OX, T.HAT.OY],
+    ['whip', [PICK.whip], 1, false, 12, 12], ['gun', [PICK.gun], 1, false, 12, 12], ['beans', [PICK.beans], 1, false, 12, 12],
+    ['bullet', [PICK.bullet], 1, false, 4, 4], ['bicon', [PICK.bulletIcon], 1, false, 4, 4]], 16, 16);
+  // pre-rendered text: titles and popup words (brawler.js popup / center), origin at the top centre, no mirrors
+  const TEXT = [
+    ['texas', 'TEXAS', '#ffe7b0', 4], ['shitk', 'SHITKICKERS', '#ff9d3c', 4], ['boothill', 'BOOT HILL', '#ffd34a', 2],
+    ['midnight', 'MIDNIGHT', '#e8a070', 1], ['go', 'GO >>', '#ffd34a', 3], ['clear', 'BOOT HILL CLEAR!', '#ffd34a', 3],
+    ['tbc', 'TO BE CONTINUED...', '#ff9d3c', 2], ['ride', 'PRESS JUMP TO RIDE AGAIN', '#c3c8d8', 1],
+    ['again', 'PRESS JUMP TO TRY AGAIN', '#c3c8d8', 1], ['over', 'GAME OVER', '#ff6b4a', 2],
+    ['ko0', 'YEEHAW!', '#ffd34a', 2], ['ko1', 'KICKED!', '#ffd34a', 2], ['ko2', 'GIT!', '#ffd34a', 2], ['ko3', 'BOOTED!', '#ffd34a', 2],
+    ['ko4', 'WHOOP!', '#ffd34a', 2], ['ko5', 'SKEDADDLE!', '#ffd34a', 2],
+    ['bone0', 'BONE DRY!', '#ffd34a', 2], ['bone1', 'RATTLED!', '#ffd34a', 2], ['bone2', 'DUST TO DUST!', '#ffd34a', 2],
+    ['bone3', 'BACK TO THE GRAVE!', '#ffd34a', 2], ['bone4', 'KICKED THE BUCKET!', '#ffd34a', 2],
+    ['headsup', 'HEADS UP!', '#ffd34a', 1], ['dagnab', 'DAGNABBIT!', '#ff6b4a', 2], ['ouch', 'OUCH!', '#ff6b4a', 2],
+    ['sixsh', 'SIX-SHOOTER!', '#ffd34a', 1], ['bwhip', 'BULLWHIP!', '#ffd34a', 1], ['wbroke', 'WHIP BROKE!', '#ff9d3c', 1],
+    ['click', 'CLICK!', '#ff9d3c', 1], ['beans', 'BEANS!', '#ffd34a', 1], ['fore', 'FORE!', '#ffd34a', 1],
+    ['stomp', 'STOMP!', '#ff8a3c', 2], ['bossko', 'YEEHAW!', '#ffd34a', 3], ['rise', 'RISE, BOYS!', '#ff9d3c', 1],
+    ['buried', 'I BURIED YOU MYSELF!', '#fff3c4', 1], ['dizzy', 'DIZZY!', '#ffd34a', 1], ['x', 'X', '#ffd34a', 1],
+  ];
+  addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
   const sprites = new Uint8Array(cellData.length * 1024);
@@ -132,6 +161,7 @@ T.runExport = function (A) {
     });
     return b;
   };
+  T.bossBar('A', 1, 2);                          // the HUD bar's colours into the sprite CLUT before it's packed
   const F = T.rgb('#e4e0ff');
   const files = {
     'tiles.bin': tiles,
@@ -176,7 +206,7 @@ T.runExport = function (A) {
   L.push('* animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)');
   L.push('* the mirrored (facing left) copy of frame f is f + <group>.Mir');
   for (const g of groups) {
-    L.push(`${g.prefix}.First equ ${g.first}`, `${g.prefix}.Mir equ ${g.n}`);
+    L.push(`${g.prefix}.First equ ${g.first}`, `${g.prefix}.Mir equ ${g.mirror ? g.n : 0}`);
     for (const a of g.list) {
       const nm = g.prefix + '.' + a.name;
       L.push(`${nm.padEnd(14)} equ ${g.first + a.first}`);
@@ -202,6 +232,23 @@ T.runExport = function (A) {
       TB.push(`                    fcb       ${b.join(',')}`.padEnd(56) + `${a.name} ${i}`);
     });
   }
+  // GlyTab: the HUD font (brawler.js drawText, 3x5 with a 1-pixel outline) as 5x7 stamps, ASCII 32..90:
+  // 35 bytes each, row by row, 0 = clear, 1 = outline, 2 = fill (the colours come from the caller)
+  TB.push('', '* GlyTab: the HUD font as 5x7 stamps for ASCII 32-90, 35 bytes each: 0 clear, 1 outline, 2 fill.', 'GlyTab');
+  for (let c = 32; c <= 90; c++) {
+    const g = T.GLYPH[String.fromCharCode(c)] || T.GLYPH['?'], st = new Array(35).fill(0);
+    for (let p = 0; p < 15; p++) if (g[p] === '#') {
+      const x = (p % 3) + 1, y = Math.floor(p / 3) + 1;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!st[(y + dy) * 5 + x + dx]) st[(y + dy) * 5 + x + dx] = 1;
+    }
+    for (let p = 0; p < 15; p++) if (g[p] === '#') st[(Math.floor(p / 3) + 1) * 5 + (p % 3) + 1] = 2;
+    for (let r = 0; r < 7; r++) TB.push(`                    fcb       ${st.slice(r * 5, r * 5 + 5).join(',')}` + (r ? '' : `               '${c === 39 ? '`' : String.fromCharCode(c)}'`));
+  }
+  // the HUD's colours, as sprite CLUT indices
+  const ci = h => T.CLUT.spr.add(h);
+  TB.push('', '* the HUD colours (sprite CLUT indices)');
+  for (const [n, h] of [['Out', T.PAL.out], ['Yel', '#ffd34a'], ['Crm', '#fff3c4'], ['Org', '#ff9d3c'], ['BarBk', '#5a1a14'], ['BarFg', '#e04a2a'], ['BarHi', '#ff9a6a']])
+    TB.push(`CI.${n.padEnd(15)} equ       ${ci(h)}`);
   const tabs = TB.join('\n') + '\n';
 
   // stats for the report

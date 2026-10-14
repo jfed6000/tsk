@@ -1003,6 +1003,7 @@ const G = {
 };
 const GLYPH = {};
 for (const k in G) GLYPH[k] = G[k].replace(/ /g, '');
+T.GLYPH = GLYPH;
 
 T.textWidth = (str, s = 1) => str.length * 4 * s - s;
 T.drawText = function (ctx, str, x, y, color, s = 1, outline = PAL.out, align = 'left') {

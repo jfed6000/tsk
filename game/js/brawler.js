@@ -14,27 +14,16 @@
 'use strict';
 const T = window.TSK;
 
-T.runBrawler = function (A) {
-  const { HERO, DILLO, BARREL, FX, COYOTE, keys, pressed, sfx, pollPad, params } = A;
-  const VW = 320, VH = 240, FLOOR = 150, ZMAX = 80, MAX_SPRITES = 128;
-  const WALK_X = 105, WALK_Z = 62, JUMP_V = 360, GRAV = 1150, LANE = 12;
-  const MAX_HP = 16, BOSS_HP = 36;
+// the pickups and their shadows (also drawn by the F256 exporter, js/export.js)
+T.buildPick = function () {
   const PAL = T.PAL;
-
-  // ---------------------------------------------------------------- shared art
-  const HAT = T.buildHat();
-  const H = T.HERO, CB = T.BOSS, E = T.ENEMY;
-  const SKEL = T.buildSkeleton();
-  const MANGY = T.buildCoyote('mangy');
-  const PROPS = T.buildProps();
-  const TUMBLE = T.buildTumbleweed();
   const mk = (w, h, ox, oy, pal, fn, outline = PAL.out) => {
     const c = T.canvas(w, h), x = c.getContext('2d'); x.translate(ox, oy); fn(x);
     const o = T.pixelize(c, pal, outline, T.CLUT.spr); o.ox = ox; o.oy = oy; return o;
   };
   const ell = (x, cx, cy, rx, ry) => { x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); };
   const IP = { out: PAL.out, b0: PAL.buckle, b1: PAL.band, bean0: '#7a3a1a', bean1: '#a8582a', plate: '#efe6cc', sh: '#2a1a1e', y0: '#ffd34a', y1: '#fff3c4', n2: PAL.n2, n0: PAL.n0 };
-  const PICK = {
+  return {
     whip: mk(24, 16, 12, 12, IP, x => {
       for (const [col, lw] of [[PAL.out, 3], [PAL.n2, 1.4]]) { x.strokeStyle = col; x.lineWidth = lw; ell(x, 0, -3, 7, 3.4); x.stroke(); ell(x, -1, -3.4, 4.4, 2); x.stroke(); }
       x.strokeStyle = PAL.n0; x.lineWidth = 2.4; x.beginPath(); x.moveTo(5, -2); x.lineTo(10, 1); x.stroke();
@@ -54,6 +43,23 @@ T.runBrawler = function (A) {
     shadowS: mk(24, 8, 12, 4, { s: IP.sh }, x => { ell(x, 0, 0, 8, 2.4); x.fillStyle = IP.sh; x.fill(); }, null),
     bulletIcon: mk(8, 8, 4, 4, IP, x => { x.fillStyle = PAL.buckle; x.fillRect(-1, -3, 2.4, 5); x.fillStyle = IP.y1; x.fillRect(-1, -3, 2.4, 1.4); }),
   };
+};
+
+T.runBrawler = function (A) {
+  const { HERO, DILLO, BARREL, FX, COYOTE, keys, pressed, sfx, pollPad, params } = A;
+  const VW = 320, VH = 240, FLOOR = 150, ZMAX = 80, MAX_SPRITES = 128;
+  const WALK_X = 105, WALK_Z = 62, JUMP_V = 360, GRAV = 1150, LANE = 12;
+  const MAX_HP = 16, BOSS_HP = 36;
+  const PAL = T.PAL;
+
+  // ---------------------------------------------------------------- shared art
+  const HAT = T.buildHat();
+  const H = T.HERO, CB = T.BOSS, E = T.ENEMY;
+  const SKEL = T.buildSkeleton();
+  const MANGY = T.buildCoyote('mangy');
+  const PROPS = T.buildProps();
+  const TUMBLE = T.buildTumbleweed();
+  const PICK = T.buildPick();
 
   // ---------------------------------------------------------------- the stages
   // waves: lock the screen at cam and send the gang in. 'skel@' = a skeleton claws up out of the ground on screen.
