@@ -141,8 +141,11 @@ class Host(CPU6809):
                 continue
             w = lambda o: ((b[o] << 8 | b[o + 1]) ^ 0x8000) - 0x8000
             st = ['-', 'rise', 'appr', 'aim', 'shoot', 'reload', 'stag', 'headl', 'air', 'down', 'getup',
-                  'wind', 'strike', 'recov', 'enter', 'ko'][b[0]]
-            ty = 'D' if size > 23 and b[23] else 'S'
+                  'wind', 'strike', 'recov', 'enter', 'ko', 'boss', 'bossx'][b[0]]
+            ty = 'SDB'[b[23]] if size > 23 else 'S'
+            if ty == 'B':
+                st += '/' + ['intro', 'appr', 'wind', 'swing', 'recov', 'stag', 'thrw', 'throw', 'dig', 'under',
+                             'rumble', 'pop', 'daze', 'ko'][self.mem[self.sym['bst']]]
             out.append(f'{ty}:{st}@{w(2) >> 4},{w(4) >> 4}{"/h" + str(w(6) >> 4) if w(6) else ""} hp{(b[15] ^ 0x80) - 0x80}{"" if b[19] or ty == "D" else " H"}')
         return ' | '.join(out)
 

@@ -461,6 +461,7 @@ hd4b                sta       <hudeid             a new one (or nobody): the nam
                     lbsr      Band
                     tst       <hudeid
                     beq       hd5
+                    lbsr      Target              (Band used X)
                     pshs      x
                     lbsr      EName               Y = its name
                     tfr       y,x
@@ -543,7 +544,17 @@ nm3                 adda      #'0
 * Target - the enemy whose bar shows: the last one hit, while it's
 *   still about.  Exit: X = it, A = its id (0 = nobody)
 Target              lda       <lhit
+                    bne       tg0
+                    ldx       <bslot              nobody hit lately: Two-Bit, while he's about
                     beq       tg9
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    bne       tg8
+                    tst       EN.St,x
+                    beq       tg8
+                    lda       EN.Id,x
+                    rts
+tg0
                     leax      en,u
                     ldb       #NEn
 tg1                 cmpa      EN.Id,x
@@ -563,7 +574,10 @@ tg2                 ldb       EN.St,x             KO'd or gone: nobody
 EName               lda       EN.Ty,x
                     beq       enm1
                     leay      SDillo,pcr
-                    rts
+                    cmpa      #TY.Dillo
+                    beq       enm0
+                    leay      STwoBit,pcr
+enm0                rts
 enm1                lda       EN.Nm,x             a skeleton: one of the dead names
                     leay      DeadNames,pcr
 enm2                tsta
@@ -575,17 +589,22 @@ enm3                tst       ,y+
 enm4                rts
 
 * EMax - X = an enemy: B = its full health
-EMax                ldb       #SkHp
-                    tst       EN.Ty,x
+EMax                pshs      a                   (A is kept: the caller's health)
+                    ldb       #SkHp
+                    lda       EN.Ty,x
                     beq       ex1
                     ldb       #DlHp
-ex1                 rts
+                    cmpa      #TY.Dillo
+                    beq       ex1
+                    ldb       #BossHp
+ex1                 puls      a,pc
 
 SName               fcn       "SHITKICKERS"
 SScore              fcn       "SCORE "
 SWhip               fcn       "WHIP "
 SCombo              fcn       " HIT COMBO!"
 SDillo              fcn       "DILLO"
+STwoBit             fcn       "TWO-BIT"
 DeadNames           fcn       "DEAD EYE"
                     fcn       "BONES"
                     fcn       "OL' RATTLER"
@@ -1032,8 +1051,12 @@ WordH               pshs      x
                     lbra      PopWord
 
 * EHgt - X = an enemy: A = how tall it is (px)
-EHgt                lda       #SkTall
-                    tst       EN.Ty,x
+EHgt                ldb       EN.Ty,x
+                    lda       #SkTall
+                    tstb
                     beq       eg9
                     lda       #DlTall
+                    cmpb      #TY.Dillo
+                    beq       eg9
+                    lda       #BossTall
 eg9                 rts

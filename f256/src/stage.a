@@ -49,10 +49,26 @@ gi2                 std       <rnd
                     clr       <combo
                     clr       <combot
                     clr       <hitstop
+                    clr       <bslot
+                    clr       <bslot+1
                     clr       <shake
                     ldd       #420                the first bolt after 7 s
                     std       <nbolt
-                    lbra      IntroInit           and it begins in the grave
+                    tst       <skipb              (tsk k: straight to Two-Bit)
+                    lbeq      IntroInit           and it begins in the grave
+                    lda       #4
+                    sta       <wavei
+                    lda       #1
+                    sta       <hatop
+                    ldd       #1600
+                    std       <cam
+                    lbsr      To124
+                    std       <camf
+                    ldd       #1680*16
+                    std       <hx
+                    ldd       #40*16
+                    std       <hz
+                    rts
 
 ********************************************************************
 * Stage - one pass of the stage's clocks and phases (not while a hit
@@ -141,7 +157,7 @@ StartWave           ldd       ,x++
                     sta       <lock
                     lda       ,x+                 how many ($FF = the boss)
                     cmpa      #$FF
-                    lbeq      StageClear          (Two-Bit comes later in sprint 3)
+                    lbeq      StartBoss           Two-Bit
                     sta       <tmpn
                     clr       <tmpi               i
 sw1                 pshs      x

@@ -48,6 +48,7 @@ EN.Size             equ       26
 
 TY.Skel             equ       0
 TY.Dillo            equ       1
+TY.Boss             equ       2
 
 * the hero's weapon (hwep)
 WP.None             equ       0
@@ -118,6 +119,7 @@ tsn                 rmb       1                   tile set counter
 demo                rmb       1                   1 = the demo script drives the hero (tsk d)
 bot                 rmb       1                   1 = the autopilot drives him (tsk b)
 god                 rmb       1                   1 = nothing hurts him (tsk g)
+skipb               rmb       1                   1 = start at Two-Bit (tsk k)
 bott                rmb       1                   autopilot: passes before its next kick
 binp                rmb       1                   autopilot: the input it builds
 bnear               rmb       2                   autopilot: the enemy it's after
@@ -184,6 +186,15 @@ puk                 rmb       1                   0 = a word (TX), 1 = points (a
 pul                 rmb       1                   its life
 puw                 rmb       1                   points: the text's width
 hatop               rmb       1                   the opening: 1 = the hat's on his head
+* Two-Bit (boss.a)
+bslot               rmb       2                   his enemy slot (0 = none yet)
+bst                 rmb       1                   what he's doing (BS.*)
+bn                  rmb       1                   his moves so far (every third a dig)
+bsaid               rmb       1                   1 = he's had his say
+bsum                rmb       1                   1 = he's raised the dead
+bhit                rmb       1                   1 = this swing has hit
+bmx                 rmb       2                   the mound, when he's under the street (12.4)
+bmz                 rmb       2
 hwep                rmb       1                   his weapon (WP.*)
 hammo               rmb       1                   its rounds (or the whip's lashes)
 nbolt               rmb       2                   passes to the next lightning
@@ -268,6 +279,7 @@ pu                  rmb       NPu*PU.Size         popups
 br                  rmb       NBr*BR.Size         barrels
 it                  rmb       NIt*IT.Size         items lying about
 hb                  rmb       NHb*HB.Size         his bullets
+cl                  rmb       NCl*CL.Size         Two-Bit's clods
 hbuf                rmb       24                  text being built
 pt                  rmb       NPt*PT.Size         particles
 frames              rmb       FRM.Size            frames.bin

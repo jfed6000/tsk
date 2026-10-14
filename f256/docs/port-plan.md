@@ -102,8 +102,23 @@ One program module, **`tsk`**, assembled from:
    - The port found **a third browser bug**, fixed on both sides: a hit in mid-air froze the hero's height (the hurt
      state had no gravity), so he could be left walking in the air.
    - Cost: about 14K cycles a pass on average, 49K at the worst (a KO: eleven particles), of a ~105K tick.
-3. **Waves and the stage:** screen lock, GO, barrels and pickups (whip, gun, beans), the HUD (sprite text), the
-   opening (rise from the grave), Two-Bit.
+3. ✓ **Boot Hill, whole:** the opening (rising from Ringo's grave, the hat hopping onto his head), the four waves
+   and their screen locks and GO, the dillo, barrels and pickups (beans, the whip, the six-shooter; a skeleton's
+   dropped gun), the HUD (health, score, lives, weapon, the enemy's name and bar, the combo), popups and titles,
+   Two-Bit (swing, clods, dig-tunnel-pop, dizzy, raising the dead at half health), the clear, TO BE CONTINUED,
+   game over, and starting again. *(sprint 3, 2026-10-14: `tsk` 17.2K, data 11.2K; verified on the host 6809 and in
+   MAME)*
+   - **Text** is sprites: fixed words are exported frames (TX.*); the HUD and points popups are drawn by the 6809
+     into 16 dynamic cells, two blocks allocated after the sprite art (`hud.a`). One HUD part is redrawn a pass, and
+     a popup's text is drawn on the pass after the hit, so the worst pass stays about 70K cycles.
+   - **Two-Bit** is an enemy slot of type `TY.Boss` (`boss.a`), so hits, the HUD and the autopilot need nothing new.
+   - New arguments: `tsk k` starts at Two-Bit; `tsk b` / `tsk g` as before (the autopilot now walks on, breaks
+     barrels and picks up weapons).
+   - Cost: about 17K cycles a pass on average. The worst seen is 98.6K, on Two-Bit's KO, which shatters the dead he
+     raised in the same pass. That's close to the ~105K tick; if it drops a frame on the K2, spread GangDown over
+     passes.
+   - Not yet: the grab, knee and throw (the browser's walk-into-a-staggered-enemy), the stomp's ring, the help
+     screen, sound.
 4. **Main Street:** the exporter grows a stage parameter, coyotes, the night-falling CLUT fade.
 5. **Sound** (SIDs or OPL3: decide from Tempest/Joust), the pad harness, co-op.
 

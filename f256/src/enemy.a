@@ -26,6 +26,8 @@ ES.Strike           equ       12                  curled up, rolling at you
 ES.Recov            equ       13                  coming out of the roll
 ES.Enter            equ       14                  walking in from off the screen
 ES.Ko               equ       15                  kicked into the next county
+ES.Boss             equ       16                  Two-Bit, hittable (boss.a: bst says what he's doing)
+ES.BossX            equ       17                  Two-Bit, not hittable (talking, underground, KO'd)
 
 * a skull's states
 SL.Fly              equ       1
@@ -435,6 +437,8 @@ EnTab               fdb       EnMove-EnTab
                     fdb       ERecov-EnTab
                     fdb       EEnter-EnTab
                     fdb       EKo-EnTab
+                    fdb       BossStep-EnTab
+                    fdb       BossStep-EnTab
 
 ERise               lbsr      EStop
                     lda       EN.T,x
@@ -823,14 +827,17 @@ Hitbl               pshs      a,x
                     lda       a,x
                     cmpa      #1
                     puls      a,x,pc
-HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0
+HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,0
 
 * ETall - X = an enemy, tmp = its height off the floor (px):
 *   D = tmp + how tall it is
 ETall               ldb       #SkTall
-                    tst       EN.Ty,x
+                    lda       EN.Ty,x
                     beq       et1
                     ldb       #DlTall
+                    cmpa      #TY.Dillo
+                    beq       et1
+                    ldb       #BossTall
 et1                 clra
                     addd      <tmp
                     rts
@@ -911,6 +918,9 @@ HitE                sta       <dmg
                     sta       <lhit
                     lda       #LastLen
                     sta       <lhitt
+                    lda       EN.Ty,x             Two-Bit takes it his own way
+                    cmpa      #TY.Boss
+                    lbeq      HitBoss
                     ldb       EN.Hp,x
                     subb      <dmg
                     stb       EN.Hp,x
@@ -1185,7 +1195,10 @@ hu0                 clra
 Blowback            leax      en,u
                     lda       #NEn
                     sta       <aloop
-bb1                 lda       EN.St,x
+bb1                 lda       EN.Ty,x             (not Two-Bit)
+                    cmpa      #TY.Boss
+                    beq       bb3
+                    lda       EN.St,x
                     lbsr      Hitbl
                     bcs       bb3
                     ldd       EN.X,x
@@ -1312,6 +1325,7 @@ ha2                 addd      <hxp
                     lda       <hface
                     sta       <hdir
                     lbsr      BarHit              a barrel in the way breaks
+                    lbsr      ClodHit             a clod in the way is knocked down
 * the posse
                     leax      en,u
                     lda       #NEn
@@ -1809,7 +1823,12 @@ DrawEn              leax      en,u
                     sta       <dloop
 de1                 tst       EN.St,x
                     beq       de9
-                    pshs      x
+                    lda       EN.Ty,x             Two-Bit under the street: the mound
+                    cmpa      #TY.Boss
+                    bne       de1a
+                    lbsr      DrawBoss
+                    bcc       de9
+de1a                pshs      x
                     bsr       EnFrame
                     std       <efrm
                     lda       #CTL.Spr
@@ -1819,13 +1838,20 @@ de1                 tst       EN.St,x
 de2                 sta       <ectl
                     lda       #1
                     sta       <ekey
-                    tst       EN.Ty,x
-                    beq       de3
+                    ldb       EN.Ty,x
+                    cmpb      #TY.Dillo
+                    bne       de3
                     inca
 de3                 ldb       EN.St,x
                     cmpb      #ES.Ko
+                    beq       de3a
+                    ldb       EN.Ty,x             Two-Bit KO'd: no shadow
+                    cmpb      #TY.Boss
                     bne       de4
-                    clra
+                    ldb       <bst
+                    cmpb      #BS.Ko
+                    bne       de4
+de3a                clra
 de4                 sta       <eshk
                     ldd       EN.X,x
                     std       <ex
@@ -1841,7 +1867,10 @@ de9                 leax      EN.Size,x
                     rts
 
 * EnFrame - X = a skeleton -> D = the frame to show (brawler.js enemyImg)
-EnFrame             tst       EN.Ty,x
+EnFrame             lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    lbeq      BossFrame
+                    tsta
                     lbne      DlFrame
                     lda       EN.St,x
                     tst       EN.Sk,x
@@ -2101,7 +2130,10 @@ BotStep             tst       <phase              only in the fight
                     beq       bs00
                     clrb
                     rts
-bs00                tst       <bott
+bs00                lbsr      BotMound            off Two-Bit's mound first
+                    bcs       bs00a
+                    rts
+bs00a               tst       <bott
                     beq       bs0
                     dec       <bott
 bs0                 clr       <binp
@@ -2320,3 +2352,33 @@ bt4                 ldd       <tdx                close enough: X
                     lda       #20
                     sta       <bott
 bt9                 rts
+
+* BotMound - the autopilot keeps off Two-Bit's mound.  Exit: carry clear
+*   and B = the input if it's running from it
+BotMound            ldx       <bslot
+                    beq       bm9x
+                    tst       EN.St,x
+                    beq       bm9x
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    bne       bm9x
+                    lda       <bst
+                    cmpa      #BS.Under
+                    beq       bm1x
+                    cmpa      #BS.Rumble
+                    bne       bm9x
+bm1x                ldb       #IN.Right
+                    ldx       <hx
+                    cmpx      <bmx
+                    bgt       bm2x
+                    ldb       #IN.Left
+bm2x                ldx       <hz
+                    cmpx      <bmz
+                    bgt       bm3x
+                    orb       #IN.Up
+                    bra       bm4x
+bm3x                orb       #IN.Down
+bm4x                andcc     #$FE
+                    rts
+bm9x                comb
+                    rts

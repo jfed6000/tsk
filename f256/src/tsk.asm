@@ -48,6 +48,7 @@ name                fcs       /tsk/
                     use       hud.a
                     use       pickup.a
                     use       intro.a
+                    use       boss.a
                     use       draw.a
                     use       tsktabs.a
 

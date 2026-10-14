@@ -29,8 +29,11 @@ st0a                cmpa      #'b
                     bne       st0b
                     orb       #2
 st0b                cmpa      #'g
-                    bne       st0
+                    bne       st0c
                     orb       #4
+st0c                cmpa      #'k                 k = straight to Two-Bit
+                    bne       st0
+                    orb       #8
                     bra       st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
@@ -50,8 +53,11 @@ st1a                lsrb
                     bcc       st1b
                     inc       <bot
 st1b                lsrb
-                    bcc       st2
+                    bcc       st1c
                     inc       <god
+st1c                lsrb
+                    bcc       st2
+                    inc       <skipb
 st2                 leax      recs+NRecs*8,u
                     stx       <recend
                     lda       #FX_TXT             fallback if the mode cannot be read
@@ -102,6 +108,7 @@ mn1                 lbsr      Stage               the clocks, the phase, the her
                     lbsr      Parts
                     lbsr      Items
                     lbsr      HBullets
+                    lbsr      Clods
                     lbsr      Pops
                     lbsr      Camera
                     tst       <shake

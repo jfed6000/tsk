@@ -1,0 +1,1040 @@
+********************************************************************
+* boss.a - Two-Bit the gravedigger, Boot Hill's boss (brawler.js
+*   startBoss, hitBoss, updateBoss, flingClods, updateClods, bossImg).
+*
+*   approach -> (close) wind up and swing the shovel | (far) fling three
+*   clods | (every third time) dig in, tunnel through the dirt toward
+*   you and burst up underneath, which leaves him dizzy.  At half health
+*   he raises two of the dead.  KO'd, he takes the rest of the gang with
+*   him and the stage is won.
+*
+*   He's an enemy slot of type TY.Boss, so kicks, the whip, bullets, the
+*   HUD's bar and the autopilot treat him like any other: EN.St is
+*   ES.Boss while he can be hit and ES.BossX while he can't (Hitbl), and
+*   what he's doing is bst.  EN.T is his clock.
+********************************************************************
+
+* what he's doing (bst)
+BS.Intro            equ       0                   "I BURIED YOU MYSELF!"
+BS.Appr             equ       1
+BS.Wind             equ       2
+BS.Swing            equ       3
+BS.Recov            equ       4
+BS.Stag             equ       5
+BS.ThrW             equ       6                   winding up to throw
+BS.Throw            equ       7
+BS.Dig              equ       8
+BS.Under            equ       9                   a mound of dirt, tunnelling at you
+BS.Rumble           equ       10
+BS.Pop              equ       11                  bursting up
+BS.Daze             equ       12
+BS.Ko               equ       13
+
+BossHp              equ       36
+BossTall            equ       44
+NCl                 equ       3                   clods in the air
+
+* a clod
+CL.St               equ       0
+CL.X                equ       1
+CL.Z                equ       3
+CL.H                equ       5
+CL.VX               equ       7
+CL.VZ               equ       9
+CL.VH               equ       11
+CL.Size             equ       13
+
+* StartBoss - the last wave: Two-Bit digs up out of the street
+StartBoss           lbsr      NewSlot
+                    bcs       wsb9
+                    stx       <bslot
+                    lda       #TY.Boss
+                    sta       EN.Ty,x
+                    lda       #ES.BossX
+                    sta       EN.St,x
+                    lda       #BossHp
+                    sta       EN.Hp,x
+                    lda       #1                  facing left, at the right of the screen
+                    sta       EN.Fc,x
+                    ldd       <cam
+                    addd      #250
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    std       EN.X,x
+                    std       <sx
+                    ldd       #40*16
+                    std       EN.Z,x
+                    std       <sz
+                    clr       <bst
+                    clr       <bn
+                    clr       <bsaid
+                    clr       <bsum
+                    leay      cl,u
+                    ldb       #NCl*CL.Size
+wsb1                 clr       ,y+
+                    decb
+                    bne       wsb1
+                    lda       #10
+                    lbsr      DirtXZ
+wsb9                 rts
+
+* BSet - A = what he does now: his clock starts again; hittable or not
+BSet                ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.Boss
+                    cmpa      #BS.Intro
+                    beq       wbs1x
+                    cmpa      #BS.Dig
+                    beq       wbs1x
+                    cmpa      #BS.Under
+                    beq       wbs1x
+                    cmpa      #BS.Rumble
+                    beq       wbs1x
+                    cmpa      #BS.Ko
+                    bne       wbs2x
+wbs1x                ldb       #ES.BossX
+wbs2x                stb       EN.St,x
+                    rts
+
+********************************************************************
+* HitBoss - X = him, dmg, hdir: brawler.js hitBoss.  Dizzy, he takes half
+*   again.  No knockdowns: a hit while he's walking, recovering or
+*   throwing staggers him.  X is kept.
+********************************************************************
+HitBoss             lda       <bst
+                    cmpa      #BS.Daze
+                    bne       whb1
+                    lda       <dmg                x 1.5, rounded up
+                    inca
+                    lsra
+                    adda      <dmg
+                    sta       <dmg
+whb1                 ldb       EN.Hp,x
+                    subb      <dmg
+                    stb       EN.Hp,x
+                    lda       #7
+                    sta       EN.Fl,x
+                    ldd       #-6*16              the spark
+                    lbsr      ByDir
+                    addd      EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       EN.H,x
+                    addd      #28*16
+                    std       <sh
+                    pshs      x
+                    lda       #1
+                    lbsr      Spark
+                    puls      x
+                    lda       #4
+                    sta       <hitstop
+                    lda       #6
+                    lbsr      Shk
+                    lda       <dmg                50 a point of damage
+                    ldb       #50
+                    mul
+                    std       <scw
+                    lbsr      AddBcd
+                    ldx       <bslot
+                    tst       EN.Hp,x
+                    bgt       whb3
+* KO'd
+                    clr       EN.Hp,x
+                    lda       #BS.Ko
+                    lbsr      BSet
+                    ldd       #48
+                    lbsr      ByDir
+                    std       EN.VX,x
+                    ldd       #112
+                    std       EN.VH,x
+                    clra                          he faces the way he came
+                    tst       <hdir
+                    bne       whb2
+                    inca
+whb2                 sta       EN.Fc,x
+                    lda       #11
+                    sta       <hitstop
+                    lda       #18
+                    lbsr      Shk
+                    ldd       #5000
+                    std       <scw
+                    lbsr      AddBcd
+                    leay      cl,u                the clods and bullets gone
+                    ldb       #NCl
+whb2a                clr       CL.St,y
+                    leay      CL.Size,y
+                    decb
+                    bne       whb2a
+                    leay      eb,u
+                    ldb       #NEb
+whb2b                clr       EB.St,y
+                    leay      EB.Size,y
+                    decb
+                    bne       whb2b
+                    lda       #70
+                    ldy       #TX.bossko
+                    lbsr      WordE
+                    lbra      GangDown            and every one of them goes down with him
+whb3                 lda       <bst                staggered
+                    cmpa      #BS.Appr
+                    beq       whb4
+                    cmpa      #BS.Recov
+                    beq       whb4
+                    cmpa      #BS.Throw
+                    bne       whb5
+whb4                 lda       #BS.Stag
+                    lbsr      BSet
+                    ldd       #19
+                    lbsr      ByDir
+                    std       EN.VX,x
+whb5                 tst       <bsum               half his health: he raises the dead
+                    bne       whb9
+                    lda       EN.Hp,x
+                    cmpa      #BossHp/2
+                    bhs       whb9
+                    inc       <bsum
+                    lda       #66
+                    ldy       #TX.rise
+                    lbsr      WordE
+                    lbsr      NewSkel
+                    lbsr      NewSkel
+                    ldx       <bslot
+whb9                 rts
+
+* GangDown - Two-Bit's KO takes everybody else down, knocked away from
+*   him.  Exit: X = him
+GangDown            leax      en,u
+                    lda       #NEn
+                    sta       <aloop
+wgd1                 lda       EN.St,x
+                    beq       wgd2
+                    cmpa      #ES.Ko
+                    beq       wgd2
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    beq       wgd2
+                    clr       EN.Hp,x
+                    clr       <hdir
+                    ldy       <bslot
+                    ldd       EN.X,x
+                    cmpd      EN.X,y
+                    bge       wgd1a
+                    inc       <hdir
+wgd1a                lbsr      KO
+wgd2                 leax      EN.Size,x
+                    dec       <aloop
+                    bne       wgd1
+                    ldx       <bslot
+                    rts
+
+********************************************************************
+* BossStep - X = him: one pass (brawler.js updateBoss)
+********************************************************************
+BossStep            stx       <bslot
+                    lda       <bst
+                    leay      BsTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+
+BsTab               fdb       BIntro-BsTab
+                    fdb       BAppr-BsTab
+                    fdb       BWind-BsTab
+                    fdb       BSwing-BsTab
+                    fdb       BRecov-BsTab
+                    fdb       BStag-BsTab
+                    fdb       BThrW-BsTab
+                    fdb       BThrow-BsTab
+                    fdb       BDig-BsTab
+                    fdb       BUnder-BsTab
+                    fdb       BRumble-BsTab
+                    fdb       BPop-BsTab
+                    fdb       BDaze-BsTab
+                    fdb       BKo-BsTab
+
+BIntro              lbsr      FaceHero
+                    lbsr      EStop
+                    tst       <bsaid
+                    bne       wbi1
+                    lda       EN.T,x
+                    cmpa      #18
+                    blo       wbi1
+                    inc       <bsaid
+                    lda       #70
+                    ldy       #TX.buried
+                    lbsr      WordE
+wbi1                 lda       EN.T,x
+                    cmpa      #132
+                    lbls      BMove
+                    lda       #BS.Appr
+                    lbsr      BSet
+                    lbra      BMove
+
+* to 40 px his side of you, in your lane; after 1.1 s (or there after
+*   0.4 s) the next move: every third a dig, close up a swing, else clods
+BAppr               lbsr      FaceHero
+                    ldd       #40*16              tx = your x - toward * 40
+                    tst       EN.Fc,x
+                    beq       wba1
+                    lbsr      NegD
+wba1                 pshs      d
+                    ldd       <hx
+                    subd      ,s++
+                    subd      EN.X,x
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #4*16
+                    bls       wba2
+                    ldd       #13
+                    tst       <tdx
+                    bpl       wba3
+                    ldd       #-13
+                    bra       wba3
+wba2                 ldd       #0
+wba3                 std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bls       wba4
+                    ldd       #10
+                    tst       <tdz
+                    bpl       wba5
+                    ldd       #-10
+                    bra       wba5
+wba4                 ldd       #0
+wba5                 std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #66
+                    bhi       wba7
+                    cmpa      #24
+                    lbls      BMove
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    lbhs      BMove
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #6*16
+                    lbhs      BMove
+wba7                 lbsr      EStop               the next move
+                    inc       <bn
+                    lda       <bn
+                    ldb       #3
+                    lbsr      Div                 A = n / 3: every third, n = 3 (n / 3)
+                    ldb       #3
+                    mul
+                    cmpb      <bn
+                    bne       wba8
+                    lda       #BS.Dig
+                    lbsr      BSet
+                    lbra      BMove
+wba8                 ldd       <hx                 close: swing; far: clods
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #70*16
+                    bhs       wba9
+                    ldd       <hz
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       wba9
+                    lda       #BS.Wind
+                    lbsr      BSet
+                    lbra      BMove
+wba9                 lda       #BS.ThrW
+                    lbsr      BSet
+                    lbra      BMove
+
+BWind               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #27
+                    lbls      BMove
+                    lda       #BS.Swing
+                    lbsr      BSet
+                    clr       <bhit
+                    lbra      BMove
+
+* the shovel: a lunge, and 3 to you if you're in front of him, close,
+*   in his lane and low enough
+BSwing              ldd       #0
+                    std       EN.VZ,x
+                    ldy       #0                  the lunge: 9 passes, then he stands
+                    lda       EN.T,x
+                    cmpa      #9
+                    bhs       wbw1
+                    ldd       #24
+                    lbsr      ByFace
+                    tfr       d,y
+wbw1                sty       EN.VX,x
+                    tst       <bhit
+                    bne       wbw5
+                    lda       EN.T,x
+                    cmpa      #13
+                    bhs       wbw5
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       wbw5
+                    ldd       <hh
+                    cmpd      #26*16
+                    bge       wbw5
+                    ldd       <hx                 in front of him, within 48
+                    subd      EN.X,x
+                    std       <tdx
+                    tst       EN.Fc,x
+                    beq       wbw2
+                    lbsr      NegD
+wbw2                 cmpd      #0
+                    ble       wbw5
+                    cmpd      #48*16
+                    bhs       wbw5
+                    inc       <bhit
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+wbw5                 lda       EN.T,x
+                    cmpa      #19
+                    lbls      BMove
+                    lda       #BS.Recov
+                    lbsr      BSet
+                    lbra      BMove
+
+BRecov              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #39
+                    lbls      BMove
+                    lda       #BS.Appr
+                    lbsr      BSet
+                    lbra      BMove
+
+BStag               ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #17
+                    lbls      BMove
+                    lda       #BS.Appr
+                    lbsr      BSet
+                    lbra      BMove
+
+BThrW               lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #21
+                    lbls      BMove
+                    lda       #BS.Throw
+                    lbsr      BSet
+                    lbsr      Fling
+                    ldx       <bslot
+                    lbra      BMove
+
+BThrow              lda       EN.T,x
+                    cmpa      #30
+                    lbls      BMove
+                    lda       #BS.Recov
+                    lbsr      BSet
+                    lbra      BMove
+
+BDig                lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #24
+                    lbls      BMove
+                    lda       #BS.Under
+                    lbsr      BSet
+                    ldd       EN.X,x
+                    std       <bmx
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <bmz
+                    std       <sz
+                    lda       #8
+                    lbsr      DirtXZ
+                    ldx       <bslot
+                    lbra      BMove
+
+* under the street: the mound comes at you (115 px/s, 60 in depth),
+*   kept on the screen; on you, or after 1.8 s, it rumbles
+BUnder              ldd       <hx
+                    subd      <bmx
+                    std       <tdx
+                    ldd       #31
+                    std       <tcap
+                    ldd       <tdx
+                    lbsr      Clamp
+                    addd      <bmx
+                    std       <bmx
+                    ldd       <hz
+                    subd      <bmz
+                    std       <tdz
+                    ldd       #16
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Clamp
+                    addd      <bmz
+                    std       <bmz
+                    ldd       <cam                within the screen: 20..300
+                    addd      #20
+                    lbsr      To124
+                    cmpd      <bmx
+                    ble       wbu1
+                    std       <bmx
+wbu1                 ldd       <cam
+                    addd      #300
+                    lbsr      To124
+                    cmpd      <bmx
+                    bge       wbu2
+                    std       <bmx
+wbu2                 lbsr      Rand                dust now and then
+                    cmpa      #26
+                    bhs       wbu3
+                    ldd       <bmx
+                    std       <sx
+                    ldd       <bmz
+                    std       <sz
+                    lda       #1
+                    lbsr      Puff
+                    ldx       <bslot
+wbu3                 ldd       <tdx                on you, or time's up: it rumbles
+                    lbsr      AbsD
+                    cmpd      #6*16
+                    bhs       wbu4
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #5*16
+                    blo       wbu5
+wbu4                 lda       EN.T,x
+                    cmpa      #108
+                    bls       wbu9
+wbu5                 lda       #BS.Rumble
+                    lbsr      BSet
+wbu9                 rts                           (no moving while he's under)
+
+BRumble             lbsr      Rand
+                    cmpa      #100
+                    bhs       wbr1x
+                    ldd       <bmx
+                    std       <sx
+                    ldd       <bmz
+                    std       <sz
+                    lda       #1
+                    lbsr      DirtXZ
+                    ldx       <bslot
+wbr1x                lda       EN.T,x
+                    cmpa      #30
+                    bls       wbr9x
+                    lda       #BS.Pop             up he comes
+                    lbsr      BSet
+                    ldd       <bmx
+                    std       EN.X,x
+                    std       <sx
+                    ldd       <bmz
+                    std       EN.Z,x
+                    std       <sz
+                    ldd       #61
+                    std       EN.VH,x
+                    lda       #12
+                    lbsr      DirtXZ
+                    lda       #10
+                    lbsr      Shk
+                    ldx       <bslot
+wbr9x                rts
+
+* bursting up: 3 to you if you're on top of him; down again, dizzy
+BPop                lda       EN.T,x
+                    cmpa      #12
+                    bhs       wbp1
+                    ldd       <hx
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #18*16
+                    bhs       wbp1
+                    ldd       <hz
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       wbp1
+                    ldd       <hh
+                    cmpd      #30*16
+                    bge       wbp1
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+wbp1                 lda       EN.T,x
+                    cmpa      #21
+                    lbls      BMove
+                    ldd       EN.H,x
+                    lbgt      BMove
+                    lda       #BS.Daze
+                    lbsr      BSet
+                    lda       #62
+                    ldy       #TX.dizzy
+                    lbsr      WordE
+                    lbra      BMove
+
+BDaze               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #108
+                    lbls      BMove
+                    lda       #BS.Appr
+                    lbsr      BSet
+                    lbra      BMove
+
+* KO'd: up and away (0.6 g); after 2 s he's gone, and the wave's done
+BKo                 ldd       EN.VH,x
+                    subd      #3
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    ldd       EN.X,x
+                    addd      EN.VX,x
+                    std       EN.X,x
+                    lda       EN.T,x
+                    cmpa      #120
+                    bls       wbk9x
+                    clr       EN.St,x
+wbk9x                rts
+
+* BMove - gravity (he lands from a pop), moving, kept in his lane band
+*   and on the screen (14..306)
+BMove               ldd       EN.VH,x
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    bgt       wbm1
+                    ldd       #0
+                    std       EN.VH,x
+wbm1                 std       EN.H,x
+                    ldd       EN.Z,x
+                    addd      EN.VZ,x
+                    bpl       wbm2
+                    ldd       #0
+wbm2                 cmpd      #ZMax*16
+                    ble       wbm3
+                    ldd       #ZMax*16
+wbm3                 std       EN.Z,x
+                    ldd       <cam
+                    addd      #14
+                    lbsr      To124
+                    std       <tmp
+                    ldd       EN.X,x
+                    addd      EN.VX,x
+                    cmpd      <tmp
+                    bge       wbm4
+                    ldd       <tmp
+wbm4                 pshs      d
+                    ldd       <tmp
+                    addd      #292*16
+                    cmpd      ,s
+                    bge       wbm5
+                    std       ,s
+wbm5                 puls      d
+                    std       EN.X,x
+                    rts
+
+* Clamp - D = a distance (12.4) -> D cut to +-tcap
+Clamp               tsta
+                    bmi       wcp1
+                    cmpd      <tcap
+                    bls       wcp9
+                    ldd       <tcap
+wcp9                 rts
+wcp1                 lbsr      NegD
+                    bsr       Clamp
+                    lbra      NegD
+
+* To124 - D (px) -> D (12.4)
+To124               lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    rts
+
+* DirtXZ - A = how many clods fly up from sx, sz (brawler.js dirt)
+DirtXZ              sta       <kcnt
+                    ldd       <sx
+                    pshs      d
+wdx1                 lda       #16
+                    lbsr      RandS
+                    addd      ,s
+                    std       <sx
+                    ldd       #2*16
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       wdx2
+                    ldd       #PR.clod
+                    std       PT.F,y
+                    lda       #54
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #19
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #48
+                    lbsr      RandN
+                    adda      #32
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+wdx2                 dec       <kcnt
+                    bne       wdx1
+                    puls      d
+                    std       <sx
+                    rts
+
+********************************************************************
+* Clods: three flung in an arc at you and either side of you
+*   (brawler.js flingClods: aimed to land in 0.7, 0.78, 0.86 s)
+********************************************************************
+Fling               leay      cl,u
+                    clr       <tmpi               k = 0, 1, 2
+wfl1                 ldx       <bslot
+                    lda       #1
+                    sta       CL.St,y
+                    ldd       #16*16              from his hand
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       CL.X,y
+                    ldd       EN.Z,x
+                    std       CL.Z,y
+                    ldd       #34*16
+                    std       CL.H,y
+                    ldb       <tmpi               T = 42 + 5k passes in the air
+                    lda       #5
+                    mul
+                    addb      #42
+                    stb       <tmpk
+                    ldb       <tmpi               the target: (k - 1) * 22 px along,
+                    lda       #22*16/2            (k - 1) * 10 deep, from you
+                    mul
+                    lslb
+                    rola                          D = k * 352 = k * 22 px
+                    subd      #22*16
+                    addd      <hx
+                    subd      CL.X,y
+                    lbsr      SDivT               vx = the way / T
+                    std       CL.VX,y
+                    ldb       <tmpi
+                    lda       #10*16/2
+                    mul
+                    lslb
+                    rola
+                    subd      #10*16
+                    addd      <hz
+                    subd      CL.Z,y
+                    lbsr      SDivT
+                    std       CL.VZ,y
+                    ldd       #34*16              vh = 2T - 544 / T (it falls 4 a pass)
+                    lbsr      SDivT
+                    pshs      d
+                    ldb       <tmpk
+                    clra
+                    lslb
+                    rola
+                    subd      ,s++
+                    std       CL.VH,y
+                    leay      CL.Size,y
+                    inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #NCl
+                    blo       wfl1
+                    rts
+
+* SDivT - D (signed) / tmpk (a small byte) -> D, signed.  Y is kept.
+SDivT               tsta
+                    bpl       wsd1x
+                    lbsr      NegD
+                    bsr       SDivT
+                    lbra      NegD
+wsd1x                ldx       #0
+wsd2x                cmpb      <tmpk
+                    bhs       wsd3x
+                    tsta
+                    beq       wsd4x
+wsd3x                subb      <tmpk
+                    sbca      #0
+                    leax      1,x
+                    bra       wsd2x
+wsd4x                tfr       x,d
+                    rts
+
+* Clods - one pass: they fly; one that reaches you hurts 2; one that
+*   lands breaks into dirt
+Clods               leax      cl,u
+                    lda       #NCl
+                    sta       <bloop
+wcd1                 tst       CL.St,x
+                    lbeq      wcd9
+                    ldd       CL.VH,x
+                    subd      #4
+                    std       CL.VH,x
+                    ldd       CL.X,x
+                    addd      CL.VX,x
+                    std       CL.X,x
+                    ldd       CL.Z,x
+                    addd      CL.VZ,x
+                    std       CL.Z,x
+                    ldd       CL.H,x
+                    addd      CL.VH,x
+                    std       CL.H,x
+                    ldd       CL.X,x              on him?
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       wcd3
+                    ldd       CL.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #9*16
+                    bhs       wcd3
+                    ldd       <hh
+                    subd      #2*16
+                    cmpd      CL.H,x
+                    bge       wcd3
+                    addd      #42*16
+                    cmpd      CL.H,x
+                    ble       wcd3
+                    ldd       CL.X,x
+                    std       <sx
+                    pshs      x
+                    lda       #2
+                    lbsr      HurtHero
+                    puls      x
+                    tsta
+                    bne       wcd8
+wcd3                 ldd       CL.H,x              landed: dirt
+                    bgt       wcd9
+                    ldd       CL.X,x
+                    std       <sx
+                    ldd       CL.Z,x
+                    std       <sz
+                    pshs      x
+                    lda       #2
+                    lbsr      Puff
+                    lda       #2
+                    lbsr      DirtXZ
+                    puls      x
+wcd8                 clr       CL.St,x
+wcd9                 leax      CL.Size,x
+                    dec       <bloop
+                    lbne      wcd1
+                    rts
+
+* ClodHit - his attack box (bx0..bx1, bh0..bh1, pixels) knocks clods
+*   in his lane out of the air.  X is kept.
+ClodHit             pshs      x
+                    leax      cl,u
+                    ldb       #NCl
+wch1                 tst       CL.St,x
+                    beq       wch2
+                    pshs      b
+                    ldd       CL.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #Lane*16
+                    bhs       wch1a
+                    ldd       CL.X,x
+                    lbsr      Asr4
+                    addd      #4
+                    cmpd      <bx0
+                    ble       wch1a
+                    subd      #8
+                    cmpd      <bx1
+                    bge       wch1a
+                    ldd       CL.H,x
+                    lbsr      Asr4
+                    addd      #4
+                    cmpd      <bh0
+                    ble       wch1a
+                    subd      #8
+                    cmpd      <bh1
+                    bge       wch1a
+                    clr       CL.St,x
+                    ldd       CL.X,x
+                    std       <sx
+                    ldd       CL.Z,x
+                    std       <sz
+                    pshs      x
+                    lda       #3
+                    lbsr      DirtXZ
+                    puls      x
+wch1a                puls      b
+wch2                 leax      CL.Size,x
+                    decb
+                    bne       wch1
+                    puls      x,pc
+
+********************************************************************
+* Drawing
+********************************************************************
+* BossFrame - X = him -> D = his frame (brawler.js bossImg)
+BossFrame           lda       <bst
+                    leay      BfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+BfTab               fdb       BfTalk-BfTab
+                    fdb       BfAppr-BfTab
+                    fdb       BfWind-BfTab
+                    fdb       BfSwing-BfTab
+                    fdb       BfIdle-BfTab
+                    fdb       BfHurt-BfTab
+                    fdb       BfWind-BfTab
+                    fdb       BfThrow-BfTab
+                    fdb       BfDig-BfTab
+                    fdb       BfDig-BfTab
+                    fdb       BfDig-BfTab
+                    fdb       BfPop-BfTab
+                    fdb       BfDaze-BfTab
+                    fdb       BfKo-BfTab
+BfTalk              lda       EN.T,x              talking, 6 a second
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #TB.talk-TB.First
+                    bra       bfx
+BfAppr              ldd       EN.VX,x
+                    bne       bfa1
+                    ldd       EN.VZ,x
+                    bne       bfa1
+BfIdle              lda       EN.An,x
+                    ldb       #20
+                    lbsr      Div
+                    anda      #1
+                    adda      #TB.idle-TB.First
+                    bra       bfx
+bfa1                lda       EN.An,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #TB.walk-TB.First
+                    bra       bfx
+BfWind              lda       #TB.windup-TB.First
+                    bra       bfx
+BfSwing             lda       #TB.swing-TB.First
+                    bra       bfx
+BfThrow             lda       #TB.throw-TB.First
+                    bra       bfx
+BfHurt              lda       #TB.hurt-TB.First
+                    bra       bfx
+BfDig               lda       #TB.dig-TB.First
+                    bra       bfx
+BfPop               lda       #TB.pop-TB.First
+                    bra       bfx
+BfDaze              lda       EN.T,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #TB.daze-TB.First
+                    bra       bfx
+BfKo                lda       #TB.ko-TB.First
+bfx                 tst       EN.Fc,x
+                    beq       bfx1
+                    adda      #TB.Mir
+bfx1                tfr       a,b
+                    clra
+                    addd      #TB.First
+                    rts
+
+* DrawBoss - X = him: the mound while he's under the street, else
+*   himself.  Exit: carry set if DrawEn should draw him itself
+DrawBoss            lda       <bst
+                    cmpa      #BS.Under
+                    beq       wdb1x
+                    cmpa      #BS.Rumble
+                    beq       wdb1x
+                    comb
+                    rts
+wdb1x                pshs      x
+                    ldb       <ticks+1            the mound heaves: faster as it rumbles
+                    lsrb
+                    lsrb
+                    cmpa      #BS.Rumble
+                    beq       wdb2x
+                    lsrb
+                    lsrb
+wdb2x                andb      #1
+                    clra
+                    addd      #PR.digm
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       <bmx
+                    ldb       <bst
+                    cmpb      #BS.Rumble
+                    bne       wdb3x
+                    ldb       <ticks+1            rumbling: it shakes a pixel each way
+                    andb      #2
+                    subb      #1
+                    sex
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    addd      <bmx
+                    bra       wdb4x
+wdb3x                ldd       <bmx
+wdb4x                std       <ex
+                    ldd       <bmz
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+                    andcc     #$FE
+                    rts
+
+* DrawCl - the clods in the air
+DrawCl              leax      cl,u
+                    lda       #NCl
+                    sta       <dloop
+wdc1x                tst       CL.St,x
+                    beq       wdc2x
+                    pshs      x
+                    ldd       #PR.clod
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #2
+                    sta       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       CL.X,x
+                    std       <ex
+                    ldd       CL.Z,x
+                    std       <ez
+                    ldd       CL.H,x
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+wdc2x                leax      CL.Size,x
+                    dec       <dloop
+                    bne       wdc1x
+                    rts

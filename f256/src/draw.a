@@ -99,6 +99,7 @@ dw0a
                     lbsr      DrawPt
                     lbsr      DrawPick
                     lbsr      DrawGrave
+                    lbsr      DrawCl
                     lbsr      SortDL
 * the HUD, titles and popups over everything, then everything else
 *   nearest first

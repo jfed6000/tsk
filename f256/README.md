@@ -23,47 +23,58 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 | `frames.bin` | Frame count, a 16-bit offset per frame, then per frame: cell count, and per cell dx, dy (signed, from the feet) and cell number. Mirrored frames are separate data (no flip bit) |
 | `clut_spr.bin`, `clut_tile.bin`, `clut_flash.bin` | 256 × B,G,R,A. `clut_flash` is the lightning-lit tile CLUT |
 | `src/tskassets.d` | Generated equates: sizes, counts, map widths and offsets, animation frame ranges (`HR.run`, `HR.run.N`, `HR.run.T`, `HR.Mir`, ...) |
-| `src/tsktabs.a` | Generated tables: `HitTab`, the hero's attack box (dx, dy, w, h from the feet) for each frame |
+| `src/tsktabs.a` | Generated tables: `HitTab`, the hero's attack box (dx, dy, w, h from the feet) for each frame; `GlyTab`, the HUD font as outlined 5x7 stamps; the HUD colours (`CI.*`) |
 
 CLUT plan: 0 sprites, 1 hit flash (all white), 2 afterimage (ghost), 3 tiles.
 
-Boot Hill comes to 576 tiles (3 sets, 144K), 551 sprite cells (551K) and 234 frames: the hero's 74, the
-skeleton's 19 and 24 effects (shadows, the impact star, sparks, dust, the loose skull, hat and bones, the bullet),
-each in both directions.
+Boot Hill comes to 576 tiles (3 sets, 144K), 825 sprite cells (825K) and 400 frames: the hero's 74, the skeleton's
+19, the dillo's 12, Two-Bit's 20 and 44 effects (each in both directions), 13 props and pickups, and 36 text frames
+(no mirrors).
 
 ## tsk: the game
 
 ```
-make                 # tsk (7.0K of the 40,192-byte budget; data area 8.8K) and tskview
+make                 # tsk (17.2K of the 40,192-byte budget; data area 11.2K) and tskview
 make install DSK=/absolute/path/to/image.dsk
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
-make mamebot         # the autopilot fighting skeletons in MAME, a snapshot every 6 frames
-python3 tools/hostrun.py --args bg --passes 3000 --every 60 --watch hst,hx,hhp,hlives --enemies
+make mamebot         # the autopilot playing the opening and the first waves in MAME
+make mameboss        # straight to Two-Bit (tsk kg) in MAME
+python3 tools/hostrun.py --args bg --passes 5000 --every 100 --watch phase,wavei,score --enemies --slow 80000
 ```
 
-On the machine: `chd /dd/TSK`, then `tsk` to play, `tsk d` for the demo, `tsk b` to watch the autopilot fight
-(`tsk bg`: he can't be hurt).
+On the machine: `chd /dd/TSK`, then `tsk` to play. Other letters can be combined:
+
+| Argument | Does |
+|---|---|
+| `d` | The scripted demo |
+| `b` | The autopilot plays |
+| `g` | Nothing hurts him |
+| `k` | Start at Two-Bit, skipping the opening and the waves |
 
 | Key | Does |
 |---|---|
 | Arrows | Walk (up and down move along the street's depth) |
 | Z or space | Jump; again in the air: the stomp |
-| X | Snap kick; three presses chain the combo. In the air: the flying kick. Back + X: the side kick |
+| X | Snap kick; three presses chain the combo. In the air: the flying kick. Back + X: the side kick. Over a weapon: pick it up; holding one: use it |
 | C | Side kick |
 | T | Taunt |
 | Q | Quit |
 
-Sprint 1 (2026-10-12): the hero on Boot Hill with every ground and air move, the camera, and the depth-sorted
+**Sprint 1** (2026-10-12): the hero on Boot Hill with every ground and air move, the camera, and the depth-sorted
 display list with his shadow.
 
-Sprint 2 (2026-10-13): the skeleton gunslingers. A gang of two or three claws up out of the ground whenever the
-street is empty (waves come in sprint 3), and the screen locks while they're about. They keep their distance, line up
-in your lane, aim (the eyes flare), fire, and reload after six. Kicks stagger them; the third of the combo, the side
-kick, the flying kick and the stomp knock them down, or knock the skull clean off: the headless body gropes for it,
-and you can kick the skull down the lane into its friends. Kick their bullets out of the air. Out of health they
-shatter into bones. Hits freeze the action for a moment (hitstop), flash the skeleton white and shake the screen.
-He has 16 health and three lives (no HUD yet: sprint 3). Verified on the host and in MAME; not yet run on the K2.
+**Sprint 2** (2026-10-13): the skeleton gunslingers and combat. Hitstop, the white hit flash and screen shake.
+
+**Sprint 3** (2026-10-14): all of Boot Hill.
+- **The opening:** he claws out of Ringo's grave and the hat hops onto his head.
+- **The stage:** four waves of skeletons and dillos, each locking the screen, then GO.
+- **Barrels:** beans, the bullwhip and the six-shooter.
+- **The HUD:** health, score, lives, weapon, the enemy's name and bar, and the combo. Popups and titles.
+- **Two-Bit:** the swing, the clods, the dig-tunnel-pop, and raising the dead at half health.
+- **The ending:** the clear, TO BE CONTINUED, or game over, and jump to play again.
+
+Verified on the host and in MAME; not yet run on the K2. Not yet ported: the grab and throw, sound.
 
 ## tskview
 
