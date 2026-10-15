@@ -1143,7 +1143,7 @@ T.buildSheet = function (A, labelled) {
     const kb = cellTotal; // 32x32 at 8bpp = 1K a cell
     const lines = [
       `HERO: ${frameTotal / 2} FRAMES, ${frameTotal} WITH MIRRORS, ${cellTotal} 32X32 CELLS = ${kb}K, MAX ${maxCells} SPRITES/FRAME`,
-      `SPRITE CLUT: ${CLUT.spr.colors.length - 1} OF 255    TILE CLUT: ${CLUT.bg.colors.length - 1} OF 255`,
+      `SPRITE CLUT: ${CLUT.spr.colors.length - 1} (ALL STAGES: EACH STAGE FITS 255)    TILE CLUT: ${CLUT.bg.colors.length - 1} OF 255`,
       `BACK MAP: ${A.stats.far.unique} TILES   MID MAP: ${A.stats.mid.unique} TILES   FRONT SET: ${A.tiles.list.length} TILES`,
       `BLUE SQUARES = 32X32 HARDWARE SPRITES   RED = ATTACK HITBOX`,
     ];
