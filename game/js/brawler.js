@@ -120,10 +120,16 @@ T.runBrawler = function (A) {
     cattledrive: {                               // level 4: on a longhorn along the trail, then Jackrabbit Jack's corral
       name: 'THE CATTLE DRIVE', sub: 'SUNUP', W: T.RANCH.W, gang: MANGY, next: null,
       art: () => T.buildRanch(VW, VH, FLOOR),
-      ride: { end: T.RANCH.GATE - 150,             // the camera's spot where the ride ends: WHOA!
+      // the ride (d = how far he's ridden): the first TREAD px the camera holds still and the trail runs under him (its
+      // first LOOP px, twice: ranch.js), then the camera rolls on to the corral; it ends at camera end: WHOA!
+      ride: { end: T.RANCH.GATE - 150, tread: 2 * T.RANCH.LOOP,
         spawns: [[40, 'rider', -1], [150, 'rider', 1], [300, 'rider', -1], [380, 'rider', 1], [520, 'rider', -1], [600, 'rider', 1],
-          [690, 'rider', -1], [800, 'rider', 1], [860, 'rider', -1], [960, 'rider', 1]] },
-      obstacles: [['rock', 380, 20], ['rock', 470, 62], ['fence', 560], ['rock', 700, 40], ['rock', 790, 14], ['fence', 900], ['rock', 1000, 70], ['rock', 1060, 30]],
+          [690, 'rider', -1], [800, 'rider', 1], [900, 'rider', -1], [1020, 'rider', 1], [1150, 'rider', -1], [1260, 'rider', 1],
+          [1400, 'rider', -1], [1480, 'rider', 1], [1600, 'rider', -1], [1700, 'rider', 1], [1820, 'rider', -1], [1900, 'rider', 1],
+          [2000, 'rider', -1], [2120, 'rider', 1], [2200, 'rider', -1]] },
+      obstacles: [['rock', 380, 20], ['rock', 470, 62], ['fence', 560], ['rock', 700, 40], ['rock', 790, 14], ['fence', 900], ['rock', 1000, 70],
+        ['rock', 1100, 30], ['fence', 1230], ['rock', 1340, 50], ['rock', 1420, 12], ['rock', 1520, 66], ['fence', 1650], ['rock', 1760, 36],
+        ['rock', 1840, 70], ['fence', 1960], ['rock', 2080, 24], ['rock', 2180, 58], ['fence', 2280], ['rock', 2340, 40]],
       waves: [
         { cam: 1150, gang: ['coyote', 'rattler', 'coyote', 'skel'] },               // at the corral gate, on foot
         { cam: 1712, boss: 'jack' },
@@ -211,8 +217,8 @@ T.runBrawler = function (A) {
     intro.hatOn = false;
     if (phase === 'intro') { player.x = 96; player.z = 34; }
     music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : name === 'ghosttown' ? 'deadman' : name === 'cattledrive' ? 'stampede' : 'title');
-    ride = S.ride ? { on: true, spawnI: 0 } : null; player.mounted = !!S.ride;
-    obstacles = (S.obstacles || []).map(([kind, x, z]) => ({ kind, x, z: z ?? 40, hit: false }));
+    ride = S.ride ? { on: true, spawnI: 0, d: 0 } : null; player.mounted = !!S.ride;
+    obstacles = (S.obstacles || []).map(([kind, d, z]) => ({ kind, d, x: d, z: z ?? 40, hit: false }));
     runners = []; stampede = [];
   }
 
@@ -513,7 +519,7 @@ T.runBrawler = function (A) {
         break;
     }
     p.x += p.vx * dt; p.z += p.vz * dt;
-    if (p.mounted && ride && ride.on) p.x += RIDE_V * dt;              // carried along at the gallop
+    if (p.mounted && ride && ride.on && !rideTread()) p.x += RIDE_V * dt;   // carried along at the gallop (when the camera moves)
     p.z = Math.max(0, Math.min(ZMAX, p.z));
     const lo = (lock ?? camX) + (p.mounted ? 24 : 10), hi = lock !== null ? lock + VW - 10 : p.mounted ? camX + VW - 30 : W - 10;
     p.x = Math.max(lo, Math.min(hi, p.x));
@@ -604,7 +610,10 @@ T.runBrawler = function (A) {
     const attackers = enemies.filter(e => ['windup', 'strike'].includes(e.state)).length;
     for (const e of enemies) {
       e.t += dt; e.flash -= dt; e.anim += dt; e.cd -= dt;
-      if (e.type === 'rider' && ride && ride.on && !death) e.x += RIDE_V * dt;   // keeping up at the gallop
+      if (ride && ride.on && !death) {
+        if (e.type === 'rider') { if (!rideTread()) e.x += RIDE_V * dt; }      // keeping up at the gallop
+        else if (rideTread() && e.state !== 'ko') e.x -= RIDE_V * dt;            // on foot on the treadmill: the trail carries him back
+      }
       const coy = e.type === 'coyote' || e.type === 'rider', skel = e.type === 'skel';
       switch (e.state) {
         case 'enter':
@@ -1214,12 +1223,14 @@ T.runBrawler = function (A) {
   }
   // the Cattle Drive: riders join the chase on a schedule; fences (every lane) and rocks (one lane) to jump; at the
   // corral the ride ends - WHOA! - and he's on foot. Horses and steers running loose; Jack's stampede.
+  const rideTread = () => ride && ride.on && ride.d < S.ride.tread;
   function updateRide(dt) {
     const p = player;
+    if (ride) for (const o of obstacles) o.x = o.d - (ride.d - camX);   // where the trail's put them
     if (ride && ride.on) {
       const sp = S.ride.spawns;
       const riders = enemies.filter(e => e.type === 'rider' && e.state !== 'ko').length;   // three in the saddle at most
-      if (ride.spawnI < sp.length && camX >= sp[ride.spawnI][0] && phase === 'play' && riders < 3) { const [, type, side] = sp[ride.spawnI++]; spawn(type, side, 0); }
+      if (ride.spawnI < sp.length && ride.d >= sp[ride.spawnI][0] && phase === 'play' && riders < 3) { const [, type, side] = sp[ride.spawnI++]; spawn(type, side, 0); }
       for (const e of enemies) if (e.x < camX - 70 && e.state !== 'ko') e.gone = true;   // left behind on the trail
       for (const o of obstacles) {
         if (o.hit || !p.mounted || death || p.h >= 14 || Math.abs(p.x - o.x) > 14) continue;
@@ -1236,7 +1247,7 @@ T.runBrawler = function (A) {
         for (const e of enemies) if (e.type === 'rider' && e.state !== 'ko') { e.state = 'leave'; e.t = 0; }
       }
     }
-    for (const r of runners) { r.x += r.vx * dt; if (r.x > camX + VW + 80 || r.x < camX - 80) r.gone = true; }
+    for (const r of runners) { r.x += (r.vx - (rideTread() ? RIDE_V : 0)) * dt; if (r.x > camX + VW + 80 || r.x < camX - 80) r.gone = true; }
     runners = runners.filter(r => !r.gone);
     for (const c of stampede) {                       // Jack's stampede: steers charging across the corral
       c.x += c.vx * dt;
@@ -1435,7 +1446,9 @@ T.runBrawler = function (A) {
       for (let x = off; x < VW; x += img.width) ctx.drawImage(src, x + sx, syy);
     };
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
-    layer(ART.far, cx * 0.25); layer(ART.mid, cx * 0.5); layer(ART.street, cx);
+    const bg = ride ? Math.min(ride.d, S.ride.tread) : 0;          // the ride: the sky layers keep going over the treadmill
+    layer(ART.far, (cx + bg) * 0.25); layer(ART.mid, (cx + bg) * 0.5);
+    layer(ART.street, ride && ride.d < S.ride.tread ? Math.floor(ride.d) % T.RANCH.LOOP : cx);
     for (let i = DL.length - 1; i >= 0; i--) {
       const d = DL[i]; if (d.dropped) continue;
       const img = d.clut ? T.variant(d.img, d.clut) : d.img;
@@ -1538,7 +1551,10 @@ T.runBrawler = function (A) {
       if (tumble.x > camX + VW + 30) { tumble = null; tumbleT = 6 + Math.random() * 8; }
     }
     if (S.dusk && Math.random() < dt * 2.5) parts.push({ k: 'mote', x: camX + Math.random() * VW, z: Math.random() * ZMAX, h: 20 + Math.random() * 90, vx: 8 + Math.random() * 10, vh: -3, life: 4, max: 4 });
-    if (ride && ride.on) { if (!death && phase === 'play') camX = Math.min(S.ride.end, camX + RIDE_V * dt); }   // the ride: the trail rolls by
+    if (ride && ride.on) {                         // the ride: the trail rolls by (under him first, then the camera goes)
+      if (!death && phase === 'play') ride.d += RIDE_V * dt;
+      camX = Math.max(0, Math.min(S.ride.end, ride.d - S.ride.tread));
+    }
     else {
       const target = lock !== null ? lock : Math.max(camX, Math.min(W - VW, player.x - VW * 0.45));
       camX += (target - camX) * Math.min(1, dt * 5);

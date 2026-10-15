@@ -13,7 +13,8 @@ const { PAL, CLUT } = T;
 const ell = (c, x, y, rx, ry) => { c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); };
 function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 
-T.RANCH = { W: 2032, GATE: 1250, SADDLE: 26 };   // the stage's width, the corral gate, how high he sits on the steer
+T.RANCH = { W: 2032, GATE: 1250, SADDLE: 26, LOOP: 640 };   // the stage's width, the corral gate, how high he sits on the
+                                                             // steer, and the trail's repeat (the ride runs over it twice first)
 
 T.buildRanch = function (VW, VH, FLOOR) {
   const L = {}, r = rng(19), R = T.RANCH;
@@ -63,10 +64,10 @@ T.buildRanch = function (VW, VH, FLOOR) {
   s.fillStyle = C.gr1; s.fillRect(0, BACK, W, FRONT - BACK);      // the grass at the back of the trail
   s.fillStyle = C.gr2; for (let i = 0; i < 500; i++) s.fillRect((r() * W) | 0, BACK + ((r() * (FRONT - BACK)) | 0), 1, 2);
   s.fillStyle = C.gr0; for (let i = 0; i < 300; i++) s.fillRect((r() * W) | 0, BACK + ((r() * (FRONT - BACK)) | 0), 2, 1);
-  for (let px = 6; px < R.GATE - 30; px += 48) {                  // the split-rail fence along the back
+  for (let px = 6; px < R.GATE - 30; px += 40) {                  // the split-rail fence along the back (40 px: the loop's a multiple)
     s.fillStyle = C.post; s.fillRect(px, 104, 4, 26);
-    s.fillStyle = C.rail1; s.fillRect(px, 110, 48, 3); s.fillRect(px, 120, 48, 3);
-    s.fillStyle = C.rail0; s.fillRect(px, 113, 48, 1); s.fillRect(px, 123, 48, 1);
+    s.fillStyle = C.rail1; s.fillRect(px, 110, 40, 3); s.fillRect(px, 120, 40, 3);
+    s.fillStyle = C.rail0; s.fillRect(px, 113, 40, 1); s.fillRect(px, 123, 40, 1);
   }
   // the corral: a gate of heavy posts, then rails all round
   const g = R.GATE;
@@ -84,6 +85,9 @@ T.buildRanch = function (VW, VH, FLOOR) {
   for (const y of [FRONT + 22, FRONT + 34, FRONT + 52, FRONT + 66]) { s.fillStyle = C.rut; s.fillRect(0, y, g, 1); }
   for (let i = 0; i < 400; i++) { const qx = (r() * W) | 0, qy = FRONT + 3 + ((r() * (VH - FRONT - 3)) | 0); s.fillStyle = r() < 0.5 ? C.dirt2 : C.rut; s.fillRect(qx, qy, 2, 1); }
   for (let i = 0; i < 120; i++) { const qx = (r() * g) | 0; s.fillStyle = C.gr1; s.fillRect(qx, VH - 6 - ((r() * 6) | 0), 1, 3); }
+  // the trail repeats every LOOP px up to the gate: the ride runs over its first LOOP twice before the camera moves
+  // (the tile map's scroll wraps there on the F256: no extra tiles)
+  s.drawImage(st, 0, 0, R.GATE - 40 - R.LOOP, VH, R.LOOP, 0, R.GATE - 40 - R.LOOP, VH);
   L.street = T.pixelize(st, C, null, CLUT.bg);
   return L;
 };
