@@ -290,7 +290,8 @@ T.runBrawler = function (A) {
       puff(p.x, p.z, 5, 38);
       for (const e of enemies) if (hittable(e) && Math.abs(e.x - p.x) < 120) { e.state = 'air'; e.vx = Math.sign(e.x - p.x || 1) * 160; e.vh = 200; e.t = 0; }
       if (boss && (boss.state === 'curl' || boss.state === 'roll')) { bSet('recover'); boss.vx = 0; }   // Dillon uncurls to wait
-      if (p.lives <= 1) { p.lives = 0; phase = 'over'; phaseT = 0; saveHi(); music('over'); popup(p.x, FLOOR + p.z - 60, 'GAME OVER', '#ff6b4a', 2, 9); return true; }
+      // no hats left (the hats are the spare lives): game over
+      if (p.lives <= 0) { phase = 'over'; phaseT = 0; saveHi(); music('over'); popup(p.x, FLOOR + p.z - 60, 'GAME OVER', '#ff6b4a', 2, 9); return true; }
       death = { t: 0, hat: null, caught: false, hop: 0 };
       popup(p.x, FLOOR + p.z - 56, 'DAGNABBIT!', '#ff6b4a', 2, 1.4);
     } else popup(p.x, FLOOR + p.z - 52, 'OUCH!', '#ff6b4a', 2);

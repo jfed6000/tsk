@@ -5,7 +5,7 @@
 *   catches it, gets up with it held high, and it goes on his head:
 *   "STILL KICKIN'!", full health, those near him blown back.  The gang
 *   hangs back meanwhile (attackers held at two, no aiming), the boss
-*   waits, and no wave starts.  On the last life he just lies there.
+*   waits, and no wave starts.  With no hats left he just lies there.
 *
 *   dhat: 0 = no hat yet, 1 = drifting down, 2 = in his hand, 3 = the hop
 *   onto his head.  The hat is at dhx (world px) and dhh (px up from the
@@ -51,10 +51,8 @@ xdi1                 clr       EB.St,y
                     leay      EB.Size,y
                     decb
                     bne       xdi1
-                    lda       <hlives
-                    cmpa      #1
-                    bhi       xdi2
-                    clr       <hlives             the last one
+                    tst       <hlives             no hats left (they're the spare lives): that's it
+                    bne       xdi2
                     comb
                     rts
 xdi2                 lda       #1

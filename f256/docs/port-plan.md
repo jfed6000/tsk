@@ -187,7 +187,7 @@ One program module, **`tsk`**, assembled from:
    it, gets up with it held high (`ST.GetUp`; the hat rides his hand, `HandTab` from the exporter), and it hops onto
    his head: "STILL KICKIN'!", full health, 2.2 s untouchable, those near him blown back. About 4 s in all.
    Meanwhile the gang hangs back (attackers held at two, no aiming), the boss waits (Dillon uncurls first), and no
-   wave starts. The last life: he topples and lies there, GAME OVER. `tsk f` (frail) makes any hit kill;
+   wave starts. With no hats left he topples and lies there, GAME OVER (the hats are the spare lives: three hats, four lives; until 2026-10-15 the game ended with one hat still showing). `tsk f` (frail) makes any hit kill;
    `make mamedeath` runs `tsk mkf`.
    - **Memory:** the 16 new hero frames and the hat bits add 96K of sprite cells: the peak is about 1.37 MB.
    - **Host fix:** `hostrun.py` mapped blocks at $D000, inside the module once it passed 20K ($8000 + 23K), so the
