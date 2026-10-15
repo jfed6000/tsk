@@ -75,16 +75,37 @@ T.runExport = function (A) {
   // ---------------------------------------------------------------- sprites: frames cut into 32x32 cells
   // Sprite banks: the shared cells (sprites.bin) stay loaded; each stage's own cells (spr_<stage>.bin) load at
   // cell OVL_BASE (a block boundary) when the stage starts, so only one stage's are in memory at once.
+  // the HUD's colours (CI.* in tsktabs.a): the 6809 draws with them, so they're shared sprite CLUT entries
+  const HUDCOLS = [['Out', T.PAL.out], ['Yel', '#ffd34a'], ['Crm', '#fff3c4'], ['Org', '#ff9d3c'], ['BarBk', '#5a1a14'], ['BarFg', '#e04a2a'], ['BarHi', '#ff9a6a']];
   const cellData = [], cellKeys = new Map(), frameRecs = [], groups = [];
   const banks = {};                                // stage key -> { cells: [], keys: Map }
   let bank = null, OVL_BASE = 0;
-  function addCell(bytes) {
-    const key = String.fromCharCode(...bytes);
-    let n = cellKeys.get(key);
-    if (n !== undefined) return n;
-    if (!bank) { n = cellData.length; cellKeys.set(key, n); cellData.push(bytes); return n; }
+  // The sprite palette: the browser's sprite CLUT holds every stage's colours (up to 1023). On the F256 the shared
+  // art's colours keep fixed entries, counting up from 1 (clut_spr.bin), and each stage bank's own count down from
+  // 255 (pal_<s>.bin: shared + that stage's, loaded with the stage): a cell's pixels are remapped here.
+  const SH = new Map(), shCols = [null], PB = {};
+  const shIdx = g => { let i = SH.get(g); if (i === undefined) { i = shCols.length; SH.set(g, i); shCols.push(T.CLUT.spr.colors[g]); } return i; };
+  const bkIdx = (k, g) => {
+    if (SH.has(g)) return SH.get(g);
+    const B = PB[k] || (PB[k] = { map: new Map(), cols: [] });
+    let i = B.map.get(g);
+    if (i === undefined) { i = 255 - B.cols.length; B.map.set(g, i); B.cols.push(T.CLUT.spr.colors[g]); }
+    return i;
+  };
+  function addCell(raw) {
+    if (!bank) {
+      const bytes = Uint8Array.from(raw, g => g ? shIdx(g) : 0), key = String.fromCharCode(...bytes);
+      let n = cellKeys.get(key);
+      if (n === undefined) { n = cellData.length; cellKeys.set(key, n); cellData.push(bytes); }
+      return n;
+    }
+    if (raw.every(g => !g || SH.has(g))) {       // the same as a shared cell (in shared colours): that one
+      const n = cellKeys.get(String.fromCharCode(...Uint8Array.from(raw, g => g ? SH.get(g) : 0)));
+      if (n !== undefined) return n;
+    }
     const ns = [].concat(bank).map(k => {        // (a group in two banks: its cells at the same place in each)
       const B = banks[k] || (banks[k] = { cells: [], keys: new Map() });
+      const bytes = Uint8Array.from(raw, g => g ? bkIdx(k, g) : 0), key = String.fromCharCode(...bytes);
       let m = B.keys.get(key);
       if (m === undefined) { m = OVL_BASE + B.cells.length; B.keys.set(key, m); B.cells.push(bytes); }
       return m;
@@ -97,7 +118,7 @@ T.runExport = function (A) {
     const ox2 = mirrored ? W - ox : ox;
     const rec = [];
     for (const c of T.cells(cv, mirrored)) {
-      const b = new Uint8Array(1024);
+      const b = new Uint16Array(1024);             // (global sprite CLUT indices: addCell maps them)
       for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) b[y * 32 + x] = at(c.x + x, c.y + y);
       rec.push({ dx: c.x - ox2, dy: c.y - oy, cell: addCell(b) });
     }
@@ -271,6 +292,14 @@ T.runExport = function (A) {
     return b;
   };
   T.bossBar('A', 1, 2);                          // the HUD bar's colours into the sprite CLUT before it's packed
+  for (const h of HUDCOLS) shIdx(T.CLUT.spr.add(h[1]));   // the HUD's colours (drawn by the 6809): shared entries
+  const NSH = shCols.length - 1, palOf = k => {   // a stage's whole sprite CLUT: the shared colours and its own
+    const cols = shCols.slice(); const B = PB[k] || { cols: [] };
+    if (NSH + B.cols.length > 255) throw new Error(`sprite CLUT: ${NSH} shared + ${B.cols.length} of stage ${k} > 255`);
+    for (let i = cols.length; i < 256; i++) cols.push(null);
+    B.cols.forEach((h, j) => { cols[255 - j] = h; });
+    return clut(cols);
+  };
   const F = T.rgb('#e4e0ff');
   const files = {
     'sprites.bin': sprites,
@@ -281,7 +310,8 @@ T.runExport = function (A) {
     'tiles_cd.bin': STAGES[3].tiles, 'maps_cd.bin': STAGES[3].mapBytes,
     'frames.bin': frames,
     'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD),
-    'clut_spr.bin': clut(T.CLUT.spr.colors),
+    'clut_spr.bin': clut(shCols),                 // the shared colours only (tskview; tsk loads a stage's pal_<s>)
+    'pal_bh.bin': palOf('BH'), 'pal_ms.bin': palOf('MS'), 'pal_gt.bin': palOf('GT'), 'pal_cd.bin': palOf('CD'),
     'clut_tile.bin': clut(T.CLUT.bg.colors),
     'clut_flash.bin': clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
     // Main Street's night falling (mainstreet.js shadeOf): 61 tile CLUTs, shade 0 .. 0.60 toward NIGHT in steps of
@@ -299,7 +329,7 @@ T.runExport = function (A) {
       return out;
     })(),
   };
-  if (T.CLUT.spr.colors.length > 256 || T.CLUT.bg.colors.length > 256) throw new Error('CLUT overflow');
+  if (T.CLUT.bg.colors.length > 256) throw new Error('CLUT overflow');
 
   // ---------------------------------------------------------------- the generated defs file
   const hex = (n, w = 4) => '$' + n.toString(16).toUpperCase().padStart(w, '0');
@@ -386,16 +416,16 @@ T.runExport = function (A) {
     for (let col = 0; col < 5; col++) TB.push(`                    fcb       ${[0, 1, 2, 3, 4, 5, 6].map(r => st[r * 5 + col]).join(',')}` + (col ? '' : `           '${c === 39 ? '`' : String.fromCharCode(c)}'`));
   }
   // the HUD's colours, as sprite CLUT indices
-  const ci = h => T.CLUT.spr.add(h);
+  const ci = h => shIdx(T.CLUT.spr.add(h));
   TB.push('', '* the HUD colours (sprite CLUT indices)');
-  for (const [n, h] of [['Out', T.PAL.out], ['Yel', '#ffd34a'], ['Crm', '#fff3c4'], ['Org', '#ff9d3c'], ['BarBk', '#5a1a14'], ['BarFg', '#e04a2a'], ['BarHi', '#ff9a6a']])
+  for (const [n, h] of HUDCOLS)
     TB.push(`CI.${n.padEnd(15)} equ       ${ci(h)}`);
   const tabs = TB.join('\n') + '\n';
 
   // stats for the report
   const report = { stages: STAGES.map(st => ({ key: st.key, tiles: st.n, sets: st.sets, maps: st.maps.map(m => ({ name: m.name, w: m.w })) })),
     cells: cellData.length, ovl: Object.fromEntries(Object.entries(banks).map(([k, b]) => [k, b.cells.length])), frames: frameRecs.length,
-    sprClut: T.CLUT.spr.colors.length - 1, tileClut: T.CLUT.bg.colors.length - 1, sizes: Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v.length])) };
+    sprClut: { shared: NSH, ...Object.fromEntries(Object.entries(PB).map(([k, b]) => [k, b.cols.length])) }, tileClut: T.CLUT.bg.colors.length - 1, sizes: Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v.length])) };
 
   // hand everything to export.py through the DOM, base64-encoded
   const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };

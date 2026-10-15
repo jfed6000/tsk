@@ -26,20 +26,22 @@ T.rgb = rgb;
 
 // ---------------------------------------------------------------- CLUTs (F256: 4 x 256 entries, index 0 transparent)
 // Hardware plan: CLUT 0 sprites, CLUT 1 sprite hit-flash, CLUT 2 sprite afterimage ("ghost"), CLUT 3 tile layers.
-function makeClut(name) {
+// The sprite CLUT here is every colour of every stage (up to 1023): the exporter splits it into the shared art's
+// colours (fixed) and each stage's own (loaded with the stage, export.js), and checks each stage fits the 255.
+function makeClut(name, max = 255) {
   return {
     name, colors: [null], index: new Map(),
     add(h) {
       h = h.toLowerCase();
       if (!this.index.has(h)) {
-        if (this.colors.length > 255) throw new Error('CLUT ' + name + ' full');
+        if (this.colors.length > max) throw new Error('CLUT ' + name + ' full');
         this.index.set(h, this.colors.length); this.colors.push(h);
       }
       return this.index.get(h);
     },
   };
 }
-const CLUT = T.CLUT = { spr: makeClut('sprites'), bg: makeClut('tiles') };
+const CLUT = T.CLUT = { spr: makeClut('sprites', 1023), bg: makeClut('tiles') };
 
 // Threshold alpha, snap every pixel to the given palette, optionally add a 1px outline.
 // The result keeps its CLUT indices in cv.idx, which is what the F256 converter will emit.
@@ -48,7 +50,7 @@ function pixelize(cv, palObj, outline, clut) {
   const W = cv.width, H = cv.height;
   const img = ctx.getImageData(0, 0, W, H), d = img.data;
   const pal = [...new Set(Object.values(palObj).map(h => h.toLowerCase()))].map(h => ({ c: rgb(h), i: clut.add(h) }));
-  const idx = new Uint8Array(W * H);
+  const idx = new Uint16Array(W * H);             // (the sprite CLUT's indices go past 255: see makeClut)
   const cache = new Map();
   for (let i = 0; i < W * H; i++) {
     const o = i * 4;
@@ -709,7 +711,7 @@ T.buildHatBits = function (hat) {
   return [0, 1, 2, 3, 4, 5, 6, 7].map(i => {
     const c = canvas(8, 8), sx = (i % 4) * 8, sy = (i >> 2) * 8;
     c.getContext('2d').drawImage(hat, sx, sy, 8, 8, 0, 0, 8, 8); c.ox = 4; c.oy = 4;
-    c.idx = new Uint8Array(64); for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) c.idx[y * 8 + x] = hat.idx[(sy + y) * hat.width + sx + x];
+    c.idx = new Uint16Array(64); for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) c.idx[y * 8 + x] = hat.idx[(sy + y) * hat.width + sx + x];
     return c;
   });
 };

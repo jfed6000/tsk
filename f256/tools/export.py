@@ -119,6 +119,7 @@ def previews():
     for n, prefix in enumerate(prefixes):           # every group: facing right, and below it mirrored (if it has mirrors)
         first, mir = D[f'{prefix}.First'], D[f'{prefix}.Mir']
         cur[0] = shared + ((ASSETS / f'spr_{banks[prefix]}.bin').read_bytes() if prefix in banks else b'')
+        sc[:] = clut(f'pal_{banks[prefix]}.bin' if prefix in banks else 'clut_spr.bin')   # (a stage's own colours)
         last = D[f'{prefixes[n + 1]}.First'] if n + 1 < len(prefixes) else nf
         cnt, rows = (mir, 2) if mir else (last - first, 1)
         tx = prefix == 'TX'

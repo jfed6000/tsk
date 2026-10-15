@@ -288,7 +288,15 @@ One program module, **`tsk`**, assembled from:
       `DMove`, `OnScreen`, `DSet` in boss.a) or in `stages.d` (the bosses' states and health, the ride's numbers).
     - **The host** (`hostrun.py`): the core at $8000, the stage module's slot at $6000, `F$Load`/`F$UnLink`
       answered; a second load without an unlink stops the run.
-13. The pad harness, co-op, the next stages.
+13. ✓ **A sprite palette per stage** *(2026-10-15)*: the browser's sprite CLUT holds every stage's colours (up to
+    1,023; pixel indices are 16-bit now), and the exporter splits it: the shared art's colours count up from entry 1
+    (`clut_spr.bin`), each stage bank's own count down from 255, and `pal_<s>.bin` is a stage's whole CLUT 0
+    (shared + its own), loaded by `LoadStage` into clublk's first K and written with `ClutK`. The HUD's colours
+    (`CI.*`) are shared entries. A stage's cell that matches a shared cell in shared colours still reuses it.
+    Today: 120 shared, the stages 8 (Boot Hill), 13 (Main Street), 41 (Ghost Town), 49 (the Cattle Drive) - 86
+    entries free on each stage. The exporter refuses a stage that doesn't fit; the previews (now coloured with each
+    stage's palette) came out pixel-identical, and MAME shows every stage right.
+14. The pad harness, co-op, the next stages.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

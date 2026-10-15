@@ -149,13 +149,14 @@ gi4                 clr       riding,u            (and no ride: on foot at the c
 gi3                 rts
 
 * LoadStage - stage's art, with nothing on the screen while it loads:
-*   the maps and sprites off, the tiles, maps and sprite overlay read in,
+*   the maps and sprites off, the tiles, maps, sprite overlay, frame
+*   records and sprite CLUT read in, its stage module linked,
 *   the tile sets and maps set up again.  Exit: carry = error in B
 LoadStage           lbsr      MapsOff
                     lbsr      ClearRecs
                     lbsr      PushRecs
                     ldx       stgp,u
-                    ldd       SR.Files,x          its three file names
+                    ldd       SR.Files,x          its file names: tiles, maps, sprites, frame records, palette, module
                     leay      StgTab,pcr
                     leax      d,y
                     pshs      x
@@ -189,6 +190,18 @@ LoadStage           lbsr      MapsOff
                     ldy       #FRR.Sh
                     lbsr      LoadFile
                     puls      x
+                    bcs       ls9
+                    bsr       NextName            pal_<s>.bin: its sprite CLUT (the shared colours and its own)
+                    pshs      x
+                    lda       clublk,u            (clublk's first K: CLUT 0's)
+                    ldb       #1
+                    ldy       #0
+                    lbsr      LoadFile
+                    bcs       ls8
+                    clrb
+                    ldy       #CLUT.Spr*256
+                    lbsr      ClutK
+ls8                 puls      x
                     bcs       ls9
                     bsr       NextName            its code: the stage module (stgmod.a)
                     lbsr      StgLoad
@@ -270,6 +283,8 @@ FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
                     fcc       /frr_bh.bin/
                     fcb       $0D
+                    fcc       /pal_bh.bin/
+                    fcb       $0D
                     fcb       $0D
 FileCD              fcc       /tiles_cd.bin/
                     fcb       $0D
@@ -278,6 +293,8 @@ FileCD              fcc       /tiles_cd.bin/
                     fcc       /spr_cd.bin/
                     fcb       $0D
                     fcc       /frr_cd.bin/
+                    fcb       $0D
+                    fcc       /pal_cd.bin/
                     fcb       $0D
                     fcc       /tskcd/
                     fcb       $0D
@@ -289,6 +306,8 @@ FileGT              fcc       /tiles_gt.bin/
                     fcb       $0D
                     fcc       /frr_gt.bin/
                     fcb       $0D
+                    fcc       /pal_gt.bin/
+                    fcb       $0D
                     fcc       /tskgt/
                     fcb       $0D
 FileMS              fcc       /tiles_ms.bin/
@@ -298,6 +317,8 @@ FileMS              fcc       /tiles_ms.bin/
                     fcc       /spr_ms.bin/
                     fcb       $0D
                     fcc       /frr_ms.bin/
+                    fcb       $0D
+                    fcc       /pal_ms.bin/
                     fcb       $0D
                     fcc       /tskms/
                     fcb       $0D

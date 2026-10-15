@@ -91,7 +91,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
    stampede; `tsk c`, `make mamecattle`. `tsk` 32.7K of 40,960, data 4.9K of 7,936.
 7. ✓ Stage modules on the F256 (2026-10-15, works on the K2, merged): each stage's
    own code is an 8K module loaded with the stage (`tskms`, `tskgt`, `tskcd`), so the core is 25.1K of 32,768 and
-   every new stage has a whole 8K of its own. Next on the F256 side: a per-stage sprite palette (236 of 255 colours
-   used).
+   every new stage has a whole 8K of its own. A sprite palette per stage followed (120 shared colours, each stage up to 86
+   more of its own free).
 8. The next stages from `story.md`: the Train Heist, the Mission, High Noon.
 9. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).

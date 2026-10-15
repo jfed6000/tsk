@@ -400,9 +400,9 @@ GlyTab
 
 * the HUD colours (sprite CLUT indices)
 CI.Out             equ       1
-CI.Yel             equ       84
-CI.Crm             equ       105
-CI.Org             equ       132
-CI.BarBk           equ       234
-CI.BarFg           equ       235
-CI.BarHi           equ       236
+CI.Yel             equ       85
+CI.Crm             equ       84
+CI.Org             equ       87
+CI.BarBk           equ       118
+CI.BarFg           equ       119
+CI.BarHi           equ       120
