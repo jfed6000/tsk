@@ -2296,20 +2296,21 @@ DrawEb              leax      eb,u
 db1                 tst       EB.St,x
                     beq       db9
                     pshs      x
-                    ldd       #FX.ebul
-                    tst       EB.VX,x
-                    bpl       db2
-                    addd      #FX.Mir
-db2                 ldb       EB.St,x             (2: Doc Gila's card, spinning)
-                    cmpb      #2
-                    bne       db2a
+                    lda       EB.St,x             2: Doc Gila's card, spinning
+                    cmpa      #2
+                    bne       db1a
                     ldb       <phaset+1
                     lsrb
                     lsrb
                     andb      #3
                     clra
                     addd      #GL.card
-db2a                std       <efrm
+                    bra       db2
+db1a                ldd       #FX.ebul            else a bullet, the way it flies
+                    tst       EB.VX,x
+                    bpl       db2
+                    addd      #FX.Mir
+db2                 std       <efrm
                     lda       #CTL.Spr
                     sta       <ectl
                     lda       #2
