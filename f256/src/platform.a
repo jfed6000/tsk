@@ -356,7 +356,7 @@ Alloc               ldx       #NTilBlk
                     bcs       alx
                     tfr       x,d
                     stb       <sprblk
-                    ldx       #2                  Main Street's dusk CLUTs (13K)
+                    ldx       #NDuskBlk           Main Street's dusk CLUTs (61 of them)
                     lbsr      GfxAlloc
                     bcs       alx
                     tfr       x,d
@@ -406,8 +406,8 @@ LoadAll             lda       <sprblk             the shared sprites (a stage's 
                     leax      FSprites,pcr
                     lbsr      LoadFile
                     lbcs      lax
-                    lda       duskblk,u           Main Street's 13 shades of night
-                    ldb       #2
+                    lda       duskblk,u           Main Street's 61 shades of night
+                    ldb       #NDuskBlk
                     ldy       #0
                     leax      FDusk,pcr
                     lbsr      LoadFile
@@ -856,7 +856,7 @@ cu3                 lda       #NTilBlk            and only then free the blocks
                     lda       #MU.N
                     ldb       <musblk
                     lbsr      GfxFree
-                    lda       #2
+                    lda       #NDuskBlk
                     ldb       duskblk,u
                     lbsr      GfxFree
                     clr       duskblk,u

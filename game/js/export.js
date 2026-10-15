@@ -209,16 +209,17 @@ T.runExport = function (A) {
     'clut_spr.bin': clut(T.CLUT.spr.colors),
     'clut_tile.bin': clut(T.CLUT.bg.colors),
     'clut_flash.bin': clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
-    // Main Street's night falling (mainstreet.js shadeOf): 13 tile CLUTs, shade 0/20 .. 12/20 toward NIGHT; the
+    // Main Street's night falling (mainstreet.js shadeOf): 61 tile CLUTs, shade 0 .. 0.60 toward NIGHT in steps of
+    // 0.01 (fine enough that the F256 can fade, as the browser does; 13 steps of 0.05 looked abrupt on the K2). The
     // lights (windows, lamps, the sun) keep their colour. 1K each, back to back.
     'clut_dusk.bin': (() => {
-      const out = new Uint8Array(13 * 1024);
-      for (let st = 0; st <= 12; st++) out.set(clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * (1 - st / 20) + T.NIGHT[j] * st / 20))), st * 1024);
+      const N = 61, out = new Uint8Array(N * 1024);
+      for (let st = 0; st < N; st++) out.set(clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * (1 - st / 100) + T.NIGHT[j] * st / 100))), st * 1024);
       // the lights: unshaded in every step
       T.CLUT.bg.colors.forEach((h, i) => {
         if (!h || !T.MAIN_STREET_LIGHTS.has(h.toLowerCase())) return;
         const [r, g, bl] = T.rgb(h);
-        for (let st = 0; st <= 12; st++) { const o = st * 1024 + i * 4; out[o] = bl; out[o + 1] = g; out[o + 2] = r; }
+        for (let st = 0; st < N; st++) { const o = st * 1024 + i * 4; out[o] = bl; out[o + 1] = g; out[o + 2] = r; }
       });
       return out;
     })(),

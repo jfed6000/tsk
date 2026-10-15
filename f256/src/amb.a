@@ -3,13 +3,16 @@
 *   motes): night falling a step each wave, a tumbleweed now and then,
 *   dust motes drifting in the low sun.
 *
-*   Night falling is a CLUT fade: clut_dusk.bin holds the tile CLUT at 13
-*   shades toward night (the exporter keeps the lit windows, lamps and the
-*   sun as they are), and every few passes the next shade is written over
-*   CLUT 3.  The browser eases toward each wave's darkness; here it steps.
+*   Night falling is a CLUT fade: clut_dusk.bin holds the tile CLUT at 61
+*   shades toward night, 1% apart (the exporter keeps the lit windows,
+*   lamps and the sun as they are), and every few passes the next shade is
+*   written over CLUT 3, so a wave's darkening creeps in over a second and
+*   a half, as the browser eases it.  (13 shades of 5% stepped visibly on
+*   the K2.)
 ********************************************************************
 
-DuskEvery           equ       12                  passes a step: about 0.6 of the way a second, as the browser
+DuskEvery           equ       7                   passes a shade: 12 shades (a wave's change) in 1.4 s
+NDuskBlk            equ       8                   61 shades of 1K
 TwG                 equ       3                   the tumbleweed falls at half gravity
 
 * Amb - one pass (not in a hitstop).  Exit: carry = error in B
@@ -38,14 +41,15 @@ ds1x                leax      DarkTab,pcr
                     bra       ds3x
 ds2x                incb
 ds3x                stb       dstep,u
-* DuskClut - CLUT 3 = shade dstep (blocks: shades 0-7 in the first, 8-12
-*   in the second, 1K each).  Exit: carry = error in B
+* DuskClut - CLUT 3 = shade dstep (eight 1K shades a block).
+*   Exit: carry = error in B
 DuskClut            ldb       dstep,u
                     lda       duskblk,u
-                    cmpb      #8
+dc0x                cmpb      #8
                     blo       dc1x
                     inca
                     subb      #8
+                    bra       dc0x
 dc1x                pshs      b
                     tfr       a,b
                     clra
@@ -78,8 +82,8 @@ dc9x                rts
 am9                 andcc     #$FE
                     rts
 
-* the darkness of each wave, in shades of twenty: 0, .12, .24, .36, .48, .6
-DarkTab             fcb       0,2,5,7,10,12
+* the darkness of each wave, in hundredths: 0, .12, .24, .36, .48, .6
+DarkTab             fcb       0,12,24,36,48,60
 
 * Tumble - a tumbleweed bowls through every 6-14 s, bouncing
 Tumble              tst       twst,u

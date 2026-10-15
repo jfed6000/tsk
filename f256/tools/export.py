@@ -84,7 +84,7 @@ def previews():
     for sk, sf in (('BH', 'bh'), ('MS', 'ms')):
         tiles = (ASSETS / f'tiles_{sf}.bin').read_bytes()
         maps = (ASSETS / f'maps_{sf}.bin').read_bytes()
-        for scroll, shade in ((0, None), (800, None)) + (((1200, 12),) if sk == 'MS' else ()):
+        for scroll, shade in ((0, None), (800, None)) + (((1200, 60),) if sk == 'MS' else ()):
             if shade is not None:
                 tc = [(dusk[shade * 1024 + i * 4 + 2], dusk[shade * 1024 + i * 4 + 1], dusk[shade * 1024 + i * 4], 255) for i in range(256)]
             img = Image.new('RGBA', (320, 240), (0, 0, 0, 255))

@@ -150,14 +150,16 @@ One program module, **`tsk`**, assembled from:
      `stage.a`'s `LoadStage` reads them into the same blocks when a stage starts (the screen blank meanwhile).
    - **Sprite banks:** the shared cells (hero, skeleton, dillo, effects, props, text: 732) stay loaded; each stage's
      own (Boot Hill's Two-Bit 113, Main Street's mangy gang and tumbleweed 88) load at cell `SPR.Base`.
-   - **Memory:** at the most about 1.09 MB: shared sprites 736K, an overlay 113K, a stage's tiles 166K, maps,
-     dusk CLUTs, music, HUD cells. That's over port-guide's 1 MB line, flagged to the user; the K2 has 2 MB.
+   - **Memory:** at the most about 1.14 MB: shared sprites 736K, an overlay 113K, a stage's tiles 166K, maps,
+     dusk CLUTs (61K), music, HUD cells. That's over port-guide's 1 MB line, flagged to the user; the K2 has 2 MB.
    - **A stage table** (`StgTab`): width, maps, tile sets, flags (the opening, lightning, dusk), song, waves,
      barrels, titles, files. `tsk m` starts on Main Street.
    - **The mangy coyote** (`TY.Coy`): walks in, takes a spot 36 px beside you, winds up 0.42 s, swings (2 to you if
      you're in front of it, within 44 px). 9 health, 300 points. Skeletons walk in on Main Street rather than
      rise.
-   - **Night falls** a step each wave: 13 tile CLUTs from the exporter (the lights kept lit), stepped over CLUT 3.
+   - **Night falls** with each wave: 61 tile CLUTs from the exporter, 1% apart (the lights kept lit), faded over
+     CLUT 3 a shade every 8 passes, so a wave's change creeps in over about 1.6 s. The first cut's 13 steps of 5%
+     looked abrupt on the K2.
      Tumbleweeds and dust motes in the low sun (`amb.a`).
    - **Music:** Main Street plays "Graveyard Boogie".
    - **Cost:** the worst pass in a whole game is now 77K cycles. Two-Bit's KO takes his gang down one a pass;
