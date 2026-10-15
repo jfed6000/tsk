@@ -199,6 +199,7 @@ function sfx(k) {
     case 'rattle': for (let i = 0; i < 7; i++) noise(0.035, 0.16, 'highpass', 3500, 5000, i * 0.055); break;   // a rattler coiling
     case 'card': noise(0.05, 0.2, 'bandpass', 2600, 1200); tone('square', 1400, 900, 0.04, 0.03); break;    // a card flicked
     case 'whistle': for (const [f, d, l] of [[466, 0, 0.5], [587, 0, 0.5], [698, 0, 0.5], [466, 0.6, 1.1], [587, 0.6, 1.1], [698, 0.6, 1.1]]) tone('sawtooth', f, f * 0.96, l, 0.07, d); break;   // the train's whistle: a tunnel coming
+    case 'boom': noise(0.9, 0.6, 'lowpass', 1800, 60); tone('sine', 90, 30, 0.6, 0.4); break;   // dynamite
     case 'roar': noise(1.6, 0.5, 'lowpass', 700, 90); tone('sine', 70, 40, 1.2, 0.3); break;    // into the tunnel
   }
 }
