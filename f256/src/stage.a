@@ -52,8 +52,11 @@ StageSet            sta       stgn,u
                     leax      StgTab,pcr
                     leax      d,x
                     stx       stgp,u
-                    ldd       SR.W,x              its width, and the stops it sets
-                    std       levw,u
+                    ldd       SR.W,x              its width, and the stops it sets: at most MaxW,
+                    cmpd      #MaxW               the most a 12.4 position holds signed (2047 px).
+                    bls       ss0x                Main Street is 2400 px wide, but its last wave
+                    ldd       #MaxW               is at 1660 and nothing goes past ~2000 in play
+ss0x                std       levw,u
                     subd      #320
                     lbsr      To124
                     std       cammax,u
@@ -187,6 +190,7 @@ SG.Intro            equ       1                   the opening, the big title
 SG.Light            equ       2                   lightning
 SG.Dusk             equ       4                   night falls, wave by wave
 NOvlBlk             equ       (SPR.Ovl+7)/8
+MaxW                equ       2032                (x 16 = 32512: under 32767, so signed compares work)
 
 StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BH.MAP0.W,BH.MAP0.Of,BH.MAP1.W,BH.MAP1.Of,BH.MAP2.W,BH.MAP2.Of

@@ -30,8 +30,11 @@ One program module, **`tsk`**, assembled from:
 ## Numbers
 
 - **One pass per 60 Hz tick** (`F$Sleep` X = 2). If passes start overrunning, move to the SOL clock (port-guide §12.2).
-- **Fixed point 12.4** for positions and velocities: 16-bit words, 4 fraction bits. x covers 0-4095 px (a stage is at
-  most 2400), z is 0-80, h is height above the floor.
+- **Fixed point 12.4** for positions and velocities: 16-bit words, 4 fraction bits. z is 0-80, h is height above the
+  floor. **x is compared signed, so it holds -2048..2047 px**: a stage's working width is capped at 2032 px
+  (`stage.a` MaxW). Main Street is 2400 px of art, but its last wave is at 1660 and nothing goes past ~2000 in play.
+  Its full width overflowed the hero's right-hand stop, which flung him to the end of the street as each wave
+  cleared (fixed 2026-10-15). A longer stage needs x made unsigned, or kept relative to the camera.
 - Browser constants (per second, at 120 Hz) convert to per-tick 12.4:
 
   | | Browser | Per tick | 12.4 |
