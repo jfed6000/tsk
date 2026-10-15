@@ -1,0 +1,1330 @@
+********************************************************************
+* sting.a - Sting, the scorpion with too much dynamite: the Train
+*   Heist's boss (brawler.js updateSting, tossStick, explode, the guard
+*   in hitE).  Down off the engine's cab: NOBODY GETS OFF THIS TRAIN!  His
+*   pincers guard his front: a kick from in front glances off (CLANK!)
+*   unless he's open.  The tail sting (cocked, a glint: jump it; a miss
+*   sticks it in the roof - open), the pinch up close, and dynamite every
+*   third move (every other below half health): he backs off, lights it on
+*   his cigar and lobs it where you stand - 1 stick, 2 below three
+*   quarters, 3 below half, 4 below a quarter.  Kick one back: 6, dizzy;
+*   hit him lighting one: he drops it; his own only singe him.  LIGHT 'EM
+*   ALL! at half: five.  Flat for the tunnels; KO'd, his bandolier goes up.
+*   bkind 4; his state numbers line up with Dillon's where boss.a's shared
+*   code tests them (stages.d SS.*).
+********************************************************************
+
+StickG              equ       4                   0.8 g on a stick, 12.4 a pass
+StickH              equ       30*16               lobbed from 30 px up
+
+StartSting          lbsr      NewSlot
+                    bcs       zst9
+                    stx       <bslot
+                    lda       #4
+                    sta       bkind,u
+                    lda       #TY.Boss
+                    sta       EN.Ty,x
+                    lda       #ES.BossX
+                    sta       EN.St,x
+                    lda       #StHp
+                    sta       EN.Hp,x
+                    lda       #1
+                    sta       EN.Fc,x
+                    ldd       <cam
+                    addd      #250
+                    lbsr      To124
+                    std       EN.X,x
+                    ldd       #24*16
+                    std       EN.Z,x
+                    ldd       #70*16              down off the cab
+                    std       EN.H,x
+                    ldd       #-16
+                    std       EN.VH,x
+                    clr       <bst
+                    clr       <bn
+                    clr       <bsaid
+                    clr       <bsum
+                    clr       ssalvo,u
+                    clr       sglint,u
+                    clr       shitd,u
+                    clr       sclank,u
+                    clr       sblast,u
+zst9                rts
+
+* SSet - A = his state: its clock from 0; not hittable talking or KO'd
+SSet                ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.BossX
+                    cmpa      #SS.Intro
+                    beq       zss1
+                    cmpa      #SS.Ko
+                    beq       zss1
+                    ldb       #ES.Boss
+zss1                stb       EN.St,x
+                    rts
+
+* ZLeft - X = him: carry set if you're to his left
+ZLeft              ldd       <hx
+                    cmpd      EN.X,x
+                    blt       ztw1
+                    andcc     #$FE
+                    rts
+ztw1                orcc      #1
+                    rts
+
+* Ahead - X = him: carry clear if you're in front of him (the way he faces)
+Ahead               bsr       ZLeft
+                    bcs       zah1
+                    tst       EN.Fc,x             right of him: in front if he faces right
+                    beq       zah8
+                    bra       zah9
+zah1                tst       EN.Fc,x
+                    bne       zah8
+zah9                orcc      #1
+                    rts
+zah8                andcc     #$FE
+                    rts
+
+* Within - X = him, D = a reach (12.4): carry clear if you're in his lane
+*   (10 px) and in front of him within it
+Within              std       <tmp
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       zwi8
+                    bsr       Ahead
+                    bcs       zwi8
+                    ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      <tmp
+                    bhs       zwi8
+                    andcc     #$FE
+                    rts
+zwi8                orcc      #1
+                    rts
+
+* TunNear - carry set while he should be flat: TUNNEL!'s up, or the mouth
+*   is still to pass over him
+TunNear             lda       tun,u
+                    cmpa      #TN.Warn
+                    beq       ztn8
+                    cmpa      #TN.Mouth
+                    bne       ztn9
+                    lbsr      Cam16
+                    addd      tunx,u
+                    addd      #30*16
+                    cmpd      EN.X,x
+                    bgt       ztn8
+ztn9                andcc     #$FE
+                    rts
+ztn8                orcc      #1
+                    rts
+
+********************************************************************
+* StingStep - X = him: one pass
+********************************************************************
+StingStep           stx       <bslot
+                    lda       sclank,u
+                    beq       zs1
+                    dec       sclank,u
+zs1                 lda       <bst
+                    cmpa      #SS.Ko
+                    beq       zs2
+                    cmpa      #SS.Intro
+                    beq       zs2
+                    cmpa      #SS.Daze
+                    beq       zs2
+                    cmpa      #SS.Duck
+                    beq       zs2
+                    bsr       TunNear             (he knows this line)
+                    bcc       zs2
+                    lda       #SS.Duck
+                    lbsr      SSet
+                    lbsr      EStop
+zs2                 lda       <bst
+                    leay      SsTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+SsTab               fdb       ZsIntro-SsTab
+                    fdb       ZsAppr-SsTab
+                    fdb       ZsPinchW-SsTab
+                    fdb       ZsPinch-SsTab
+                    fdb       ZsRecov-SsTab
+                    fdb       ZsStag-SsTab
+                    fdb       ZsDuck-SsTab
+                    fdb       ZsRetreat-SsTab
+                    fdb       ZsDaze-SsTab
+                    fdb       ZsKo-SsTab
+                    fdb       ZsWindUp-SsTab
+                    fdb       ZsSting-SsTab
+                    fdb       ZsStuck-SsTab
+                    fdb       ZsLight-SsTab
+                    fdb       ZsToss-SsTab
+
+ZsIntro              ldd       EN.H,x              down off the cab
+                    beq       zin2
+                    ldd       EN.VH,x
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    bgt       zin9
+                    ldd       #0
+                    std       EN.H,x
+                    std       EN.VH,x
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #6
+                    lbsr      Puff
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    lda       #8
+                    lbsr      Shk
+                    ldx       <bslot
+                    clr       EN.T,x
+zin9                lbra      DMove
+zin2                lbsr      FaceHero
+                    lbsr      EStop
+                    tst       <bsaid
+                    bne       zin3
+                    lda       EN.T,x
+                    cmpa      #30
+                    blo       zin3
+                    inc       <bsaid
+                    lda       #66
+                    ldy       #TX.nobody
+                    lbsr      WordE
+zin3                lda       EN.T,x
+                    cmpa      #168
+                    lbls      DMove
+                    lda       #SS.Appr
+                    lbsr      SSet
+                    lbra      DMove
+
+* in close, in your lane; then a move: dynamite every third (every other
+*   below half health, or if he can't get close), else the sting or the
+*   pinch, turn about
+ZsAppr               lbsr      FaceHero
+                    tst       ssalvo,u            LIGHT 'EM ALL! first
+                    beq       zap0
+                    lbsr      EStop
+                    lbra      Dyn
+zap0                lbsr      ZLeft              to 46 px short of you, his side of you
+                    ldd       #46*16
+                    bcs       zap1
+                    lbsr      NegD
+zap1                addd      <hx
+                    subd      EN.X,x
+                    std       <tmp
+                    lbsr      AbsD
+                    ldx       #0
+                    cmpd      #4*16
+                    bls       zap2
+                    ldx       #14                 52 px/s
+                    tst       <tmp
+                    bpl       zap2
+                    ldx       #-14
+zap2                pshs      x
+                    ldx       <bslot
+                    puls      d
+                    std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tmp
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bhi       zap3
+                    ldd       #0
+                    bra       zap4
+zap3                ldd       #9                  34 px/s
+                    tst       <tmp
+                    bpl       zap4
+                    ldd       #-9
+zap4                std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #48
+                    lbls      DMove
+                    inc       <bn
+                    clr       <tmpf               close?
+                    ldd       #58*16
+                    lbsr      Within
+                    bcs       zap5
+                    inc       <tmpf
+zap5                lda       EN.Hp,x             dynamite: every third move, every other below half
+                    ldb       #3
+                    cmpa      #StHp/2
+                    bhs       zap6
+                    ldb       #2
+zap6                pshs      b
+                    lda       <bn
+                    lbsr      Div                 bn / k, then * k: bn again if it's a multiple
+                    puls      b
+                    mul
+                    cmpb      <bn
+                    beq       zap7
+                    tst       <tmpf
+                    bne       zap8
+                    lda       EN.T,x              can't get close: dynamite anyway
+                    cmpa      #144
+                    bls       zap9
+zap7                lbsr      EStop
+                    lbra      Dyn
+zap8                lbsr      EStop
+                    lda       #SS.WindUp
+                    ldb       <bn
+                    lsrb
+                    bcs       zap8a
+                    lda       #SS.PinchW
+zap8a               lbsr      SSet
+                    lbra      DMove
+zap9                lda       #30                 (and look again in a moment)
+                    sta       EN.T,x
+                    lbra      DMove
+
+* Dyn - dynamite: back off first if he's close, then light up
+Dyn                 ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #80*16
+                    bhs       zdy1
+                    lda       #SS.Retreat
+                    lbsr      SSet
+                    lbra      DMove
+zdy1                lda       #SS.Light
+                    lbsr      SSet
+                    lda       #SF.Shell
+                    lbsr      Sfx
+                    lbra      DMove
+
+ZsPinchW             lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #19
+                    lbls      DMove
+                    clr       shitd,u
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #SS.Pinch
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsPinch              lbsr      EStop               the snap: 2, up close in front
+                    tst       shitd,u
+                    bne       zpi1
+                    lda       EN.T,x
+                    cmpa      #9
+                    bhs       zpi1
+                    ldd       <hh
+                    cmpd      #30*16
+                    bge       zpi1
+                    ldd       #50*16
+                    lbsr      Within
+                    bcs       zpi1
+                    inc       shitd,u
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #2
+                    lbsr      HurtHero
+                    ldx       <bslot
+zpi1                lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #SS.Recov
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsWindUp             lbsr      EStop               the tail cocked; the glint: it's coming
+                    lbsr      FaceHero
+                    tst       sglint,u
+                    bne       zwu1
+                    lda       EN.T,x
+                    cmpa      #21
+                    blo       zwu1
+                    inc       sglint,u
+                    lda       #SF.Shell
+                    lbsr      Sfx
+                    ldd       #-6*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       #56*16
+                    std       <sh
+                    clra
+                    lbsr      Spark
+                    ldx       <bslot
+zwu1                lda       EN.T,x
+                    cmpa      #39
+                    lbls      DMove
+                    clr       shitd,u
+                    clr       sglint,u
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #SS.Sting
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsSting              lbsr      EStop               low and long in front of him: 3 (jump it)
+                    tst       shitd,u
+                    bne       zsg1
+                    lda       EN.T,x
+                    cmpa      #10
+                    bhs       zsg1
+                    ldd       <hh
+                    cmpd      #22*16
+                    bge       zsg1
+                    ldd       #62*16
+                    lbsr      Within
+                    bcs       zsg1
+                    inc       shitd,u
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    tsta
+                    beq       zsg0
+                    ldx       #TX.stung
+                    lda       #62
+                    lbsr      WordH
+zsg0                ldx       <bslot
+zsg1                lda       EN.T,x
+                    cmpa      #15
+                    lbls      DMove
+                    tst       shitd,u
+                    beq       zsg2
+                    lda       #SS.Recov
+                    lbsr      SSet
+                    lbra      DMove
+zsg2                lda       #SS.Stuck           a miss: stuck in the roof
+                    lbsr      SSet
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    lbra      DMove
+
+ZsStuck              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #60
+                    lbls      DMove
+                    lda       #SS.Recov
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsRetreat            lbsr      FaceHero            a quick scuttle back, out of his own blast
+                    lbsr      ZLeft
+                    ldd       #40                 150 px/s, away from you
+                    bcs       zrt1
+                    lbsr      NegD
+zrt1                std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #30
+                    bhs       zrt2
+                    ldd       EN.X,x
+                    lbsr      OnScreen            (a wall behind: light up now)
+                    lbcc      DMove
+zrt2                lbsr      EStop
+                    lda       #SS.Light
+                    lbsr      SSet
+                    lda       #SF.Shell
+                    lbsr      Sfx
+                    lbra      DMove
+
+ZsLight              lbsr      EStop               a stick to the cigar ...
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #45
+                    lbls      DMove
+                    lbsr      Throw               ... and away
+                    ldx       <bslot
+                    lda       #SS.Toss
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsToss               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #24
+                    lbls      DMove
+                    lda       #SS.Recov
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsRecov              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #45
+                    lbls      DMove
+                    lda       #SS.Appr
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsStag               ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #SS.Appr
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsDaze               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #96
+                    lbls      DMove
+                    lda       #SS.Appr
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsDuck               lbsr      EStop               flat till the mouth's gone over him
+                    lbsr      TunNear
+                    lbcs      DMove
+                    lda       #SS.Appr
+                    lbsr      SSet
+                    lbra      DMove
+
+ZsKo                 lda       EN.T,x              his bandolier goes up: three bangs, blown off
+                    cmpa      #1
+                    bhi       zko9
+                    leay      stk,u               (his sticks gone)
+                    ldb       #NStk
+zko1                clr       SK.On,y
+                    leay      SK.Size,y
+                    decb
+                    bne       zko1
+                    ldd       #-16*16
+                    bsr       Bang
+                    ldd       #0
+                    bsr       Bang
+                    ldd       #16*16
+                    bsr       Bang
+                    lda       #SF.Boom
+                    lbsr      Sfx
+                    ldx       <bslot
+                    lbsr      ZLeft
+                    ldd       #69                 260 px/s, away from you, up 480
+                    bcs       zko2
+                    lbsr      NegD
+zko2                std       EN.VX,x
+                    ldd       #128
+                    std       EN.VH,x
+zko9                lbra      BKo
+
+* Bang - X = him, D = an x offset: a bang there
+Bang                addd      EN.X,x
+                    std       <tdx
+                    ldd       EN.Z,x
+                    std       <tdz
+                    lbra      NewBoom
+
+********************************************************************
+* StingFrame - X = him -> D = his frame
+********************************************************************
+StingFrame          lda       <bst
+                    leay      SfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+SfTab               fdb       ZfIntro-SfTab
+                    fdb       ZfAppr-SfTab
+                    fdb       ZfPinchW-SfTab
+                    fdb       ZfPinch-SfTab
+                    fdb       ZfIdle0-SfTab
+                    fdb       ZfHurt-SfTab
+                    fdb       ZfDuck-SfTab
+                    fdb       ZfAppr-SfTab
+                    fdb       ZfDaze-SfTab
+                    fdb       ZfKo-SfTab
+                    fdb       ZfWindUp-SfTab
+                    fdb       ZfSting-SfTab
+                    fdb       ZfStuck-SfTab
+                    fdb       ZfLight-SfTab
+                    fdb       ZfToss-SfTab
+ZfIntro             ldd       EN.H,x
+                    bne       ZfToss
+                    lda       EN.T,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #SC.talk-SC.First
+                    bra       zfx
+ZfAppr              ldd       EN.VX,x             walking, or standing
+                    bne       zfa1
+                    ldd       EN.VZ,x
+                    bne       zfa1
+                    lda       EN.An,x
+                    ldb       #20
+                    lbsr      Div
+                    anda      #1
+                    adda      #SC.idle-SC.First
+                    bra       zfx
+zfa1                lda       EN.An,x
+                    ldb       #6
+                    lbsr      Div
+                    anda      #3
+                    adda      #SC.walk-SC.First
+                    bra       zfx
+ZfIdle0             lda       #SC.idle-SC.First
+                    bra       zfx
+ZfPinchW            lda       #SC.pinchw-SC.First
+                    bra       zfx
+ZfPinch             lda       #SC.pinch-SC.First
+                    bra       zfx
+ZfHurt              lda       #SC.hurt-SC.First
+                    bra       zfx
+ZfDuck              lda       #SC.duck-SC.First
+                    bra       zfx
+ZfWindUp            lda       #SC.windup-SC.First
+                    bra       zfx
+ZfSting             lda       #SC.sting-SC.First
+                    bra       zfx
+ZfStuck             lda       #SC.stuck-SC.First
+                    bra       zfx
+ZfLight             lda       #SC.light-SC.First
+                    bra       zfx
+ZfToss              lda       #SC.toss-SC.First
+                    bra       zfx
+ZfDaze              lda       EN.T,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #SC.daze-SC.First
+                    bra       zfx
+ZfKo                lda       #SC.ko-SC.First
+zfx                 tst       EN.Fc,x
+                    beq       zfx1
+                    adda      #SC.Mir
+zfx1                tfr       a,b
+                    clra
+                    addd      #SC.First
+                    rts
+
+********************************************************************
+* The hit: StingGuard (the start of HitBoss), StingReact (the end),
+*   StingSalvo (half health)
+********************************************************************
+* StingGuard - a kick from in front while he's not open glances off his
+*   pincers: CLANK!, no damage (not a blast).  Lighting a stick, he drops
+*   it at his feet.  Exit: carry set if it glanced off
+StingGuard          lda       bkind,u
+                    cmpa      #4
+                    lbne      zgd8
+                    ldx       <bslot
+                    tst       sblast,u            (a blast: nothing guards against it)
+                    beq       zgd0
+                    clr       sblast,u
+                    lbra      zgd8
+zgd0                lda       <bst
+                    cmpa      #SS.Light
+                    bne       zgd1
+                    tst       ssalvo,u            (lighting the lot, he braces)
+                    lbne      zgd8
+                    ldd       #14*16              UH OH!: the stick at his feet
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <tdx
+                    ldd       EN.Z,x
+                    std       <tdz
+                    lbsr      NewStick
+                    bcs       zgd0a
+                    ldd       #20*16
+                    std       SK.H,y
+                    ldd       #16
+                    std       SK.VH,y
+                    lda       #66
+                    sta       SK.Fuse,y
+zgd0a               ldx       <bslot
+                    lda       #60
+                    ldy       #TX.uhoh
+                    lbsr      WordE
+                    bra       zgd8
+zgd1                cmpa      #SS.Recov           open: recovering, stuck, staggered, backing off,
+                    beq       zgd8                lighting (above), throwing, dizzy
+                    cmpa      #SS.Stag
+                    beq       zgd8
+                    cmpa      #SS.Stuck
+                    beq       zgd8
+                    cmpa      #SS.Retreat
+                    beq       zgd8
+                    cmpa      #SS.Toss
+                    beq       zgd8
+                    cmpa      #SS.Daze
+                    beq       zgd8
+                    lbsr      Ahead               from behind: open too
+                    bcs       zgd8
+                    lda       #3                  CLANK!
+                    sta       EN.Fl,x
+                    ldd       #18*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       #24*16
+                    std       <sh
+                    clra
+                    lbsr      Spark
+                    lda       #SF.Shell
+                    lbsr      Sfx
+                    lda       #2
+                    sta       <hitstop
+                    ldx       <bslot
+                    tst       sclank,u
+                    bne       zgd2
+                    lda       #36
+                    sta       sclank,u
+                    lda       #46
+                    ldy       #TX.clank
+                    lbsr      WordE
+zgd2                orcc      #1
+                    rts
+zgd8                andcc     #$FE
+                    rts
+
+* StingReact - the end of HitBoss: open (stuck, lighting, throwing, about
+*   to pinch), he staggers (the shared code has staggered him from
+*   recovering already)
+StingReact          ldx       <bslot
+                    tst       EN.Hp,x
+                    ble       zrc9
+                    lda       <bst
+                    cmpa      #SS.Stuck
+                    beq       zrc1
+                    cmpa      #SS.Toss
+                    beq       zrc1
+                    cmpa      #SS.PinchW
+                    beq       zrc1
+                    cmpa      #SS.Light
+                    bne       zrc9
+                    tst       ssalvo,u
+                    bne       zrc9
+zrc1                lda       #SS.Stag
+                    lbsr      SSet
+                    ldd       #19
+                    lbsr      ByDir
+                    std       EN.VX,x
+zrc9                rts
+
+* StingSalvo - half health: LIGHT 'EM ALL! - back off, then five sticks
+StingSalvo          lda       #66
+                    ldy       #TX.lightall
+                    lbsr      WordE
+                    lda       #SF.Shell
+                    lbsr      Sfx
+                    lda       #1
+                    sta       ssalvo,u
+                    lda       <bst
+                    cmpa      #SS.Stag
+                    beq       zsv9
+                    lda       #SS.Retreat
+                    lbsr      SSet
+zsv9                ldx       <bslot
+                    rts
+
+********************************************************************
+* The dynamite
+********************************************************************
+* Throw - X = him: his sticks, lobbed around where you stand - the fewer
+*   his hit points the more: 1, 2 below three quarters, 3 below half, 4
+*   below a quarter; five for LIGHT 'EM ALL!
+Throw               ldb       #5
+                    tst       ssalvo,u
+                    bne       zth1
+                    lda       EN.Hp,x
+                    ldb       #1
+                    cmpa      #StHp*3/4
+                    bhi       zth1
+                    incb
+                    cmpa      #StHp/2
+                    bhi       zth1
+                    incb
+                    cmpa      #StHp/4
+                    bhi       zth1
+                    incb
+zth1                clr       ssalvo,u
+                    stb       <tmpn
+                    leay      Spots,pcr
+                    lda       #45                 the flight: 0.75 s, 0.1 more each
+                    sta       <tmpi
+zth2                pshs      y
+                    ldb       ,y                  (signed px)
+                    sex
+                    lbsr      To124
+                    addd      <hx
+                    std       <tdx
+                    ldb       1,y
+                    sex
+                    lbsr      To124
+                    addd      <hz
+                    std       <tdz
+                    lda       <tmpi
+                    lbsr      TossStick
+                    ldx       <bslot
+                    puls      y
+                    leay      2,y
+                    lda       <tmpi
+                    adda      #6
+                    sta       <tmpi
+                    dec       <tmpn
+                    bne       zth2
+                    rts
+Spots               fcb       0,0,26,-16,-26,16,-30,-18,32,18
+
+* TossStick - X = him, tdx/tdz = where it lands (12.4), A = the flight
+*   (passes): a lit stick from his claw, 30 px up, landing there then; its
+*   fuse 0.8 s after
+TossStick           sta       <tmpk
+                    ldd       <cam                (on the screen, in the band)
+                    addd      #16
+                    lbsr      To124
+                    cmpd      <tdx
+                    blt       zts1
+                    std       <tdx
+zts1                ldd       <cam
+                    addd      #304
+                    lbsr      To124
+                    cmpd      <tdx
+                    bgt       zts2
+                    std       <tdx
+zts2                ldd       <tdz
+                    bpl       zts3
+                    ldd       #0
+zts3                cmpd      zmax16,u
+                    ble       zts4
+                    ldd       zmax16,u
+zts4                std       <tdz
+                    ldd       #20*16              from his claw
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    pshs      d
+                    ldd       <tdx                vx = (tx - x) / flight
+                    subd      ,s
+                    lbsr      SDiv
+                    pshs      d
+                    ldd       <tdz                vz = (tz - z) / flight
+                    subd      EN.Z,x
+                    lbsr      SDiv
+                    pshs      d
+                    lda       <tmpk               vh = (g/2 f^2 - h) / f = 2f - h/f
+                    lsla
+                    tfr       a,b
+                    clra
+                    pshs      d
+                    ldd       #StickH
+                    lbsr      SDiv
+                    std       <tmp
+                    puls      d
+                    subd      <tmp
+                    std       <tmp                vh
+                    ldd       4,s                 the start x
+                    std       <tdx
+                    ldd       EN.Z,x
+                    std       <tdz
+                    lbsr      NewStick
+                    bcs       zts8
+                    ldd       #StickH
+                    std       SK.H,y
+                    ldd       <tmp
+                    std       SK.VH,y
+                    puls      d
+                    std       SK.VZ,y
+                    puls      d
+                    std       SK.VX,y
+                    leas      2,s
+                    lda       <tmpk               the fuse: 0.8 s after it lands
+                    adda      #48
+                    sta       SK.Fuse,y
+                    rts
+zts8                leas      6,s
+                    rts
+
+* SDiv - D (signed) / tmpk (1..255): D, toward 0 (shift and subtract)
+SDiv                pshs      a                   ,s = the sign
+                    tsta
+                    bpl       zdv1
+                    lbsr      NegD
+zdv1                pshs      d                   ,s = the dividend, then the quotient in its place
+                    clra                          A = the remainder
+                    ldb       #16
+                    pshs      b                   ,s = the count
+zdv2                lsl       2,s
+                    rol       1,s
+                    rola
+                    bcs       zdv2a               (over 8 bits: bigger than the divisor)
+                    cmpa      <tmpk
+                    blo       zdv3
+zdv2a               suba      <tmpk
+                    inc       2,s
+zdv3                dec       ,s
+                    bne       zdv2
+                    leas      1,s
+                    puls      d
+                    tst       ,s+
+                    bpl       zdv4
+                    lbsr      NegD
+zdv4                rts
+
+* NewStick - tdx, tdz: a free stick there (Y), lying, unkicked, fuse 0.
+*   Exit: carry set if none free
+NewStick            leay      stk,u
+                    ldb       #NStk
+zns1                tst       SK.On,y
+                    beq       zns2
+                    leay      SK.Size,y
+                    decb
+                    bne       zns1
+                    orcc      #1
+                    rts
+zns2                pshs      y
+                    ldb       #SK.Size
+zns3                clr       ,y+
+                    decb
+                    bne       zns3
+                    puls      y
+                    inc       SK.On,y
+                    ldd       <tdx
+                    std       SK.X,y
+                    ldd       <tdz
+                    std       SK.Z,y
+                    andcc     #$FE
+                    rts
+
+* NewBoom - tdx, tdz: a bang there (the bangs' last slot is reused if all
+*   are going)
+NewBoom             leay      bom,u
+                    ldb       #NBoom
+znb1                tst       BM.T,y
+                    beq       znb2
+                    leay      BM.Size,y
+                    decb
+                    bne       znb1
+                    leay      -BM.Size,y
+znb2                lda       #1
+                    sta       BM.T,y
+                    ldd       <tdx
+                    std       BM.X,y
+                    ldd       <tdz
+                    std       BM.Z,y
+                    rts
+
+* StickStep - the sticks: flying (0.8 g), lying, kicked (sliding down the
+*   lane into him, an outlaw, or the screen's edge: it goes); a gap: it's
+*   gone; its fuse out: the bang.  The bangs' clocks.
+StickStep           leay      stk,u
+                    lda       #NStk               (on the stack: the bang reaches code that uses the
+                    pshs      a                   scratch counters)
+zsk1                tst       SK.On,y
+                    lbeq      zsk9
+                    dec       SK.Fuse,y
+                    ldd       SK.H,y              flying
+                    bgt       zsk2
+                    ldd       SK.VH,y
+                    ble       zsk4
+zsk2                ldd       SK.VH,y
+                    subd      #StickG
+                    std       SK.VH,y
+                    addd      SK.H,y
+                    std       SK.H,y
+                    ldd       SK.X,y
+                    addd      SK.VX,y
+                    std       SK.X,y
+                    ldd       SK.Z,y
+                    addd      SK.VZ,y
+                    bpl       zsk3
+                    ldd       #0
+zsk3                cmpd      zmax16,u
+                    ble       zsk3a
+                    ldd       zmax16,u
+zsk3a               std       SK.Z,y
+                    ldd       SK.H,y
+                    lbgt      zsk7
+                    ldd       #0                  down
+                    std       SK.H,y
+                    std       SK.VH,y
+                    std       SK.VZ,y
+                    tst       SK.Kick,y
+                    bne       zsk3b
+                    std       SK.VX,y
+zsk3b               pshs      y
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    puls      y
+                    bra       zsk7
+zsk4                tst       SK.Kick,y           kicked: down the lane
+                    beq       zsk7
+                    ldd       SK.X,y
+                    addd      SK.VX,y
+                    std       SK.X,y
+                    lda       bkind,u             into Sting: it goes
+                    cmpa      #4
+                    bne       zsk5
+                    ldx       <bslot
+                    lda       EN.St,x
+                    beq       zsk5
+                    lda       <bst
+                    cmpa      #SS.Ko
+                    beq       zsk5
+                    ldd       #14*16
+                    pshs      d
+                    ldd       #20*16
+                    lbsr      NearY
+                    leas      2,s
+                    bcc       zsk6
+zsk5                leax      en,u                into an outlaw
+                    ldb       #NEn
+zsk5a               pshs      b
+                    lda       EN.St,x
+                    beq       zsk5b
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    beq       zsk5b
+                    lda       EN.St,x
+                    lbsr      Hitbl
+                    bcs       zsk5b
+                    ldd       #12*16
+                    pshs      d
+                    ldd       #14*16
+                    bsr       NearY
+                    leas      2,s
+                    bcc       zsk5c
+zsk5b               puls      b
+                    leax      EN.Size,x
+                    decb
+                    bne       zsk5a
+                    bra       zsk5d
+zsk5c               puls      b
+                    bra       zsk6
+zsk5d               lbsr      Cam16               off the screen's edge
+                    std       <tmp
+                    ldd       SK.X,y
+                    subd      <tmp
+                    cmpd      #6*16
+                    blt       zsk6
+                    cmpd      #314*16
+                    ble       zsk7
+zsk6                clr       SK.Fuse,y
+zsk7                ldd       SK.H,y              lying in a gap: gone
+                    bgt       zsk8
+                    ldd       SK.X,y
+                    lbsr      Asr4
+                    lbsr      GapAt
+                    bcc       zsk8
+                    clr       SK.On,y
+                    bra       zsk9
+zsk8                tst       SK.Fuse,y
+                    bne       zsk9
+                    clr       SK.On,y
+                    pshs      y
+                    lbsr      Explode
+                    puls      y
+zsk9                leay      SK.Size,y
+                    dec       ,s
+                    lbne      zsk1
+                    leas      1,s
+                    leay      bom,u               the bangs: 0.5 s each
+                    ldb       #NBoom
+zsk10               lda       BM.T,y
+                    beq       zsk11
+                    inca
+                    cmpa      #30
+                    bls       zsk10a
+                    clra
+zsk10a              sta       BM.T,y
+zsk11               leay      BM.Size,y
+                    decb
+                    bne       zsk10
+                    rts
+
+* NearY - X = someone, Y = a stick, D = a reach in x, 2,s one in z (12.4):
+*   carry clear if the stick's within both
+NearY               pshs      d
+                    ldd       EN.X,x
+                    subd      SK.X,y
+                    lbsr      AbsD
+                    cmpd      ,s
+                    bhs       zny8
+                    ldd       EN.Z,x
+                    subd      SK.Z,y
+                    lbsr      AbsD
+                    cmpd      4,s
+                    bhs       zny8
+                    puls      d
+                    andcc     #$FE
+                    rts
+zny8                puls      d
+                    orcc      #1
+                    rts
+
+* Explode - Y = a stick: the bang - 3 to him and to an outlaw within 30 px
+*   (14 in depth), Sting 6 and dizzy if it was kicked back at him, else
+*   singed (2)
+Explode             ldd       SK.X,y
+                    std       <tdx
+                    std       <sx
+                    ldd       SK.Z,y
+                    std       <tdz
+                    std       <sz
+                    lda       SK.Kick,y
+                    sta       <tmpf
+                    lbsr      NewBoom
+                    lda       #SF.Boom
+                    lbsr      Sfx
+                    lda       #14
+                    lbsr      Shk
+                    lda       <hitstop
+                    cmpa      #3
+                    bhs       zex0
+                    lda       #3
+                    sta       <hitstop
+zex0                ldd       <hx                 him
+                    subd      <tdx
+                    lbsr      AbsD
+                    cmpd      #30*16
+                    bhs       zex1
+                    ldd       <hz
+                    subd      <tdz
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       zex1
+                    ldd       <hh
+                    cmpd      #30*16
+                    bge       zex1
+                    lda       #3
+                    lbsr      HurtHero
+                    tsta
+                    beq       zex1
+                    ldx       #TX.kaboom
+                    lda       #62
+                    lbsr      WordH
+zex1                leax      en,u                outlaws, and Sting (the count on the stack)
+                    lda       #NEn
+                    pshs      a
+zex2                lda       EN.St,x
+                    beq       zex5
+                    lbsr      Hitbl
+                    bcs       zex5
+                    ldd       EN.X,x
+                    subd      <tdx
+                    std       <tmp
+                    lbsr      AbsD
+                    cmpd      #34*16
+                    bhs       zex5
+                    ldd       EN.Z,x
+                    subd      <tdz
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       zex5
+                    clr       <hdir               (blown away from it)
+                    tst       <tmp
+                    bpl       zex3
+                    inc       <hdir
+zex3                lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    beq       zex4
+                    ldd       EN.X,x              an outlaw: within 30
+                    subd      <tdx
+                    lbsr      AbsD
+                    cmpd      #30*16
+                    bhs       zex5
+                    lda       #3
+                    ldb       #1
+                    pshs      x
+                    lbsr      HitE
+                    puls      x
+                    bra       zex5
+zex4                lda       #1                  Sting: kicked back at him 6 and dizzy, else 2
+                    sta       sblast,u
+                    lda       #2
+                    clrb
+                    tst       <tmpf
+                    beq       zex4a
+                    lda       #6
+                    incb
+zex4a               pshs      x,b
+                    lbsr      HitE
+                    puls      x,b
+                    clr       sblast,u
+                    tstb
+                    beq       zex5
+                    tst       EN.Hp,x
+                    ble       zex5
+                    lda       #SS.Daze
+                    lbsr      SSet
+                    lda       #64
+                    ldy       #TX.dizzy
+                    lbsr      WordE
+zex5                leax      EN.Size,x
+                    dec       ,s
+                    lbne      zex2
+                    leas      1,s
+                    lda       #4                  and bits flying
+                    lbra      Puff
+
+* NearStick - the autopilot: Y = a lit stick lying within 90 px of him and
+*   18 in depth, unkicked.  Exit: carry set if none
+NearStick           leay      stk,u
+                    ldb       #NStk
+znk1                tst       SK.On,y
+                    beq       znk2
+                    tst       SK.Kick,y
+                    bne       znk2
+                    ldd       SK.H,y
+                    bgt       znk2
+                    pshs      b
+                    ldd       SK.X,y
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #90*16
+                    bhs       znk1a
+                    ldd       SK.Z,y
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #18*16
+                    bhs       znk1a
+                    puls      b
+                    andcc     #$FE
+                    rts
+znk1a               puls      b
+znk2                leay      SK.Size,y
+                    decb
+                    bne       znk1
+                    orcc      #1
+                    rts
+
+* StickKick - his attack box this pass (bx0, bx1, bh0, pixels; from HeroAtk): a lit stick lying in his lane
+*   under it is kicked back down the lane (320 px/s): BACK AT YA!
+StickKick           lda       sflags,u
+                    bita      #SG.Train
+                    lbeq      zsk89
+                    pshs      x,y
+                    leay      stk,u
+                    lda       #NStk               (the count on the stack: Spark uses kcnt)
+                    pshs      a
+zki1                tst       SK.On,y
+                    beq       zki2
+                    tst       SK.Kick,y
+                    bne       zki2
+                    ldd       SK.H,y
+                    cmpd      #12*16
+                    bge       zki2
+                    ldd       SK.Z,y              in his lane
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       zki2
+                    ldd       SK.X,y
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #6                  x0 < it + 6, x1 > it - 6
+                    cmpd      <bx0
+                    ble       zki2
+                    ldd       <tmp
+                    subd      #6
+                    cmpd      <bx1
+                    bge       zki2
+                    ldd       <bh0                low enough
+                    cmpd      #16
+                    bge       zki2
+                    inc       SK.Kick,y
+                    ldd       #85
+                    tst       <hface
+                    beq       zki1a
+                    lbsr      NegD
+zki1a               std       SK.VX,y
+                    ldd       #2*16
+                    std       SK.H,y
+                    ldd       #0
+                    std       SK.VH,y
+                    ldd       SK.X,y
+                    std       <sx
+                    ldd       SK.Z,y
+                    std       <sz
+                    ldd       #6*16
+                    std       <sh
+                    pshs      y
+                    lda       #1
+                    lbsr      Spark
+                    lda       #SF.Hit
+                    lbsr      Sfx
+                    ldx       #TX.backatya
+                    lda       #40
+                    lbsr      WordH
+                    puls      y
+zki2                leay      SK.Size,y
+                    dec       ,s
+                    bne       zki1
+                    leas      1,s
+                    puls      x,y
+zsk89               rts
+
+* DrawSticks - the sticks (fizzing: 2 frames, mirrored when they fly left)
+*   and the bangs (flash, fire, smoke)
+DrawSticks          lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #1
+                    sta       <ekey
+                    leay      stk,u
+                    lda       #NStk
+                    sta       <tmpi
+zds1                tst       SK.On,y
+                    beq       zds2
+                    ldd       SK.X,y
+                    std       <ex
+                    ldd       SK.Z,y
+                    std       <ez
+                    ldd       SK.H,y
+                    addd      #3*16
+                    std       <eh
+                    lda       #2
+                    sta       <eshk
+                    ldb       <ticks+1            (fizzing: a frame every 4 passes)
+                    lsrb
+                    lsrb
+                    andb      #1
+                    tst       SK.VX,y
+                    bpl       zds1a
+                    addb      #SC.Mir
+zds1a               clra
+                    addd      #SC.stick
+                    std       <efrm
+                    pshs      y
+                    lbsr      Ent
+                    puls      y
+zds2                leay      SK.Size,y
+                    dec       <tmpi
+                    bne       zds1
+                    clr       <eshk
+                    leay      bom,u
+                    lda       #NBoom
+                    sta       <tmpi
+zds3                lda       BM.T,y
+                    beq       zds4
+                    ldx       #TQ.boom
+                    cmpa      #5
+                    blo       zds3a
+                    leax      1,x
+                    cmpa      #16
+                    blo       zds3a
+                    leax      1,x
+zds3a               stx       <efrm
+                    ldd       BM.X,y
+                    std       <ex
+                    ldd       BM.Z,y
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    pshs      y
+                    lbsr      Ent
+                    puls      y
+zds4                leay      BM.Size,y
+                    dec       <tmpi
+                    bne       zds3
+                    rts

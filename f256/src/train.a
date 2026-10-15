@@ -1,0 +1,1079 @@
+********************************************************************
+* train.a - the Train Heist (brawler.js updateTunnel, the gaps,
+*   updateSticks; train.js): along the roofs of a moving train.  The
+*   desert streams by with time (TrainScrl); the gaps between the cars
+*   (GapTab) - jump them, fall in for 3 and back up on a car; outlaws hop
+*   them and stop at an edge on their feet, and one knocked flying into a
+*   gap is gone; the tunnels - TUNNEL!, the mouth sweeping across (anyone
+*   standing knocked flat, an outlaw clean off the train), the rock wall
+*   (the middle layer's fourth map) and the dark (the stage's shades), two
+*   pit-props in the dark - down is duck (DuckNow).  Sting's dynamite and
+*   the bangs are drawn here too (sting.a runs them).
+*   The tskth stage module, with sting.a.
+********************************************************************
+
+TrV                 equ       53                  the scenery's speed: 53/16 px a pass (198.75 px/s)
+TrFar               equ       4                   the sky's: 15 px/s
+MidP                equ       (TH.MAP1.W-1)*16-320    the desert's picture, px (960)
+FarP                equ       (TH.MAP0.W-1)*16-320    the sky's (640)
+RockP               equ       (TH.MAP3.W-1)*16-320    the rock wall's (128)
+MidMod              equ       1920*16             tmid's wrap: a multiple of the desert's and the rock's
+TunFirst            equ       12*60               the first tunnel, passes
+TunEvery            equ       24*60               the next, after one's gone
+TunWarn             equ       144                 TUNNEL! 2.4 s
+TunIn               equ       300                 inside, 5 s
+Prop1               equ       36                  the pit-props: 0.6 s and 2.6 s in
+Prop2               equ       156
+Clear               equ       36                  the clearance over the roof (px): standing he's 56, flat 20
+PropY               equ       FLOOR.Y-128         (the tunnel's sprites: their origin at screen y 128, eh)
+NGap                equ       6
+
+* the gaps between the cars, px (brawler.js S.gaps, train.js CARS)
+GapTab              fdb       206,230,490,514,774,798,1058,1082,1382,1406,1690,1712
+
+********************************************************************
+* TrainInit - a stage begins: the train's state from scratch (StageInit)
+********************************************************************
+TrainInit           lda       sflags,u
+                    bita      #SG.Train
+                    beq       yti9
+                    clr       trock,u             (StageGfx has the desert in place)
+                    leax      tun,u               the tunnel, the props, the fall, the dynamite
+                    ldb       #sblast-tun+1
+yti1                clr       ,x+
+                    decb
+                    bne       yti1
+                    ldd       #TunFirst
+                    std       tunn,u
+yti9                rts
+
+********************************************************************
+* GapAt - D = x (px): carry set if it's over a gap (3 px in from its
+*   edges), B = the gap.  X kept
+********************************************************************
+GapAt               pshs      x,d                 ,s = the x, 2,s X
+                    leax      GapTab,pcr
+                    clr       ,-s                 ,s = the gap, 1,s the x
+yga1                ldd       1,s
+                    subd      ,x
+                    cmpd      #3
+                    ble       yga2
+                    ldd       2,x
+                    subd      1,s
+                    cmpd      #3
+                    ble       yga2
+                    puls      b                   over it
+                    leas      2,s
+                    orcc      #1
+                    puls      x,pc
+yga2                leax      4,x
+                    inc       ,s
+                    lda       ,s
+                    cmpa      #NGap
+                    blo       yga1
+                    leas      3,s
+                    andcc     #$FE
+                    puls      x,pc
+
+* GapX - X = an enemy: D = its x (px)
+GapX                ldd       EN.X,x
+                    lbra      Asr4
+
+********************************************************************
+* TrainStep - one pass of play (Stage): the scenery's clocks, the tunnel,
+*   what's lying in a gap, Sting's dynamite
+********************************************************************
+TrainStep           lda       sflags,u
+                    bita      #SG.Train
+                    lbeq      ytr9
+                    ldd       tmid,u              the desert, the sky: on with time
+                    addd      #TrV
+                    cmpd      #MidMod
+                    blo       ytr1
+                    subd      #MidMod
+ytr1                std       tmid,u
+                    ldd       tfar,u
+                    addd      #TrFar
+                    cmpd      #FarP*16
+                    blo       ytr2
+                    subd      #FarP*16
+ytr2                std       tfar,u
+                    lbsr      TunStep
+                    lbsr      LooseGap
+                    lbsr      StickStep
+ytr9                rts
+
+* LooseGap - an item or a loose skull lying in a gap: gone
+LooseGap            leax      it,u
+                    lda       #NIt
+                    sta       <tmpn
+ylg1                tst       IT.Ty,x
+                    beq       ylg2
+                    ldd       IT.H,x
+                    bgt       ylg2
+                    ldd       IT.X,x
+                    lbsr      Asr4
+                    lbsr      GapAt
+                    bcc       ylg2
+                    clr       IT.Ty,x
+ylg2                leax      IT.Size,x
+                    dec       <tmpn
+                    bne       ylg1
+                    leax      sl,u
+                    lda       #NSl
+                    sta       <tmpn
+ylg3                tst       SL.St,x
+                    beq       ylg4
+                    ldd       SL.H,x
+                    bgt       ylg4
+                    ldd       SL.X,x
+                    lbsr      Asr4
+                    lbsr      GapAt
+                    bcc       ylg4
+                    clr       SL.St,x
+ylg4                leax      SL.Size,x
+                    dec       <tmpn
+                    bne       ylg3
+                    rts
+
+********************************************************************
+* TrainScrl - the maps (MapScrl, on the train): the street with the
+*   camera; the desert (or the rock wall) and the sky with the camera and
+*   with time, modulo their pictures.  Exit: carry = error in B
+********************************************************************
+TrainScrl           ldd       <cam
+                    subd      <shx
+                    bpl       ysc1
+                    ldd       #0
+ysc1                tfr       d,x
+                    ldy       #2
+                    lbsr      Scrl
+                    bcs       ysc9
+                    ldd       tmid,u              cam/2 + the desert's time, mod its picture
+                    lbsr      Asr4
+                    std       <tmp
+                    ldd       <cam
+                    lsra
+                    rorb
+                    addd      <tmp
+                    subd      <shx
+                    ldx       #MidP
+                    tst       trock,u
+                    beq       ysc2
+                    ldx       #RockP
+ysc2                lbsr      ModX
+                    tfr       d,x
+                    ldy       #1
+                    lbsr      Scrl
+                    bcs       ysc9
+                    ldd       tfar,u              cam/4 + the sky's time, mod its picture
+                    lbsr      Asr4
+                    std       <tmp
+                    ldd       <cam
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    addd      <tmp
+                    subd      <shx
+                    ldx       #FarP
+                    bsr       ModX
+                    tfr       d,x
+                    ldy       #0
+                    lbra      Scrl
+ysc9                rts
+
+* ModX - D mod X (D from -X up to a few X)
+ModX                pshs      x
+ymx1                tsta
+                    bpl       ymx2
+                    addd      ,s
+                    bra       ymx1
+ymx2                cmpd      ,s
+                    blo       ymx3
+                    subd      ,s
+                    bra       ymx2
+ymx3                puls      x,pc
+
+* Rock - A = 1: the middle layer the tunnel's rock wall; 0: the desert again
+Rock                cmpa      trock,u
+                    beq       yrk9
+                    sta       trock,u
+                    tsta
+                    beq       yrk1
+                    ldy       #TH.MAP3.Of
+                    ldd       #TH.MAP3.W
+                    bra       yrk2
+yrk1                ldy       #TH.MAP1.Of
+                    ldd       #TH.MAP1.W
+yrk2                ldx       #1
+                    lbra      OneMap
+yrk9                rts
+
+* Dark - A = the shade to fade toward (0..60), B = how far a step: every
+*   fourth pass a step, the tile CLUT written (amb.a DuskClut)
+Dark                pshs      d
+                    dec       dclk,u              (a step every fourth pass: the dusk clock)
+                    bpl       ydk9
+                    lda       #3
+                    sta       dclk,u
+                    lda       dstep,u
+                    cmpa      ,s
+                    beq       ydk9
+                    blo       ydk1
+                    suba      1,s                 lighter
+                    cmpa      ,s
+                    bge       ydk2
+                    lda       ,s
+                    bra       ydk2
+ydk1                adda      1,s                 darker
+                    cmpa      ,s
+                    ble       ydk2
+                    lda       ,s
+ydk2                sta       dstep,u
+                    lbsr      DuskClut
+ydk9                puls      d,pc
+
+********************************************************************
+* TunStep - the tunnel: the countdown; TUNNEL! (the whistle, the rumble);
+*   the mouth across (the shadow, the knock), the rock wall at mid-screen;
+*   inside (the dark, two pit-props); the way out
+********************************************************************
+TunStep             lda       tun,u
+                    bne       yts1
+                    tst       dying,u             the next one coming (not while he's down)
+                    bne       yts0
+                    ldd       tunn,u
+                    subd      #1
+                    std       tunn,u
+                    bne       yts0
+                    lda       #TN.Warn
+                    sta       tun,u
+                    ldd       #0
+                    std       tunt,u
+                    lda       #SF.Whistle
+                    lbra      Sfx
+yts0                ldd       #0                  (the light back, if it's not)
+                    lda       #0
+                    ldb       #8
+                    lbra      Dark
+yts1                ldd       tunt,u
+                    addd      #1
+                    std       tunt,u
+                    lbsr      PropStep
+                    lda       tun,u
+                    cmpa      #TN.Warn
+                    bne       yts3
+                    ldd       tunt,u              the rumble of it coming
+                    cmpd      #TunWarn-48
+                    blo       yts2
+                    lda       #2
+                    lbsr      Shk
+yts2                ldd       tunt,u
+                    cmpd      #TunWarn
+                    blo       yts9
+                    lda       #TN.Mouth
+                    sta       tun,u
+                    ldd       #0
+                    std       tunt,u
+                    ldd       #328*16
+                    std       tunx,u
+                    lbsr      DuckReset
+                    lda       #SF.Roar
+                    lbra      Sfx
+yts3                cmpa      #TN.Mouth
+                    bne       yts5
+                    ldd       tunx,u              the mouth going by
+                    std       <tdx
+                    subd      #TrV
+                    std       tunx,u
+                    addd      #8*16
+                    std       <tdz                (the ring's middle, now; tdx: last pass's mouth)
+                    ldd       <tdx
+                    addd      #8*16
+                    std       <tdx
+                    lbsr      Sweep
+                    lda       #4
+                    lbsr      Shk
+                    lda       #60
+                    ldb       #4
+                    lbsr      Dark
+                    ldd       tunx,u              the rock wall at mid-screen
+                    cmpd      #160*16
+                    bge       yts4
+                    lda       #1
+                    lbsr      Rock
+yts4                ldd       tunx,u
+                    cmpd      #-70*16
+                    bge       yts9
+                    lda       #TN.Inside
+                    sta       tun,u
+                    ldd       #0
+                    std       tunt,u
+yts9                rts
+yts5                cmpa      #TN.Inside
+                    bne       yts7
+                    lda       #1
+                    lbsr      Shk
+                    lda       #60
+                    ldb       #8
+                    lbsr      Dark
+                    ldd       tunt,u              a pit-prop coming
+                    cmpd      #Prop1
+                    beq       yts6
+                    cmpd      #Prop2
+                    bne       yts6a
+yts6                lbsr      NewProp
+yts6a               ldd       tunt,u
+                    cmpd      #TunIn
+                    blo       yts9
+                    lda       #TN.Exit
+                    sta       tun,u
+                    ldd       #0
+                    std       tunt,u
+                    ldd       #328*16
+                    std       tunx,u
+                    rts
+yts7                ldd       tunx,u              the way out going by
+                    subd      #TrV
+                    std       tunx,u
+                    cmpd      #160*16
+                    bge       yts8
+                    clra
+                    lbsr      Rock
+                    lda       #0
+                    ldb       #8
+                    lbsr      Dark
+yts8                ldd       tunx,u
+                    cmpd      #-70*16
+                    bge       yts9
+                    clr       tun,u
+                    ldd       #TunEvery
+                    std       tunn,u
+                    rts
+
+* NewProp - a pit-prop in at the right edge, the creak
+NewProp             leax      prp,u
+                    tst       PR.On,x
+                    beq       ynp1
+                    leax      PR.Size,x
+ynp1                inc       PR.On,x
+                    ldd       #332*16
+                    std       PR.X,x
+                    lbsr      DuckReset
+                    lda       #SF.Creak
+                    lbra      Sfx
+
+* PropStep - the pit-props going by: each sweeps like the mouth
+PropStep            leax      prp,u
+                    lda       #NProp              (the count on the stack: Sweep can reach code that
+                    pshs      a                   uses the scratch counters)
+yps1                tst       PR.On,x
+                    beq       yps3
+                    ldd       PR.X,x
+                    std       <tdx
+                    subd      #TrV
+                    std       PR.X,x
+                    std       <tdz
+                    pshs      x
+                    lbsr      Sweep
+                    puls      x
+                    ldd       PR.X,x
+                    cmpd      #-30*16
+                    bge       yps3
+                    clr       PR.On,x
+yps3                leax      PR.Size,x
+                    dec       ,s
+                    bne       yps1
+                    puls      a,pc
+
+* DuckReset - a new sweep coming: every coyote may guess again
+DuckReset           leax      en,u
+                    lda       #NEn
+                    sta       <tmpn
+ydr1                lda       EN.Hop,x
+                    anda      #$7F
+                    sta       EN.Hop,x
+                    leax      EN.Size,x
+                    dec       <tmpn
+                    bne       ydr1
+                    rts
+
+********************************************************************
+* Sweep - something low going by over the roof, from screen x tdx to tdz
+*   (12.4) this pass: whoever it passes over, standing, is knocked flat -
+*   3 to him (MIND YER HEAD!), an outlaw clean off the train (SWEPT OFF!;
+*   not a rattler or a dillo: they're low).  A coyote 70 px ahead of it
+*   may hit the deck (half of them).
+********************************************************************
+Sweep               lbsr      Cam16
+                    std       <tmp
+                    ldd       <hx                 him: on his feet, under it?
+                    subd      <tmp
+                    lbsr      Crossed
+                    bcc       ysw2
+                    lda       <hst
+                    cmpa      #ST.Duck
+                    beq       ysw2
+                    cmpa      #ST.Fall
+                    beq       ysw2
+                    tst       dying,u
+                    bne       ysw2
+                    ldd       <hx
+                    addd      #10*16
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    tsta
+                    beq       ysw2
+                    ldd       #-45                170 px/s back
+                    std       <hvx
+                    lda       #14
+                    lbsr      Shk
+                    lda       #6
+                    sta       <hitstop
+                    ldx       #TX.mindhead
+                    lda       #64
+                    lbsr      WordH
+ysw2                leax      en,u
+                    lda       #NEn                (on the stack: HurtHero's death scene loops in aloop)
+                    pshs      a
+ysw3                lda       EN.St,x
+                    lbeq      ysw6
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss            (Sting ducks for himself)
+                    lbeq      ysw6
+                    ldd       EN.X,x
+                    subd      <tmp
+                    pshs      d
+                    bsr       Crossed
+                    puls      d
+                    bcc       ysw4
+                    lda       EN.Ty,x             under it: low ones aren't
+                    cmpa      #TY.Rat
+                    beq       ysw6
+                    cmpa      #TY.Dillo
+                    beq       ysw6
+                    lda       EN.St,x
+                    cmpa      #ES.Down
+                    beq       ysw6
+                    lbsr      Hitbl
+                    bcs       ysw6
+                    ldb       #1
+                    pshs      x
+                    lbsr      FallOff
+                    puls      x
+                    bra       ysw6
+ysw4                subd      <tdz                70 px ahead of it: a coyote's guess
+                    blt       ysw6
+                    cmpd      #70*16
+                    bhs       ysw6
+                    lda       EN.Ty,x
+                    cmpa      #TY.Coy
+                    bne       ysw6
+                    lda       EN.Hop,x
+                    bmi       ysw6
+                    ora       #$80
+                    sta       EN.Hop,x
+                    lda       EN.St,x
+                    cmpa      #ES.Appr
+                    beq       ysw5
+                    cmpa      #ES.Recov
+                    bne       ysw6
+ysw5                lbsr      Rand
+                    bmi       ysw6
+                    lda       #ES.Down
+                    lbsr      SetE
+                    lbsr      EStop
+ysw6                leax      EN.Size,x
+                    dec       ,s
+                    lbne      ysw3
+                    puls      a,pc
+
+* Crossed - D = an actor's screen x (12.4): carry set if tdz < D <= tdx
+*   (it went past this pass)
+Crossed             cmpd      <tdz
+                    ble       ycr8
+                    cmpd      <tdx
+                    bgt       ycr8
+                    orcc      #1
+                    rts
+ycr8                andcc     #$FE
+                    rts
+
+********************************************************************
+* FallOff - X = an outlaw, B = 1 swept off by a tunnel, 0 down a gap:
+*   gone, scored (400 a coyote, 450 a skeleton, 350 a rattler, 200 a
+*   dillo), SWEPT OFF! or SEE YA!
+********************************************************************
+FallOff             pshs      b
+                    cmpx      hheld,u             (not held any more)
+                    bne       yfo0
+                    ldd       #0
+                    std       hheld,u
+yfo0                tst       EN.Ty,x             a skeleton swept off: it comes apart (KO; a skeleton
+                    bne       yfo0a               never flies off whole)
+                    tst       ,s
+                    beq       yfo0a
+                    leas      1,s
+                    lda       #1                  (the bones go the way the train's going: back)
+                    sta       <hdir
+                    lbra      KO
+yfo0a               lda       EN.Id,x             its skull, if loose, is nobody's
+                    leay      sl,u
+                    ldb       #NSl
+yfo1                cmpa      SL.Own,y
+                    bne       yfo2
+                    clr       SL.Own,y
+yfo2                leay      SL.Size,y
+                    decb
+                    bne       yfo1
+                    lda       #ES.Ko
+                    lbsr      SetE
+                    ldd       #0
+                    std       EN.VZ,x
+                    clr       EN.Hop,x
+                    tst       ,s
+                    beq       yfo3
+                    ldd       #-69                swept: off backwards, 260 px/s, up 160
+                    std       EN.VX,x
+                    ldd       #43
+                    std       EN.VH,x
+                    bra       yfo4
+yfo3                std       EN.VX,x             down the gap: out of sight at once
+                    ldd       #-16
+                    std       EN.VH,x
+                    ldd       #-15*16
+                    std       EN.H,x
+yfo4                lda       #SF.Ko
+                    lbsr      Sfx
+                    lda       #6
+                    lbsr      Shk
+                    ldd       #400
+                    lda       EN.Ty,x
+                    beq       yfo5                (a skeleton)
+                    cmpa      #TY.SkelW
+                    bne       yfo6
+yfo5                ldd       #450
+                    bra       yfo8
+yfo6                cmpa      #TY.Rat
+                    bne       yfo7
+                    ldd       #350
+                    bra       yfo8
+yfo7                cmpa      #TY.Dillo
+                    bne       yfo7a
+                    ldd       #200
+                    bra       yfo8
+yfo7a               ldd       #400
+yfo8                lbsr      ScoreAt
+                    ldy       #TX.seeya
+                    puls      b
+                    tstb
+                    beq       yfo9
+                    ldy       #TX.swept
+yfo9                lda       #50
+                    lbra      WordE
+
+********************************************************************
+* TrEnemy - X = an outlaw, moved (the end of EnMove): on the train it
+*   hops a gap it's walking into, and on its feet stops at an edge
+********************************************************************
+TrEnemy             lda       sflags,u
+                    bita      #SG.Train
+                    beq       yte9
+                    lda       EN.St,x
+                    cmpa      #ES.Ko
+                    beq       yte9
+                    lda       EN.Hop,x            hopping: the arc
+                    bita      #1
+                    beq       yte2
+                    ldd       EN.VH,x
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    bgt       yte9
+                    ldd       #0
+                    std       EN.H,x
+                    std       EN.VH,x
+                    lda       EN.Hop,x
+                    anda      #$FE
+                    sta       EN.Hop,x
+yte9                rts
+yte2                ldd       EN.H,x              (in the air: none of this)
+                    bgt       yte9
+                    lda       EN.St,x
+                    cmpa      #ES.Air
+                    beq       yte9
+                    cmpa      #ES.Enter           walking: a gap 14 px ahead and not under it: hop
+                    beq       yte3
+                    cmpa      #ES.Appr
+                    beq       yte3
+                    cmpa      #ES.Headl
+                    bne       yte5
+yte3                ldd       EN.VX,x
+                    beq       yte5
+                    lbsr      GapX
+                    lbsr      GapAt
+                    bcs       yte5
+                    ldd       #14
+                    tst       EN.VX,x
+                    bpl       yte4
+                    ldd       #-14
+yte4                std       <tmp
+                    lbsr      GapX
+                    addd      <tmp
+                    lbsr      GapAt
+                    bcc       yte9
+                    lda       EN.Hop,x
+                    ora       #1
+                    sta       EN.Hop,x
+                    ldd       #75                 280 px/s up
+                    std       EN.VH,x
+                    rts
+yte5                lbsr      GapX                on its feet over a gap: back to the nearer edge
+                    lbsr      GapAt
+                    bcc       yte9
+                    pshs      d
+                    leay      GapTab,pcr
+                    lslb
+                    lslb
+                    leay      b,y
+                    puls      d
+                    lbsr      GapX
+                    std       <tmp
+                    subd      ,y                  x - g0 against g1 - x
+                    pshs      d
+                    ldd       2,y
+                    subd      <tmp
+                    cmpd      ,s++
+                    blo       yte6
+                    ldd       ,y
+                    subd      #1
+                    bra       yte7
+yte6                ldd       2,y
+                    addd      #1
+yte7                lbsr      To124
+                    std       EN.X,x
+                    rts
+
+* TrLand - X = an outlaw landing from a knockdown: in a gap, it's gone.
+*   Exit: carry set if so
+TrLand              lda       sflags,u
+                    bita      #SG.Train
+                    beq       ytl8
+                    lbsr      GapX
+                    lbsr      GapAt
+                    bcc       ytl8
+                    clrb
+                    pshs      x
+                    lbsr      FallOff
+                    puls      x
+                    orcc      #1
+                    rts
+ytl8                andcc     #$FE
+                    rts
+
+********************************************************************
+* The hero on the train: down a gap (HeroGap, FallStep); ducking (DuckNow)
+********************************************************************
+* HeroGap - he's moved: feet down over a gap, he drops
+HeroGap             lda       sflags,u
+                    bita      #SG.Train
+                    beq       yhg9
+                    ldd       <hh
+                    bne       yhg9
+                    ldd       <hx
+                    lbsr      Asr4
+                    lbsr      GapAt
+                    bcc       yhg9
+                    stb       hfallg,u
+                    lslb                          which side he came from: before this pass's
+                    lslb                          move, left or right of its middle?
+                    leay      GapTab,pcr
+                    leay      b,y
+                    ldd       ,y
+                    addd      2,y
+                    lsra
+                    rorb
+                    std       <tmp
+                    ldd       <hx
+                    subd      <hvx
+                    lbsr      Asr4
+                    clr       hfallf,u
+                    cmpd      <tmp
+                    blt       yhg1
+                    inc       hfallf,u
+yhg1                ldd       hheld,u             (letting go of whoever he's holding)
+                    beq       yhg2
+                    lbsr      Release
+yhg2                lda       #ST.Fall
+                    lbsr      SetS
+                    ldd       #0
+                    std       <hvh
+                    std       <hvx
+                    std       <hvz
+                    clr       hfallt,u
+                    lda       #SF.Hurt
+                    lbra      Sfx
+yhg9                rts
+
+* FallStep - down a gap: he drops 0.6 s, then he's back up on a car - the
+*   side he came from if the screen lets him stand there - for 3
+FallStep            ldd       <hvh
+                    subd      #Grav
+                    std       <hvh
+                    addd      <hh
+                    std       <hh
+                    inc       hfallt,u
+                    lda       hfallt,u
+                    cmpa      #36
+                    blo       yfs9
+                    ldb       hfallg,u            the two sides: the gap's left edge - 14, its
+                    lslb                          right + 14
+                    lslb
+                    leay      GapTab,pcr
+                    leay      b,y
+                    ldd       ,y
+                    subd      #14
+                    std       <tdx
+                    ldd       2,y
+                    addd      #14
+                    std       <tdz
+                    tst       hfallf,u            (from the right: that side first)
+                    beq       yfs1
+                    ldd       <tdx
+                    pshs      d
+                    ldd       <tdz
+                    std       <tdx
+                    puls      d
+                    std       <tdz
+yfs1                ldd       <tdx                the first, if he can stand there
+                    bsr       Standable
+                    bcc       yfs2
+                    ldd       <tdz
+yfs2                lbsr      To124
+                    std       <hx
+                    ldd       #0
+                    std       <hh
+                    std       <hvh
+                    clr       <hinv
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    ldd       <hx                 3 - he's thrown off the side of the gap
+                    addd      #16*16
+                    tst       hfallf,u
+                    beq       yfs3
+                    subd      #32*16
+yfs3                std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    tst       dying,u
+                    bne       yfs9
+                    ldx       #TX.watchstep
+                    lda       #64
+                    lbsr      WordH
+                    lda       <hinv
+                    cmpa      #84
+                    bhs       yfs9
+                    lda       #84                 (1.4 s untouchable)
+                    sta       <hinv
+yfs9                rts
+
+* Standable - D = an x (px): carry clear if the screen lets him stand
+*   there (the camera + 10, to the level's end or the locked screen's
+*   right - 10)
+Standable           std       <tmp
+                    ldd       <cam
+                    addd      #10
+                    cmpd      <tmp
+                    bgt       ysb8
+                    ldd       <cam
+                    addd      #300
+                    tst       <lock
+                    bne       ysb1
+                    ldd       hxmax,u
+                    lbsr      Asr4
+ysb1                cmpd      <tmp
+                    blt       ysb8
+                    andcc     #$FE
+                    rts
+ysb8                orcc      #1
+                    rts
+
+* DuckNow - carry set while down is duck: TUNNEL!'s up, the mouth's still
+*   to pass him, or a pit-prop is
+DuckNow             lda       tun,u
+                    cmpa      #TN.Warn
+                    beq       ydn8
+                    lbsr      Cam16               his screen x (12.4)
+                    std       <tmp
+                    ldd       <hx
+                    subd      <tmp
+                    std       <tmp
+                    lda       tun,u
+                    cmpa      #TN.Mouth
+                    bne       ydn2
+                    ldd       tunx,u              the mouth: still to his right (less 24)?
+                    addd      #24*16
+                    cmpd      <tmp
+                    bgt       ydn8
+ydn2                leax      prp,u               a pit-prop still to come
+                    ldb       #NProp
+ydn3                tst       PR.On,x
+                    beq       ydn4
+                    ldd       PR.X,x
+                    addd      #16*16
+                    cmpd      <tmp
+                    bgt       ydn8
+ydn4                leax      PR.Size,x
+                    decb
+                    bne       ydn3
+                    andcc     #$FE
+                    rts
+ydn8                orcc      #1
+                    rts
+
+********************************************************************
+* DrawTrain - the tunnel's mouth (or the way out, mirrored) and its
+*   pit-props, in front of everything; TUNNEL!; DUCK!; Sting's dynamite
+*   and the bangs (sting.a)
+********************************************************************
+DrawTrain           lda       sflags,u
+                    bita      #SG.Train
+                    lbeq      ydw9
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #$FF                (in front)
+                    sta       <ekey
+                    ldd       #0
+                    std       <ez
+                    ldd       #PropY*16
+                    std       <eh
+                    lda       tun,u
+                    cmpa      #TN.Mouth
+                    beq       ydw1
+                    cmpa      #TN.Exit
+                    bne       ydw2
+ydw1                lbsr      Cam16
+                    addd      tunx,u
+                    std       <ex
+                    ldx       #TP.portal          the mouth; the way out mirrored
+                    lda       tun,u
+                    cmpa      #TN.Exit
+                    bne       ydw1a
+                    ldx       #TP.portal+TP.Mir
+ydw1a               stx       <efrm
+                    lbsr      Ent
+ydw2                leax      prp,u
+                    lda       #NProp
+                    sta       <tmpi
+ydw3                tst       PR.On,x
+                    beq       ydw4
+                    pshs      x
+                    lbsr      Cam16
+                    addd      PR.X,x
+                    std       <ex
+                    ldd       #TQ.prop
+                    std       <efrm
+                    lbsr      Ent
+                    puls      x
+ydw4                leax      PR.Size,x
+                    dec       <tmpi
+                    bne       ydw3
+                    lbra      DrawSticks
+
+* TrainWords - TUNNEL! and DUCK! (hud.a Titles: the HUD's pass, where Y is
+*   the record pointer BuildChar runs on - not DrawTrain's)
+TrainWords          lda       sflags,u
+                    bita      #SG.Train
+                    beq       ydw9
+                    lda       tun,u               TUNNEL! (steady, then it blinks: here it comes)
+                    cmpa      #TN.Warn
+                    bne       ydw6
+                    ldd       tunt,u
+                    cmpd      #TunWarn-36
+                    blo       ydw5
+                    lda       tunt+1,u
+                    bita      #4
+                    bne       ydw9
+ydw5                ldx       #TX.tunnel
+                    ldd       #56
+                    lbsr      Ttl
+                    ldx       #TX.duckhold
+                    ldd       #82
+                    lbra      Ttl
+ydw6                lbsr      DuckNow             a pit-prop coming: DUCK!, blinking
+                    bcc       ydw9
+                    lda       tun,u
+                    cmpa      #TN.Inside
+                    blo       ydw9
+                    lda       tunt+1,u
+                    bita      #8
+                    beq       ydw9
+                    ldx       #TX.duck
+                    ldd       #60
+                    lbra      Ttl
+ydw9                rts
+
+********************************************************************
+* The autopilot on the train
+********************************************************************
+* BotTrain - TUNNEL!: down.  Sting's dynamite: round to the side away
+*   from him and kick it back (or clear off if it's about to go); his
+*   sting cocked: jump.  Exit: carry clear and B = the input if acting
+BotTrain            lda       sflags,u
+                    bita      #SG.Train
+                    lbeq      ybt9
+                    lbsr      DuckNow
+                    bcc       ybt1
+                    ldb       #IN.Down
+                    andcc     #$FE
+                    rts
+ybt1                lda       bkind,u
+                    cmpa      #4
+                    lbne      ybt9
+                    ldx       <bslot
+                    lda       EN.St,x
+                    lbeq      ybt9
+                    lda       <bst
+                    cmpa      #SS.Ko
+                    lbeq      ybt9
+                    lbsr      NearStick           Y = a lit stick lying near him, or carry set
+                    lbcs      ybt6
+                    ldx       <bslot              which side of it is Sting? stand the other
+                    ldd       EN.X,x
+                    subd      SK.X,y
+                    std       <tdx                (+: he's to the right)
+                    ldd       #-14*16
+                    tst       <tdx
+                    bpl       ybt2
+                    ldd       #14*16
+ybt2                addd      SK.X,y
+                    std       <tmp                where to kick from
+                    lda       SK.Fuse,y
+                    cmpa      #27
+                    blo       ybt5
+                    clrb
+                    ldd       SK.Z,y              line up in its lane
+                    subd      <hz
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bls       ybt2a
+                    ldb       #IN.Down
+                    tst       <tdz
+                    bpl       ybt2b
+                    ldb       #IN.Up
+                    bra       ybt2b
+ybt2a               clrb
+ybt2b               stb       <tmpf
+                    ldd       <tmp
+                    subd      <hx
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #4*16
+                    bls       ybt3
+                    ldb       #IN.Right
+                    tst       <tdz
+                    bpl       ybt2c
+                    ldb       #IN.Left
+ybt2c               orb       <tmpf
+                    andcc     #$FE
+                    rts
+ybt3                ldb       <tmpf               there: face him and kick
+                    bne       ybt4
+                    tst       <bott
+                    bne       ybt4
+                    lda       #18
+                    sta       <bott
+                    ldb       #IN.Right           (facing him: right if he's right)
+                    tst       <tdx
+                    bpl       ybt3a
+                    ldb       #IN.Left
+ybt3a               lda       <hface              (already facing him: kick)
+                    beq       ybt3b
+                    cmpb      #IN.Left
+                    beq       ybt3c
+                    bra       ybt4
+ybt3b               cmpb      #IN.Right
+                    bne       ybt4
+ybt3c               ldb       #IN.Kick
+ybt4                andcc     #$FE
+                    rts
+ybt5                ldd       <hz                 too late: clear off, away from it
+                    subd      SK.Z,y
+                    ldb       #IN.Down
+                    tsta
+                    bpl       ybt5a
+                    ldb       #IN.Up
+ybt5a               pshs      b
+                    ldd       <hx
+                    subd      SK.X,y
+                    ldb       #IN.Right
+                    tsta
+                    bpl       ybt5b
+                    ldb       #IN.Left
+ybt5b               orb       ,s+
+                    andcc     #$FE
+                    rts
+ybt6                lda       <bst                his sting cocked, him in its lane: jump
+                    cmpa      #SS.WindUp
+                    bne       ybt9
+                    ldx       <bslot
+                    lda       EN.T,x
+                    cmpa      #27
+                    blo       ybt9
+                    ldd       <hh
+                    bne       ybt9
+                    tst       <bott
+                    bne       ybt9
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       ybt9
+                    ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #72*16
+                    bhs       ybt9
+                    lda       #30
+                    sta       <bott
+                    ldb       #IN.Jump
+                    andcc     #$FE
+                    rts
+ybt9                orcc      #1
+                    rts
+
+* BotGap - B = the autopilot's input: walking at a gap, it jumps.  B out
+BotGap              lda       sflags,u
+                    bita      #SG.Train
+                    beq       ybg9
+                    ldx       <hh
+                    bne       ybg9
+                    lda       <hst
+                    cmpa      #ST.Walk
+                    bhi       ybg9
+                    ldx       #26
+                    bitb      #IN.Right
+                    bne       ybg1
+                    ldx       #-26
+                    bitb      #IN.Left
+                    beq       ybg9
+ybg1                pshs      b,x
+                    ldd       <hx
+                    lbsr      Asr4
+                    lbsr      GapAt
+                    bcs       ybg8
+                    ldd       <hx
+                    lbsr      Asr4
+                    addd      1,s
+                    lbsr      GapAt
+                    bcc       ybg8
+                    puls      b,x
+                    orb       #IN.Jump
+                    rts
+ybg8                puls      b,x
+ybg9                rts

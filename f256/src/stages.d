@@ -60,3 +60,46 @@ RideV               equ       32                  2 px a pass
 Loop                equ       640
 Saddle              equ       26                  how high he sits on the steer
 RdHp                equ       6
+
+* the Train Heist (train.a, sting.a): Sting's states (1 approach, 4 recover, 5 stagger, 8 dizzy, 9 KO as Dillon's,
+*   where boss.a's shared code tests them), his health; the tunnel's phases; the tables
+SS.Intro            equ       0
+SS.Appr             equ       1
+SS.PinchW           equ       2
+SS.Pinch            equ       3
+SS.Recov            equ       4
+SS.Stag             equ       5
+SS.Duck             equ       6                   flat for a tunnel
+SS.Retreat          equ       7                   scuttling back to throw
+SS.Daze             equ       8
+SS.Ko               equ       9
+SS.WindUp           equ       10                  the tail cocked
+SS.Sting            equ       11
+SS.Stuck            equ       12                  the sting stuck in the roof: open
+SS.Light            equ       13
+SS.Toss             equ       14
+StHp                equ       56
+TN.Warn             equ       1
+TN.Mouth            equ       2
+TN.Inside           equ       3
+TN.Exit             equ       4
+NProp               equ       2
+PR.On               equ       0
+PR.X                equ       1                   screen x, 12.4
+PR.Size             equ       3
+NStk                equ       6                   sticks of dynamite at once
+SK.On               equ       0
+SK.Kick             equ       1                   1 = kicked: sliding down the lane
+SK.Fuse             equ       2                   passes to the bang
+SK.X                equ       3
+SK.Z                equ       5
+SK.H                equ       7
+SK.VX               equ       9
+SK.VZ               equ       11
+SK.VH               equ       13
+SK.Size             equ       15
+NBoom               equ       4
+BM.T                equ       0                   passes since the bang (0 = free; it starts at 1)
+BM.X                equ       1
+BM.Z                equ       3
+BM.Size             equ       5

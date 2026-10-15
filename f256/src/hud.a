@@ -701,6 +701,9 @@ EName               lda       EN.Ty,x
                     decb
                     beq       enm00
                     leay      SJack,pcr
+                    decb
+                    beq       enm00
+                    leay      SSting,pcr
 enm00               cmpa      #TY.Boss
                     beq       enm0
                     cmpa      #TY.Rat
@@ -749,6 +752,9 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     deca
                     beq       ex1
                     ldb       #JackHp
+                    deca
+                    beq       ex1
+                    ldb       #StHp
 ex1                 puls      a,pc
 
 SName               fcn       "SHITKICKERS"
@@ -760,6 +766,7 @@ STwoBit             fcn       "TWO-BIT"
 SDillon             fcn       "BIG SHELL DILLON"
 SGila               fcn       "DOC GILA"
 SJack               fcn       "JACKRABBIT JACK"
+SSting              fcn       "STING"
 SnakeNames          fcn       "SIDEWINDER"
                     fcn       "SLIM"
                     fcn       "FANGS"
@@ -1093,6 +1100,7 @@ Titles              lda       <phase
                     lbeq      ti9
                     cmpa      #PH.Play
                     bne       ti3
+                    lbsr      TrainWords          (the train's TUNNEL! and DUCK!: train.a)
                     ldd       <titlet             the stage's name: Boot Hill under the big title,
                     cmpd      #TitleLen           the others on their own
                     bhs       ti2

@@ -41,7 +41,7 @@ function makeClut(name, max = 255) {
     },
   };
 }
-const CLUT = T.CLUT = { spr: makeClut('sprites', 1023), bg: makeClut('tiles') };
+const CLUT = T.CLUT = { spr: makeClut('sprites', 1023), bg: makeClut('tiles', 1023) };   // (tiles too: a palette a stage, export.js)
 
 // Threshold alpha, snap every pixel to the given palette, optionally add a 1px outline.
 // The result keeps its CLUT indices in cv.idx, which is what the F256 converter will emit.

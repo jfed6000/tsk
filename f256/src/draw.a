@@ -123,6 +123,7 @@ dw0a
                     lbsr      DrawTable
                     lbsr      DrawRide            the Cattle Drive's fences, rocks, runners (ride.a)
                     lbsr      DrawLasso           Jack's rope (jack.a)
+                    lbsr      DrawTrain           the tunnel's mouth, its pit-props, Sting's dynamite (train.a)
                     lda       sflags,u            Boot Hill: Ringo's grave; Main Street: a tumbleweed
                     bita      #SG.Intro
                     beq       dwg1
@@ -343,7 +344,10 @@ shk9                rts
 
 * MapScrl - the three maps follow the camera, shaken with the sprites.
 *   Exit: carry = error in B
-MapScrl             ldd       <cam            the street (on the ride's treadmill: its loop, wrapping)
+MapScrl             lda       sflags,u        (the train: the scenery going by with time, train.a)
+                    bita      #SG.Train
+                    lbne      TrainScrl
+                    ldd       <cam            the street (on the ride's treadmill: its loop, wrapping)
                     tst       rtread,u
                     beq       msa
                     ldd       rd,u

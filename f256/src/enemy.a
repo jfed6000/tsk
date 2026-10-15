@@ -297,7 +297,7 @@ nk0                 lda       #SF.Dig             clawing up out of the ground
                     rola
                     std       EN.X,x
                     std       <sx
-                    lda       #64                 z = 8 + 0..63
+                    lda       zspan,u             z = 8 + 0..63 (the train's roof: 0..31)
                     lbsr      RandN
                     adda      #8
                     ldb       #16
@@ -344,7 +344,7 @@ NewSkelW            clr       <tmpk               a skeleton that walks in (Main
                     lda       #SkHp
                     sta       <tmpf
                     bsr       NewWalk
-                    bcs       nd9
+                    lbcs      nd9
                     lda       #8                  one of the dead names
                     lbsr      RandN
                     sta       EN.Nm,x
@@ -397,7 +397,7 @@ nd2                 puls      d
                     lslb
                     rola
                     std       EN.X,x
-                    lda       #64                 z = 8 + 0..63
+                    lda       zspan,u             z = 8 + 0..63 (the train's roof: 0..31)
                     lbsr      RandN
                     adda      #8
                     ldb       #16
@@ -705,6 +705,8 @@ EAir                ldd       EN.VH,x             the arc
                     addd      EN.H,x
                     std       EN.H,x
                     lbgt      EnMove
+                    lbsr      TrLand              (landed in a gap between the cars: gone; train.a)
+                    lbcs      EnMove
                     ldd       #0                  down
                     std       EN.H,x
                     std       EN.VH,x
@@ -1048,18 +1050,18 @@ em2                 puls      d
                     addd      EN.VZ,x
                     bpl       em3
                     ldd       #0
-em3                 cmpd      #ZMax*16
+em3                 cmpd      zmax16,u
                     ble       em4
-                    ldd       #ZMax*16
+                    ldd       zmax16,u
 em4                 std       EN.Z,x
-                    rts
+                    lbra      TrEnemy             (the train: hopping the gaps, stopped at an edge; train.a)
 em5                 ldd       EN.X,x
                     addd      EN.VX,x
                     std       EN.X,x
                     ldd       EN.Z,x
                     addd      EN.VZ,x
                     std       EN.Z,x
-                    rts
+                    lbra      TrEnemy
 
 * FindSkull - X = an enemy -> Y = its loose skull, carry set if none
 FindSkull           leay      sl,u
@@ -1529,6 +1531,7 @@ ha2                 addd      <hxp
                     lbsr      ClodHit             a clod in the way is knocked down
                     lbsr      ShellHit            Dillon's rolling shell kicked back
                     lbsr      TableHit            Doc Gila's card table (ghost.a)
+                    lbsr      StickKick           Sting's dynamite kicked back (sting.a)
 * the posse
                     leax      en,u
                     lda       #NEn
@@ -2067,7 +2070,10 @@ de0r                cmpa      #TY.Boss
                     bne       de1a
                     lbsr      DrawBoss
                     bcc       de9
-de1a                pshs      x
+de1a                ldd       EN.H,x              (down between the train's cars: out of sight)
+                    cmpd      #-14*16
+                    lblt      de9
+                    pshs      x
                     bsr       EnFrame
                     std       <efrm
                     lda       #CTL.Spr
@@ -2578,7 +2584,7 @@ bs8                 orb       <binp
                     lda       #13
                     sta       <bott
 bs9                 ldb       <binp
-                    rts
+                    lbra      BotGap              (the train: a gap ahead, it hops; train.a)
 
 * BotItem - the autopilot, unarmed, goes for a weapon within 120 px when
 *   nothing's within 50 of him.  Exit: carry clear = binp set
@@ -2590,6 +2596,13 @@ bi1                 lda       IT.Ty,y
                     beq       bi2
                     cmpa      #IT.Beans
                     beq       bi2
+                    pshs      b                   (not one the camera's left behind: out of reach)
+                    ldd       <cam
+                    addd      #12
+                    lbsr      To124
+                    cmpd      IT.X,y
+                    puls      b
+                    bge       bi2
                     pshs      b
                     ldd       IT.X,y
                     subd      <hx
@@ -2711,7 +2724,10 @@ bt9                 rts
 
 * BotMound - the autopilot keeps off Two-Bit's mound.  Exit: carry clear
 *   and B = the input if it's running from it
-BotMound            lbsr      BotJack             the ride, and Jack's rope (jack.a)
+BotMound            lbsr      BotTrain            the train: ducking the tunnels, Sting's dynamite (train.a)
+                    bcs       bm0t
+                    rts
+bm0t                lbsr      BotJack             the ride, and Jack's rope (jack.a)
                     bcs       bm0j
                     rts
 bm0j                lbsr      BotShell            Dillon's shell first

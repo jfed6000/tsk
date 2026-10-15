@@ -46,7 +46,8 @@ EN.Id               equ       22                  its slot number + 1 (a skull's
 EN.Ty               equ       23                  what it is: TY.Skel, TY.Dillo
 EN.Sd               equ       24                  the side it came in from: 1 right, -1 left
 EN.Nm               equ       25                  a skeleton's name (DeadNames)
-EN.Size             equ       26
+EN.Hop              equ       26                  1 = hopping a gap between the cars (train.a)
+EN.Size             equ       27
 
 TY.Skel             equ       0
 TY.Dillo            equ       1
@@ -360,6 +361,28 @@ gthit               rmb       1                   the hero's attack that last ki
 gtx                 rmb       2                   the table: x, z (12.4)
 gtz                 rmb       2
 gtvx                rmb       2                   sliding (side-kicked), 0 = standing
+zmax16              rmb       2                   the walking band's depth, 12.4 (80 px; the train's roof 48)
+zspan               rmb       1                   a gang's spawn depth: 8 + 0..zspan-1 px
+* the Train Heist (train.a, sting.a)
+tmid                rmb       2                   the desert's scroll with time, 12.4, mod its picture
+tfar                rmb       2                   the sky's
+trock               rmb       1                   1 = the middle layer is the tunnel's rock wall
+tun                 rmb       1                   the tunnel: 0 none, TN.Warn, TN.Mouth, TN.Inside, TN.Exit
+tunt                rmb       2                   passes in it
+tunx                rmb       2                   the mouth's (or the way out's) screen x, 12.4
+tunn                rmb       2                   passes to the next
+tunp                rmb       1                   pit-props sent so far
+prp                 rmb       NProp*PR.Size       the pit-props going by
+hfallt              rmb       1                   down a gap: passes
+hfallg              rmb       1                   which gap
+hfallf              rmb       1                   0 he came from the left, 1 the right
+stk                 rmb       NStk*SK.Size        Sting's dynamite
+bom                 rmb       NBoom*BM.Size       the bangs
+ssalvo              rmb       1                   LIGHT 'EM ALL! coming
+sglint              rmb       1
+shitd               rmb       1                   his sting or pinch has landed
+sclank              rmb       1                   passes till the next CLANK! word
+sblast              rmb       1                   1 = this hit's a blast (no guard)
 riding              rmb       1                   1 = the Cattle Drive's ride is on (ride.a)
 hmount              rmb       1                   1 = he's in the saddle
 hremount            rmb       1                   (the death scene: back in the saddle after)

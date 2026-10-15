@@ -97,8 +97,18 @@ gi1a                sta       EN.Id,x
                     clr       hremount,u
                     clr       rtread,u
                     clr       lon,u
+                    ldx       #80*16              the walking band: 80 deep (a gang spawns 8..71),
+                    lda       #64                 the train's roof 48 (8..39)
+                    ldb       sflags,u
+                    bitb      #SG.Train
+                    beq       si0a
+                    ldx       #48*16
+                    lda       #32
+si0a                stx       zmax16,u
+                    sta       zspan,u
                     lbsr      SignInit            (Ghost Town's signs: tskgt)
                     lbsr      RideInit            (the Cattle Drive's ride: tskcd)
+                    lbsr      TrainInit           (the Train Heist's train: tskth)
                     ldd       #0
                     std       <phaset
                     std       <titlet
@@ -156,7 +166,8 @@ LoadStage           lbsr      MapsOff
                     lbsr      ClearRecs
                     lbsr      PushRecs
                     ldx       stgp,u
-                    ldd       SR.Files,x          its file names: tiles, maps, sprites, frame records, palette, module
+                    ldd       SR.Files,x          its file names: tiles, maps, sprites, frame records, palette, tile
+*                                                 palette, shades (or none), module
                     leay      StgTab,pcr
                     leax      d,y
                     pshs      x
@@ -165,16 +176,16 @@ LoadStage           lbsr      MapsOff
                     ldy       #0
                     lbsr      LoadFile
                     puls      x
-                    bcs       ls9
-                    bsr       NextName
+                    lbcs      ls9
+                    lbsr      NextName
                     pshs      x
                     lda       <mapblk             maps_<s>.bin
                     ldb       #NMapBlk
                     ldy       #0
                     lbsr      LoadFile
                     puls      x
-                    bcs       ls9
-                    bsr       NextName
+                    lbcs      ls9
+                    lbsr      NextName
                     pshs      x
                     lda       <sprblk             spr_<s>.bin, at the overlay's cells
                     adda      #SPR.Base/8
@@ -203,7 +214,26 @@ LoadStage           lbsr      MapsOff
                     lbsr      ClutK
 ls8                 puls      x
                     bcs       ls9
-                    bsr       NextName            its code: the stage module (stgmod.a)
+                    bsr       NextName            tpal_<s>.bin: its tile CLUT (StageGfx writes it)
+                    pshs      x
+                    lda       clublk,u            (clublk's second K: CLUT 3's)
+                    ldb       #1
+                    ldy       #1024
+                    lbsr      LoadFile
+                    puls      x
+                    bcs       ls9
+                    bsr       NextName            shade_<s>.bin: its 61 shades (Main Street's dusk,
+                    lda       ,x                  the train's tunnels), if it has them
+                    cmpa      #$0D
+                    beq       ls7
+                    pshs      x
+                    lda       duskblk,u
+                    ldb       #NDuskBlk
+                    ldy       #0
+                    lbsr      LoadFile
+                    puls      x
+                    bcs       ls9
+ls7                 bsr       NextName            its code: the stage module (stgmod.a)
                     lbsr      StgLoad
                     bcs       ls9
                     lbra      StageGfx
@@ -239,6 +269,7 @@ SG.Intro            equ       1                   the opening, the big title
 SG.Light            equ       2                   lightning
 SG.Dusk             equ       4                   night falls, wave by wave
 SG.Ride             equ       8                   the ride: in the saddle, the trail scrolling (ride.a)
+SG.Train            equ       16                  the train: its roof narrower, the scenery going by, gaps, tunnels (train.a)
 NOvlBlk             equ       (SPR.Ovl+7)/8
 MaxW                equ       2032                (x 16 = 32512: under 32767, so signed compares work)
 
@@ -274,6 +305,14 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BarCD-StgTab
                     fdb       TX.cattle,TX.sunup,TX.cdclear
                     fdb       FileCD-StgTab
+                    fdb       TH.W                the Train Heist at midday: along the roofs, Sting on the tender
+                    fdb       TH.MAP0.W,TH.MAP0.Of,TH.MAP1.W,TH.MAP1.Of,TH.MAP2.W,TH.MAP2.Of
+                    fcb       TH.TIL.Sets,SG.Train,MU.heist,6
+                    fdb       WaveTH-StgTab
+                    fcb       6
+                    fdb       BarTH-StgTab
+                    fdb       TX.trainh,TX.midday,TX.thclear
+                    fdb       FileTH-StgTab
 
 FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
@@ -284,6 +323,9 @@ FileBH              fcc       /tiles_bh.bin/
                     fcc       /frr_bh.bin/
                     fcb       $0D
                     fcc       /pal_bh.bin/
+                    fcb       $0D
+                    fcc       /tpal_bh.bin/
+                    fcb       $0D
                     fcb       $0D
                     fcb       $0D
 FileCD              fcc       /tiles_cd.bin/
@@ -296,7 +338,26 @@ FileCD              fcc       /tiles_cd.bin/
                     fcb       $0D
                     fcc       /pal_cd.bin/
                     fcb       $0D
+                    fcc       /tpal_cd.bin/
+                    fcb       $0D
+                    fcb       $0D
                     fcc       /tskcd/
+                    fcb       $0D
+FileTH              fcc       /tiles_th.bin/
+                    fcb       $0D
+                    fcc       /maps_th.bin/
+                    fcb       $0D
+                    fcc       /spr_th.bin/
+                    fcb       $0D
+                    fcc       /frr_th.bin/
+                    fcb       $0D
+                    fcc       /pal_th.bin/
+                    fcb       $0D
+                    fcc       /tpal_th.bin/
+                    fcb       $0D
+                    fcc       /shade_th.bin/
+                    fcb       $0D
+                    fcc       /tskth/
                     fcb       $0D
 FileGT              fcc       /tiles_gt.bin/
                     fcb       $0D
@@ -307,6 +368,9 @@ FileGT              fcc       /tiles_gt.bin/
                     fcc       /frr_gt.bin/
                     fcb       $0D
                     fcc       /pal_gt.bin/
+                    fcb       $0D
+                    fcc       /tpal_gt.bin/
+                    fcb       $0D
                     fcb       $0D
                     fcc       /tskgt/
                     fcb       $0D
@@ -319,6 +383,10 @@ FileMS              fcc       /tiles_ms.bin/
                     fcc       /frr_ms.bin/
                     fcb       $0D
                     fcc       /pal_ms.bin/
+                    fcb       $0D
+                    fcc       /tpal_ms.bin/
+                    fcb       $0D
+                    fcc       /shade_ms.bin/
                     fcb       $0D
                     fcc       /tskms/
                     fcb       $0D
@@ -348,6 +416,7 @@ sg1                 lda       <phase
                     lbsr      Hero
                     lbsr      Signs               Ghost Town's hanging signs (ghost.a)
                     lbsr      RideStep            the Cattle Drive's ride (ride.a)
+                    lbsr      TrainStep           the Train Heist's train (train.a)
                     tst       dying,u             (no wave while he's down)
                     bne       sgx
                     lbra      Waves
@@ -358,8 +427,8 @@ sg2                 cmpa      #PH.Clear
                     cmpd      #ClearT
                     blo       sgx
                     lda       stgn,u             a stage won: on to the next (health back up 6,
-                    cmpa      #3                  lives and score kept, the weapon left behind);
-                    bhs       sg3                 the Cattle Drive's the last for now
+                    cmpa      #4                  lives and score kept, the weapon left behind);
+                    bhs       sg3                 the Train Heist's the last for now
                     lda       <hhp
                     adda      #6
                     cmpa      #MaxHp
@@ -445,7 +514,9 @@ StartWave           ldd       ,x++
                     lbeq      StartDillon
                     decb
                     lbeq      StartGila
-                    lbra      StartJack
+                    decb
+                    lbeq      StartJack
+                    lbra      StartSting
 swb9                equ       *
                     sta       <tmpn
                     clr       <tmpi               i
@@ -527,6 +598,18 @@ WaveGT              fdb       0                   Ghost Town: the street, then t
                     fcb       6,TY.Rat,TY.SkelW,TY.Coy,TY.Rat,TY.Coy,TY.SkelW
                     fdb       1712
                     fcb       $FF,2               Doc Gila
+WaveTH              fdb       0                   the Train Heist: along the roofs (no locked screen's edge over a gap)
+                    fcb       3,TY.Coy,TY.Coy,TY.Rat
+                    fdb       360
+                    fcb       3,TY.Coy,TY.SkelW,TY.Coy
+                    fdb       700
+                    fcb       4,TY.Rat,TY.Coy,TY.SkelW,TY.Coy
+                    fdb       1040
+                    fcb       4,TY.SkelW,TY.Coy,TY.SkelW,TY.Rat
+                    fdb       1370
+                    fcb       5,TY.Coy,TY.SkelW,TY.Coy,TY.Rat,TY.Coy
+                    fdb       1712
+                    fcb       $FF,4               Sting
 WaveCD              fdb       1150                the Cattle Drive: on foot at the corral gate
                     fcb       4,TY.Coy,TY.Rat,TY.Coy,TY.SkelW
                     fdb       1712

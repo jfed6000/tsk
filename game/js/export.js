@@ -23,7 +23,7 @@ T.runExport = function (A) {
   // Each stage has its own tile sets and maps, loaded into the same blocks when the stage starts. One tile CLUT
   // serves both (CLUT.bg holds every stage's colours).
   const night = T.buildNightLayers(VW, VH, FLOOR), MS = T.buildMainStreet(VW, VH, FLOOR), GT = T.buildGhostTown(VW, VH, FLOOR);
-  const CD = T.buildRanch(VW, VH, FLOOR);
+  const CD = T.buildRanch(VW, VH, FLOOR), TH = T.buildTrain(VW, VH, FLOOR);
   const STAGES = [
     { key: 'BH', file: 'bh', W: 1920, layers: [
       { name: 'FAR', img: night.far, rate: 0.25 }, { name: 'MID', img: night.mid, rate: 0.5 },
@@ -35,21 +35,31 @@ T.runExport = function (A) {
     // the Cattle Drive: its sky layers keep scrolling over the ride's treadmill (2 loops of the trail), so they're longer
     { key: 'CD', file: 'cd', W: T.RANCH.W, extra: 2 * T.RANCH.LOOP, layers: [
       { name: 'FAR', img: CD.far, rate: 0.25 }, { name: 'MID', img: CD.mid, rate: 0.5 }, { name: 'STR', img: CD.street, rate: 1, noExtra: true }] },
+    // the Train Heist: the sky and the desert scroll on with time (wrap: one picture's width and a screen, the F256
+    // scrolls modulo the picture), and a fourth map, the tunnel's rock wall, in the middle layer's place in a tunnel
+    { key: 'TH', file: 'th', W: T.TRAIN.W, layers: [
+      { name: 'FAR', img: TH.far, rate: 0.25, wrap: TH.far.width }, { name: 'MID', img: TH.mid, rate: 0.5, wrap: TH.mid.width },
+      { name: 'STR', img: TH.street, rate: 1 }, { name: 'RCK', img: TH.rock, rate: 0.5, wrap: TH.rock.width }] },
   ];
   const SKEL = T.buildSkeleton();
 
   // ---------------------------------------------------------------- tiles and maps
+  // Each stage has its own tile palette (tpal_<s>.bin, CLUT 3 while it's on): the browser's tile CLUT holds every
+  // stage's colours (up to 1023), and a stage's tiles are remapped here to its own entries, 1 up.
   function packStage(st) {
+    const PM = new Map(), pal = [null];
+    const loc = g => { if (!g) return 0; let i = PM.get(g); if (i === undefined) { i = pal.length; PM.set(g, i); pal.push(T.CLUT.bg.colors[g]); } return i; };
     const tileKeys = new Map(), tileData = [new Uint8Array(256)];
     tileKeys.set(String.fromCharCode(...tileData[0]), 0);
     const maps = [];
     for (const L of st.layers) {
       const img = L.img, pw = img.width / TS;
-      const need = Math.ceil(((st.W - VW + (L.noExtra ? 0 : st.extra || 0)) * L.rate + VW) / TS) + 1;   // enough map to scroll the whole level
+      const need = L.wrap ? Math.ceil((L.wrap + VW) / TS) + 1                                          // a picture and a screen,
+        : Math.ceil(((st.W - VW + (L.noExtra ? 0 : st.extra || 0)) * L.rate + VW) / TS) + 1;   // or enough to scroll the whole level
       const cells = new Uint8Array(need * MAP_H * 2);
       for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < need; tx++) {
         const sx = (tx % pw) * TS, sy = ty * TS, t = new Uint8Array(256);
-        for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) t[y * TS + x] = img.idx[(sy + y) * img.width + sx + x] || 0;
+        for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) t[y * TS + x] = loc(img.idx[(sy + y) * img.width + sx + x] || 0);
         const key = String.fromCharCode(...t);
         let n = tileKeys.get(key);
         if (n === undefined) {
@@ -68,7 +78,8 @@ T.runExport = function (A) {
     const mapBytes = new Uint8Array(maps.reduce((s2, m) => s2 + m.cells.length, 0));
     let p = 0;
     for (const m of maps) { m.of = p; mapBytes.set(m.cells, p); p += m.cells.length; }
-    return Object.assign(st, { tiles, sets, n: tileData.length, maps, mapBytes });
+    if (pal.length > 256) throw new Error(`${st.key}: ${pal.length - 1} tile colours > 255`);
+    return Object.assign(st, { tiles, sets, n: tileData.length, maps, mapBytes, pal });
   }
   STAGES.forEach(packStage);
 
@@ -195,6 +206,11 @@ T.runExport = function (A) {
     ['whoa', 'WHOA!', '#ffd34a', 2], ['oof', 'OOF!', '#ff6b4a', 1], ['trampled', 'TRAMPLED!', '#ff6b4a', 1], ['roped', 'ROPED!', '#ff6b4a', 1],
     ['hogtied', 'HOG-TIED!', '#ff6b4a', 1], ['finders', 'FINDERS KEEPERS, BOOTS!', '#fff3c4', 1], ['tooslow', 'TOO SLOW!', '#ffd34a', 1],
     ['nottoday', 'NOT TODAY!', '#ffd34a', 1], ['stampede', 'STAMPEDE!', '#ff9d3c', 1],
+    ['trainh', 'THE TRAIN HEIST', '#ffd34a', 3], ['midday', 'MIDDAY', '#e8a070', 1], ['thclear', 'TRAIN HEIST CLEAR!', '#ffd34a', 3],
+    ['tunnel', 'TUNNEL!', '#ff9d3c', 3], ['duckhold', 'DUCK! HOLD DOWN', '#ffd34a', 1], ['duck', 'DUCK!', '#ffd34a', 2],
+    ['seeya', 'SEE YA!', '#ffd34a', 2], ['swept', 'SWEPT OFF!', '#ffd34a', 2], ['watchstep', 'WATCH YER STEP!', '#ffd34a', 1],
+    ['mindhead', 'MIND YER HEAD!', '#ff6b4a', 2], ['nobody', 'NOBODY GETS OFF THIS TRAIN!', '#fff3c4', 1], ['clank', 'CLANK!', '#c3c8d8', 1],
+    ['stung', 'STUNG!', '#ff6b4a', 1], ['uhoh', 'UH OH!', '#ff9d3c', 1], ['lightall', "LIGHT 'EM ALL!", '#ff9d3c', 1], ['kaboom', 'KA-BOOM!', '#ff6b4a', 1],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
 
@@ -216,7 +232,7 @@ T.runExport = function (A) {
   addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
     ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
     ['ball', DLN.ball, 20, true], ['hurt', [DLN.hurt], 1, false], ['daze', DLN.daze, 8, true], ['ko', [DLN.ko], 1, false]], B.OX, B.OY);
-  bank = ['GT', 'CD'];                             // the rattler: Ghost Town's, and one at the Cattle Drive's corral
+  bank = ['GT', 'CD', 'TH'];                       // the rattler: Ghost Town's, the Cattle Drive's corral's, the train's
   const RAT = T.buildRattler(), GIL = T.buildGila(), GPR = T.buildGhostProps();
   addGroup('RT', [['walk', RAT.walk, 8, true], ['coil', RAT.coil, 14, true], ['lunge', [RAT.lunge], 1, false],
     ['recover', [RAT.recover], 1, false], ['hurt', [RAT.hurt], 1, false], ['down', [RAT.down], 1, false], ['ko', [RAT.ko], 1, false]], B.OX, B.OY);
@@ -237,6 +253,15 @@ T.runExport = function (A) {
     ['spin', JK.spin, 10, true], ['throw', [JK.throw], 1, false], ['kick', [JK.kick], 1, false], ['hurt', [JK.hurt], 1, false],
     ['daze', JK.daze, 8, true], ['ko', [JK.ko], 1, false],
     ['loop', [JK.loop], 1, false, JK.loop.ox, JK.loop.oy], ['rope', [JK.rope], 1, false, JK.rope.ox, JK.rope.oy]], B.OX, B.OY);
+  bank = 'TH';                                     // the Train Heist: Sting, his dynamite, the bang, the tunnel's mouth and its pit-props
+  const SG = T.buildSting(), TRS = T.buildTrainSprites(FLOOR);
+  addGroup('SC', [['idle', SG.idle, 3, true], ['walk', SG.walk, 10, true], ['talk', SG.talk, 6, true], ['pinchw', [SG.pinchw], 1, false],
+    ['pinch', [SG.pinch], 1, false], ['windup', [SG.windup], 1, false], ['sting', [SG.sting], 1, false], ['stuck', [SG.stuck], 1, false],
+    ['light', [SG.light], 1, false], ['toss', [SG.toss], 1, false], ['duck', [SG.duck], 1, false], ['hurt', [SG.hurt], 1, false],
+    ['daze', SG.daze, 8, true], ['ko', [SG.ko], 1, false],
+    ['stick', SG.stick, 14, true, SG.stick[0].ox, SG.stick[0].oy]], B.OX, B.OY);
+  addGroup('TP', [['portal', [TRS.portal], 1, false, TRS.portal.ox, TRS.portal.oy]], 0, 0);              // (mirrored: the way out)
+  addGroup('TQ', [['boom', SG.boom, 1, false, SG.boom[0].ox, SG.boom[0].oy], ['prop', [TRS.prop], 1, false, TRS.prop.ox, TRS.prop.oy]], 0, 0, false);
   bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
@@ -301,35 +326,40 @@ T.runExport = function (A) {
     return clut(cols);
   };
   const F = T.rgb('#e4e0ff');
+  const shades = pal => {
+    const N = 61, out = new Uint8Array(N * 1024);
+    for (let st = 0; st < N; st++) out.set(clut(pal, c => c.map((v, j) => Math.round(v * (1 - st / 100) + T.NIGHT[j] * st / 100))), st * 1024);
+    pal.forEach((h, i) => {                       // the lights: unshaded in every step
+      if (!h || !T.MAIN_STREET_LIGHTS.has(h.toLowerCase())) return;
+      const [r, g, bl] = T.rgb(h);
+      for (let st = 0; st < N; st++) { const o = st * 1024 + i * 4; out[o] = bl; out[o + 1] = g; out[o + 2] = r; }
+    });
+    return out;
+  };
   const files = {
     'sprites.bin': sprites,
-    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT, 'spr_cd.bin': ovl.CD,
+    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT, 'spr_cd.bin': ovl.CD, 'spr_th.bin': ovl.TH,
     'tiles_bh.bin': STAGES[0].tiles, 'maps_bh.bin': STAGES[0].mapBytes,
     'tiles_ms.bin': STAGES[1].tiles, 'maps_ms.bin': STAGES[1].mapBytes,
     'tiles_gt.bin': STAGES[2].tiles, 'maps_gt.bin': STAGES[2].mapBytes,
     'tiles_cd.bin': STAGES[3].tiles, 'maps_cd.bin': STAGES[3].mapBytes,
+    'tiles_th.bin': STAGES[4].tiles, 'maps_th.bin': STAGES[4].mapBytes,
     'frames.bin': frames,
-    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD),
+    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD), 'frr_th.bin': cat(frParts.TH),
     'clut_spr.bin': clut(shCols),                 // the shared colours only (tskview; tsk loads a stage's pal_<s>)
-    'pal_bh.bin': palOf('BH'), 'pal_ms.bin': palOf('MS'), 'pal_gt.bin': palOf('GT'), 'pal_cd.bin': palOf('CD'),
-    'clut_tile.bin': clut(T.CLUT.bg.colors),
-    'clut_flash.bin': clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
-    // Main Street's night falling (mainstreet.js shadeOf): 61 tile CLUTs, shade 0 .. 0.60 toward NIGHT in steps of
-    // 0.01 (fine enough that the F256 can fade, as the browser does; 13 steps of 0.05 looked abrupt on the K2). The
-    // lights (windows, lamps, the sun) keep their colour. 1K each, back to back.
-    'clut_dusk.bin': (() => {
-      const N = 61, out = new Uint8Array(N * 1024);
-      for (let st = 0; st < N; st++) out.set(clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * (1 - st / 100) + T.NIGHT[j] * st / 100))), st * 1024);
-      // the lights: unshaded in every step
-      T.CLUT.bg.colors.forEach((h, i) => {
-        if (!h || !T.MAIN_STREET_LIGHTS.has(h.toLowerCase())) return;
-        const [r, g, bl] = T.rgb(h);
-        for (let st = 0; st < N; st++) { const o = st * 1024 + i * 4; out[o] = bl; out[o + 1] = g; out[o + 2] = r; }
-      });
-      return out;
-    })(),
+    'pal_bh.bin': palOf('BH'), 'pal_ms.bin': palOf('MS'), 'pal_gt.bin': palOf('GT'), 'pal_cd.bin': palOf('CD'), 'pal_th.bin': palOf('TH'),
+    // the tile palettes: a stage's own (tpal_<s>); clut_tile is Boot Hill's (the title, tskview), clut_flash Boot
+    // Hill's lightning-lit
+    'tpal_bh.bin': clut(STAGES[0].pal), 'tpal_ms.bin': clut(STAGES[1].pal), 'tpal_gt.bin': clut(STAGES[2].pal),
+    'tpal_cd.bin': clut(STAGES[3].pal), 'tpal_th.bin': clut(STAGES[4].pal),
+    'clut_tile.bin': clut(STAGES[0].pal),
+    'clut_flash.bin': clut(STAGES[0].pal, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
+    // the shades (mainstreet.js shadeOf), Main Street's night falling and the train's tunnels: 61 tile CLUTs of the
+    // stage's palette, shade 0 .. 0.60 toward NIGHT in steps of 0.01 (fine enough that the F256 can fade, as the
+    // browser does; 13 steps of 0.05 looked abrupt on the K2). The lights (windows, lamps, the sun) keep their colour.
+    // 1K each, back to back.
+    'shade_ms.bin': shades(STAGES[1].pal), 'shade_th.bin': shades(STAGES[4].pal),
   };
-  if (T.CLUT.bg.colors.length > 256) throw new Error('CLUT overflow');
 
   // ---------------------------------------------------------------- the generated defs file
   const hex = (n, w = 4) => '$' + n.toString(16).toUpperCase().padStart(w, '0');
@@ -425,7 +455,7 @@ T.runExport = function (A) {
   // stats for the report
   const report = { stages: STAGES.map(st => ({ key: st.key, tiles: st.n, sets: st.sets, maps: st.maps.map(m => ({ name: m.name, w: m.w })) })),
     cells: cellData.length, ovl: Object.fromEntries(Object.entries(banks).map(([k, b]) => [k, b.cells.length])), frames: frameRecs.length,
-    sprClut: { shared: NSH, ...Object.fromEntries(Object.entries(PB).map(([k, b]) => [k, b.cols.length])) }, tileClut: T.CLUT.bg.colors.length - 1, sizes: Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v.length])) };
+    sprClut: { shared: NSH, ...Object.fromEntries(Object.entries(PB).map(([k, b]) => [k, b.cols.length])) }, tileClut: Object.fromEntries(STAGES.map(st => [st.key, st.pal.length - 1])), sizes: Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v.length])) };
 
   // hand everything to export.py through the DOM, base64-encoded
   const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };

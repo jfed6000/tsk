@@ -114,7 +114,10 @@ wbs2x                stb       EN.St,x
 HitBoss             lbsr      JackDodge           (Jack hops over a kick at him on his feet)
                     bcc       hbj0
                     rts
-hbj0                lda       #SF.HitBig
+hbj0                lbsr      StingGuard          (Sting's pincers: a kick from in front glances off)
+                    bcc       hbj1
+                    rts
+hbj1                lda       #SF.HitBig
                     lbsr      Sfx
                     lda       <bst
                     ldb       bkind,u             (dizzy: Two-Bit's BS.Daze, Dillon's DS.Daze)
@@ -252,7 +255,12 @@ whb5                 tst       <bsum               half his health: he raises th
                     inc       <bsum
                     lda       bkind,u
                     lbeq      whs0
-                    cmpa      #3
+                    cmpa      #4                  Sting: LIGHT 'EM ALL! (sting.a)
+                    bne       whs4
+                    lbsr      StingSalvo
+                    ldx       <bslot
+                    lbra      whb9
+whs4                cmpa      #3
                     bne       whs3
                     lda       #70                 Jack: the herd turned loose on you
                     ldy       #TX.stampede
@@ -286,7 +294,9 @@ whs0                lda       #66
                     lbsr      NewSkel
                     lbsr      NewSkel
                     ldx       <bslot
-whb9                 lda       bkind,u             Doc Gila's tricks (ghost.a), Jack's way out (jack.a)
+whb9                 lda       bkind,u             Doc Gila's tricks (ghost.a), Jack's way out (jack.a),
+                    cmpa      #4                  Sting's staggers and dropped sticks (sting.a)
+                    lbeq      StingReact
                     cmpa      #3
                     lbeq      JackReact
                     lbra      GilaReact
@@ -329,7 +339,9 @@ BossStep            stx       <bslot
                     tst       EN.Hp,x
                     beq       wbs0
                     lbra      EStop
-wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila, 3 Jack
+wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila, 3 Jack, 4 Sting
+                    cmpa      #4
+                    lbeq      StingStep
                     cmpa      #3
                     lbeq      JackStep
                     cmpa      #2
@@ -735,9 +747,9 @@ wbm1                 std       EN.H,x
                     addd      EN.VZ,x
                     bpl       wbm2
                     ldd       #0
-wbm2                 cmpd      #ZMax*16
+wbm2                 cmpd      zmax16,u
                     ble       wbm3
-                    ldd       #ZMax*16
+                    ldd       zmax16,u
 wbm3                 std       EN.Z,x
                     ldd       <cam
                     addd      #14
@@ -1001,6 +1013,8 @@ wch2                 leax      CL.Size,x
 ********************************************************************
 * BossFrame - X = him -> D = his frame (brawler.js bossImg)
 BossFrame           lda       bkind,u
+                    cmpa      #4
+                    lbeq      StingFrame
                     cmpa      #3
                     lbeq      JackFrame
                     cmpa      #2
@@ -1169,9 +1183,9 @@ DMove               ldd       EN.Z,x
                     addd      EN.VZ,x
                     bpl       dm2x
                     ldd       #0
-dm2x                cmpd      #ZMax*16
+dm2x                cmpd      zmax16,u
                     ble       dm3x
-                    ldd       #ZMax*16
+                    ldd       zmax16,u
 dm3x                std       EN.Z,x
                     ldd       <cam
                     addd      #20

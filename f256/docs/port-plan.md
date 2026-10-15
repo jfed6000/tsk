@@ -296,7 +296,43 @@ One program module, **`tsk`**, assembled from:
     Today: 120 shared, the stages 8 (Boot Hill), 13 (Main Street), 41 (Ghost Town), 49 (the Cattle Drive) - 86
     entries free on each stage. The exporter refuses a stage that doesn't fit; the previews (now coloured with each
     stage's palette) came out pixel-identical, and MAME shows every stage right.
-14. The pad harness, co-op, the next stages.
+14. ✓ **The Train Heist** *(2026-10-15: `tsk` 26.0K of 32,768; `tskth` 5.4K of 8,192; data 5.4K of 7,936)*: stage 4
+    (`SG.Train`), after the Cattle Drive; `tsk t` starts there (h and c together on the command line), `tsk tk` at
+    Sting, `make mametrain` runs `tsk tbg`.
+    - **A tile palette a stage** (the train's colours didn't fit in one tile CLUT with the others): the exporter
+      remaps each stage's tiles to its own palette, `tpal_<s>.bin`, loaded into clublk's second K with the stage;
+      `clut_tile.bin` and `clut_flash.bin` are Boot Hill's. The shades follow the stage too: `shade_ms.bin` (Main
+      Street's dusk, was `clut_dusk.bin`, no longer loaded at start-up) and `shade_th.bin` (the tunnels), into
+      duskblk with the stage (the stage's file list now: tiles, maps, sprites, frame records, palette, tile
+      palette, shades or none, module).
+    - **The scenery with time** (`TrainScrl`, from `MapScrl`): `tmid`/`tfar` run on 53 and 4 sixteenths a pass
+      (198.75 and 15 px/s: the browser uses the same), and the far and middle maps are a picture and a screen wide,
+      scrolled modulo the picture (`export.js` `wrap`). The street scrolls with the camera.
+    - **The walking band** is a stage's: `zmax16` (80 px, the roof 48) and `zspan` (where a gang spawns); `ZMax` is
+      gone.
+    - **Gaps** (`train.a GapTab`): `HeroGap` drops him (`ST.Fall`, `FallStep`: back up on the side of the gap he
+      came from if the screen lets him stand there, `Standable`, else the other; 3); `TrEnemy` (the end of
+      `EnMove`) hops an outlaw over a gap it walks into (`EN.Hop`) and stops one on its feet at the edge; `TrLand`
+      (an `EAir` landing) drops a knocked-flying one (`FallOff`); `LooseGap` removes items and skulls.
+    - **Tunnels** (`TunStep`): the countdown, TUNNEL! (`SF.Whistle`, a rumble), the mouth (`SF.Roar`; `Sweep`:
+      crossing an actor this pass knocks him flat or an outlaw off - a skeleton comes apart, `KO`; a coyote 70 px
+      ahead may hit the deck), at mid-screen the middle layer's map changes to the rock wall (`Rock`: `OneMap` to
+      `TH.MAP3`), the dark through `DuskClut` a step every fourth pass (to 0.6, the browser's too), two pit-props
+      inside (`SF.Creak`), the way out. `DuckNow` (down is duck: `ST.Duck`). TUNNEL! and DUCK! are drawn in the
+      HUD's pass (`TrainWords` from `Titles`): `BuildChar` writes records through Y, which `DrawTrain`'s pass hasn't
+      set up.
+    - **Sting** (`sting.a`, `bkind` 4, `SS.*` in stages.d): `StingGuard` (the start of `HitBoss`: CLANK!, or the
+      dropped stick), `StingReact` (the end: the staggers), `StingSalvo` (half health); his sticks (`stk`: lobbed
+      with a signed divide, `SDiv`; kicked by `StickKick` from `HeroAtk`) and the bangs (`bom`, `Explode`: `sblast`
+      skips his guard).
+    - **New effects** (snd.a): the whistle on channel 12 (GM 78), the roar, the creak, the bang.
+    - **The rattler** is in the train's sprite bank too (first, as in Ghost Town's and the Cattle Drive's).
+    - **Bugs found on the way, worth remembering:** a new hero state needs its `SetSfx` entry (a missing one played
+      sound 99: hundreds of junk MIDI messages, 250K cycles); `ldd #x` then `ldb` (a frame number half overwritten:
+      the mouth drawn as Sting); loop counters in `<kcnt`/`<aloop`/`<tmpi` clobbered by what the loop calls (Spark,
+      the death scene's `Blowback`) - the train's loops keep theirs on the stack.
+    - **Cost:** the worst pass in the chain Ghost Town → Cattle Drive → Train Heist is 91K cycles.
+15. The pad harness, co-op, the next stages.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

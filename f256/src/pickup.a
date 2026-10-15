@@ -84,6 +84,18 @@ BarBH               fdb       300
                     fdb       1560
                     fcb       50,IT.Beans
 * Ghost Town: barrels on the street, card tables in the saloon (the item's top bit: a table)
+BarTH               fdb       300                 the Train Heist's: on the roofs
+                    fcb       16,IT.Beans
+                    fdb       640
+                    fcb       30,WP.Whip
+                    fdb       980
+                    fcb       10,IT.Beans
+                    fdb       1300
+                    fcb       36,WP.Gun
+                    fdb       1600
+                    fcb       20,IT.Beans
+                    fdb       1800
+                    fcb       30,IT.Beans
 BarCD               fdb       1300                the Cattle Drive's corral
                     fcb       30,IT.Beans
                     fdb       1420

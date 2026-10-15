@@ -54,6 +54,10 @@ SF.Hurt             equ       14
 SF.Shell            equ       15
 SF.Rattle           equ       16
 SF.Card             equ       17
+SF.Whistle          equ       18                  the train's whistle: a tunnel coming (channel 12)
+SF.Roar             equ       19                  into the tunnel
+SF.Creak            equ       20                  a pit-prop coming
+SF.Boom             equ       21                  dynamite
 
 ********************************************************************
 * SndInit - after the music is loaded: the effect channels' instruments
@@ -83,8 +87,9 @@ nsi3                 lbsr      MidiFlush
                     andcc     #$FE
 nsi9                 rts
 
-* channels 13-15: gunshot, breath (the whoosh), timpani; full volume
-SfxInit             fcb       $CC,127,$BC,7,110
+* channels 12-15: the whistle, gunshot, breath (the whoosh), timpani; full volume
+SfxInit             fcb       $CB,78,$BB,7,100
+                    fcb       $CC,127,$BC,7,110
                     fcb       $CD,121,$BD,7,90
                     fcb       $CE,47,$BE,7,120
                     fcb       0
@@ -385,7 +390,30 @@ SfxTab              fdb       FxWhoosh-SfxTab
                     fdb       FxShell-SfxTab
                     fdb       FxRattle-SfxTab
                     fdb       FxCard-SfxTab
+                    fdb       FxWhistle-SfxTab
+                    fdb       FxRoar-SfxTab
+                    fdb       FxCreak-SfxTab
+                    fdb       FxBoom-SfxTab
 * delay, status, note, velocity, length
+FxWhistle           fcb       0,$9B,70,110,26     two blasts of a chord (Bb, D, F)
+                    fcb       0,$9B,74,104,26
+                    fcb       0,$9B,77,100,26
+                    fcb       34,$9B,70,110,56
+                    fcb       34,$9B,74,104,56
+                    fcb       34,$9B,77,100,56
+                    fcb       $FF
+FxRoar              fcb       0,$9E,28,127,80     low timpani and the crash: into the dark
+                    fcb       0,$99,49,110,0
+                    fcb       0,$99,35,120,0
+                    fcb       $FF
+FxCreak             fcb       0,$99,74,100,0      the long guiro, then the short: timber
+                    fcb       8,$99,73,90,0
+                    fcb       $FF
+FxBoom              fcb       0,$99,35,127,0      both kicks, the crash, the timpani low
+                    fcb       0,$99,36,127,0
+                    fcb       0,$99,57,120,0
+                    fcb       0,$9E,33,127,40
+                    fcb       $FF
 FxWhoosh            fcb       0,$9D,96,100,5      a breath, high and short
                     fcb       $FF
 FxHit               fcb       0,$99,38,118,0      snare and floor tom: a thwack

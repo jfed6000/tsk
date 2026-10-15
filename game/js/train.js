@@ -23,7 +23,7 @@ for (let i = 1; i < CARS.length; i++) if (CARS[i][0] > CARS[i - 1][1]) GAPS.push
 // W: the strip; ZMAX: the roof's depth (the walking band, 48 px: narrower than a street); ROOF: the roofline's y
 // (the far edge, a little behind z 0); LIP: the near edge; CLEAR: a tunnel's clearance over the roof, in height -
 // standing he's 56, flat 20; V: the scenery's speed (px/s) on the mid layer, FAR on the far one
-T.TRAIN = { W: 2032, CARS, GAPS, ZMAX: 48, ROOF: 146, LIP: 202, CLEAR: 36, V: 200, FAR: 14 };
+T.TRAIN = { W: 2032, CARS, GAPS, ZMAX: 48, ROOF: 146, LIP: 202, CLEAR: 36, DARK: 0.6, V: 53 * 60 / 16, FAR: 4 * 60 / 16 };   // (V, FAR: the F256's 53 and 4 sixteenths a pass)
 
 T.buildTrain = function (VW, VH, FLOOR) {
   const L = {}, r = rng(23), R = T.TRAIN;
@@ -250,14 +250,14 @@ T.buildTrainSprites = function (FLOOR) {
     c.fillStyle = S2; c.fillRect(1 + (i % 2) * 5, y + 1, 9, 2);
   }
   c.fillStyle = S1; c.fillRect(0, H - 7, 24, 7); c.fillStyle = S2; c.fillRect(0, H - 7, 24, 2);   // the springer at its foot
-  const o = T.pixelize(cv, { s0: S0, s1: S1, s2: S2, mo: MO, rk: RK, rk1: RK1, rk2: RK2 }, PAL.out, CLUT.spr); o.ox = 0; o.oy = H;
+  const o = T.pixelize(cv, { s0: S0, s1: S1, s2: S2, mo: MO, rk: RK, rk1: RK1, rk2: RK2 }, PAL.out, CLUT.spr); o.ox = 0; o.oy = 128;   // (its top at the top of the screen, drawn at y 128: a cell's offset is a byte)
   const pv = T.canvas(16, H), q = pv.getContext('2d'), TB0 = '#5a3a1e', TB1 = '#7a5230', TB2 = '#3a2412', IR = '#4a4a54';
   q.fillStyle = TB2; q.fillRect(2, 0, 12, H);                       // the post, the lintel's end, iron straps
   q.fillStyle = TB0; q.fillRect(3, 0, 10, H); q.fillStyle = TB1; q.fillRect(4, 0, 3, H);
   for (let y = 6; y < H; y += 9) { q.fillStyle = TB2; q.fillRect(3, y, 10, 1); }
   q.fillStyle = TB0; q.fillRect(0, H - 14, 16, 14); q.fillStyle = TB1; q.fillRect(1, H - 13, 14, 3);
   q.fillStyle = IR; q.fillRect(0, H - 18, 16, 2); q.fillRect(0, 30, 16, 2); q.fillRect(0, 80, 16, 2);
-  const pp = T.pixelize(pv, { a: TB0, b: TB1, c: TB2, d: IR }, PAL.out, CLUT.spr); pp.ox = 8; pp.oy = H;
+  const pp = T.pixelize(pv, { a: TB0, b: TB1, c: TB2, d: IR }, PAL.out, CLUT.spr); pp.ox = 8; pp.oy = 128;
   return { portal: o, prop: pp };
 };
 })();

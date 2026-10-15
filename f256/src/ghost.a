@@ -825,9 +825,9 @@ gfl1x                ldx       <bslot
                     addd      <tdz
                     bpl       gfl2x
                     ldd       #0
-gfl2x                cmpd      #ZMax*16
+gfl2x                cmpd      zmax16,u
                     ble       gfl3x
-                    ldd       #ZMax*16
+                    ldd       zmax16,u
 gfl3x                std       <sz
                     leay      eb,u                a free slot
                     ldb       #NEb

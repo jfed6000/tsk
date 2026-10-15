@@ -27,6 +27,8 @@ ST.Grab             equ       16                  holding an outlaw by the colla
 ST.Knee             equ       17                  X while holding: the knee
 ST.Throw            equ       18                  C or jump while holding: the throw
 ST.Roped            equ       19                  on the end of Jack's lasso: yanked to him (jack.a)
+ST.Duck             equ       20                  flat on the train's roof for a tunnel (down, when train.a DuckNow says)
+ST.Fall             equ       21                  down a gap between the cars (train.a FallStep)
 
 * speeds, 12.4 per pass (browser: px/s at 60 passes)
 WalkX               equ       28                  105 px/s
@@ -36,7 +38,6 @@ Grav                equ       5                   1150 px/s/s
 FlyV                equ       45                  the flying kick, 170 px/s
 StompV              equ       -149                the stomp's drop, 560 px/s
 SideV               equ       24                  the side kick's lunge, 90 px/s
-ZMax                equ       80                  the street's depth, px
 
 * timings, passes (the browser's durations; the frame timing comes from tskassets.d)
 TurnLen             equ       6                   the 3/4 turn frame on stopping (0.1 s)
@@ -153,8 +154,17 @@ hf3                 stx       <hvx
                     bpl       hf5
                     ldx       #-WalkZ
 hf5                 stx       <hvz
+* TUNNEL!: holding down is duck (train.a DuckNow: the warning's up, or the mouth or a pit-prop is coming)
+                    lda       <inp
+                    bita      #IN.Down
+                    beq       hp0
+                    lbsr      DuckNow
+                    bcc       hp0
+                    lda       #ST.Duck
+                    lbsr      SetS
+                    lbra      hsw
 * the presses, in the browser's order
-                    lda       <ipress
+hp0                 lda       <ipress
                     bita      #IN.Jump
                     beq       hp1
                     lda       #ST.Jump
@@ -230,6 +240,10 @@ hp6                 cmpa      <hst
 
 * what each state does this pass
 hsw                 lda       <hst
+                    cmpa      #ST.Duck
+                    beq       sDuck
+                    cmpa      #ST.Fall
+                    beq       sFall
                     cmpa      #ST.Roped
                     lbeq      sRoped
                     cmpa      #ST.Grab
@@ -257,6 +271,22 @@ hsw                 lda       <hst
                     cmpa      #ST.Stomp
                     lbls      sAir
                     lbra      hmove
+
+* duck: flat on the roof until down's let go or the danger's past
+sDuck               ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lda       <inp
+                    bita      #IN.Down
+                    beq       sdk1
+                    lbsr      DuckNow
+                    lbcs      hmove
+sdk1                lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+* down a gap: train.a's (he drops, and comes back up on a car)
+sFall               lbsr      FallStep
+                    lbra      hv2
 
 * the snap kick: a later press during it queues the next (not the press
 *   that started it); the combo is three
@@ -485,9 +515,9 @@ hmove               ldd       <hx
                     addd      <hvz
                     bpl       hm1
                     ldd       #0
-hm1                 cmpd      #ZMax*16
+hm1                 cmpd      zmax16,u
                     ble       hm2
-                    ldd       #ZMax*16
+                    ldd       zmax16,u
 hm2                 std       <hz
                     tst       hmount,u            in the saddle, the camera moving: carried along
                     beq       hm2a
@@ -529,7 +559,8 @@ hm3b                tst       <lock
 hm3a                cmpd      <hx
                     bge       hm4
                     std       <hx
-hm4                 lbsr      HeroAtk             his kicks against everything in his lane
+hm4                 lbsr      HeroGap             (the train: over a gap, feet down - he drops)
+                    lbsr      HeroAtk             his kicks against everything in his lane
 
 * HeroPassive - out of play (the stage won): his state's clock, the
 *   taunt ending, the animation; no input, no moving
@@ -627,6 +658,7 @@ hfr1                rts
 *   kick, stomp, land, snap, side, taunt, hurt, whip, shoot
 SetSfx              fcb       $FF,$FF,SF.Jump,SF.Whoosh,SF.Whoosh,SF.Land,SF.Whoosh,SF.Whoosh,SF.Tip,$FF
                     fcb       SF.Whoosh,$FF,$FF,$FF,$FF,$FF,$FF,SF.Whoosh,$FF,$FF
+                    fcb       SF.Land,$FF         duck (flat on the roof), fall (train.a plays its own)
 
 AnTab               fdb       AnIdle-AnTab
                     fdb       AnRun-AnTab
@@ -648,6 +680,13 @@ AnTab               fdb       AnIdle-AnTab
                     fdb       AnSnap-AnTab        (the knee is the snap kick)
                     fdb       AnThrow-AnTab
                     fdb       AnHurt-AnTab        roped
+                    fdb       AnDuck-AnTab
+                    fdb       AnFall-AnTab
+
+AnDuck              fdb       HR.duck
+                    fcb       HR.duck.N,HR.duck.T,0
+AnFall              fdb       HR.hurt+1
+                    fcb       1,255,0
 
 AnRide              fdb       HR.jump+1           (the jump's tuck: sitting the steer)
                     fcb       1,255,0

@@ -324,9 +324,9 @@ kjc5                 std       <tmp
                     addd      <hz
                     bpl       kjc5a
                     ldd       #0
-kjc5a                cmpd      #ZMax*16
+kjc5a                cmpd      zmax16,u
                     ble       kjc5b
-                    ldd       #ZMax*16
+                    ldd       zmax16,u
 kjc5b                std       <tdz
 kjc6                 ldd       <tmp                kept on the screen
                     lbsr      OnScreen

@@ -82,6 +82,8 @@ HitTab
                     fcb       0,0,0,0                   die 4
                     fcb       0,0,0,0                   die 5
                     fcb       0,0,0,0                   dead 0
+                    fcb       0,0,0,0                   duck 0
+                    fcb       0,0,0,0                   duck 1
                     fcb       0,0,0,0                   reach 0
                     fcb       0,0,0,0                   reach 1
                     fcb       0,0,0,0                   getup 0

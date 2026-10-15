@@ -366,12 +366,16 @@ T.runBrawler = function (A) {
   function fallOff(e, swept) {
     if (player.held === e) player.held = null;
     for (const s of skulls) if (s.owner === e) s.owner = null;
+    if (e.type === 'skel' && swept) { tally.swept++; e.hp = 0; koE(e, -1); return; }   // a skeleton swept off comes apart (as on the F256)
     e.state = 'ko'; e.t = 0; e.fell = !swept; tally[swept ? 'swept' : 'fell']++; e.vx = swept ? -260 : 0; e.vh = swept ? 160 : -60;
     sfx('ko'); shake = Math.max(shake, 3);
     const y = FLOOR + e.z - eHeight(e);
     addScore({ coyote: 400, dillo: 200, skel: 450, rattler: 350 }[e.type] || 400, e.x, y);
     popup(e.x, y, swept ? 'SWEPT OFF!' : 'SEE YA!', '#ffd34a', 2);
   }
+  // the tunnel's rock wall in place of the scenery: from the mouth at mid-screen to the way out at mid-screen (on the
+  // F256 the middle layer's map changes, all at once: the mouth's own rock face covers the change)
+  const rockOn = () => !!tunnel && ((tunnel.st === 'mouth' && tunnel.x < VW / 2) || tunnel.st === 'inside' || (tunnel.st === 'exit' && tunnel.x >= VW / 2));
   // TUNNEL!: the warning's up, the mouth's coming, or a pit-prop - down is duck now
   const duckNow = () => !!tunnel && (tunnel.st === 'warn' || (tunnel.st === 'mouth' && tunnel.x > player.x - camX - 24)
     || tunnel.props.some(pr => pr.x > player.x - camX - 16 && pr.x < VW + 40));
@@ -386,6 +390,9 @@ T.runBrawler = function (A) {
     for (const e of enemies) if (over(e)) {
       hit.add(e);
       if (e.type !== 'rattler' && e.type !== 'dillo' && e.state !== 'ko' && e.state !== 'down' && hittable(e)) fallOff(e, true);
+    } else if (e.type === 'coyote' && !hit.has(e) && !(hit.guessed || (hit.guessed = new Set())).has(e)) {   // 70 px ahead of it,
+      const ahead = e.x - camX - x;                                                                         // half the coyotes
+      if (ahead > 0 && ahead < 70) { hit.guessed.add(e); if (['approach', 'recover'].includes(e.state) && Math.random() < 0.5) { e.state = 'down'; e.t = 0; e.vx = e.vz = 0; } }   // hit the deck
     }
   }
 
@@ -1009,7 +1016,6 @@ T.runBrawler = function (A) {
     if (!tunnel) {
       if (phase === 'play' && !death && (tunnelT -= dt) <= 0) {
         tunnel = { st: 'warn', t: 0, x: VW + 8, hit: new Set(), props: [], np: 0 }; sfx('whistle');
-        for (const e of enemies) if (e.type === 'coyote' && ['approach', 'recover', 'enter'].includes(e.state) && Math.random() < 0.5) { e.state = 'down'; e.t = -(TN.warn + 1.6); e.vx = e.vz = 0; }   // the old hands hit the deck too
       }
       tdark = Math.max(0, tdark - dt * 3);
       return;
@@ -1019,10 +1025,9 @@ T.runBrawler = function (A) {
     for (const pr of tn.props) { pr.x -= TR.V * dt; sweep(pr.x, pr.hit); }   // the pit-props: duck each one
     tn.props = tn.props.filter(pr => pr.x > -30);
     if (tn.st === 'inside') {
-      tdark = Math.min(0.88, tdark + dt * 4); shake = Math.max(shake, 0.8);
+      tdark = Math.min(TR.DARK, tdark + dt * 4); shake = Math.max(shake, 0.8);
       if (tn.np < TN.props.length && tn.t >= TN.props[tn.np]) {    // a prop coming: the creak, and the coyotes' guess
         tn.np++; tn.props.push({ x: VW + 12, hit: new Set() }); sfx('creak');
-        for (const e of enemies) if (e.type === 'coyote' && ['approach', 'recover'].includes(e.state) && Math.random() < 0.5) { e.state = 'down'; e.t = -1.0; e.vx = e.vz = 0; }
       }
       if (tn.t >= TN.inside) { tn.st = 'exit'; tn.t = 0; tn.x = VW + 8; }
       return;
@@ -1030,7 +1035,7 @@ T.runBrawler = function (A) {
     tn.x -= TR.V * dt;                                // the mouth (or the way out) going by
     if (tn.st === 'mouth') {
       sweep(tn.x + 8, tn.hit);
-      tdark = Math.min(0.88, tdark + dt * 0.8);      // in the mountain's shadow
+      tdark = Math.min(TR.DARK, tdark + dt * 0.8);   // in the mountain's shadow
       shake = Math.max(shake, 2);
       if (tn.x < -70) { tn.st = 'inside'; tn.t = 0; }
     } else {
@@ -1662,8 +1667,8 @@ T.runBrawler = function (A) {
     if (death && death.hat) put(HAT, wx(death.hat.x), Math.round(death.hat.y), T.HAT.OX, T.HAT.OY, death.caught ? depth(p.z) - 0.002 : 0);
     if ((phase !== 'intro' || phaseT >= IN.rise) && p.state !== 'fall') put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
     if (tunnel && (tunnel.st === 'mouth' || tunnel.st === 'exit'))   // the tunnel's mouth sweeping over, in front of everything
-      put(TRS.portal, tunnel.x, FLOOR + ZMAX - TR.CLEAR, 0, TRS.portal.oy, 1.5, tunnel.st === 'exit' ? -1 : 1);
-    if (tunnel) for (const pr of tunnel.props) put(TRS.prop, pr.x, FLOOR + ZMAX - TR.CLEAR, TRS.prop.ox, TRS.prop.oy, 1.5);   // the pit-props going by
+      put(TRS.portal, tunnel.x, 128, 0, TRS.portal.oy, 1.5, tunnel.st === 'exit' ? -1 : 1);
+    if (tunnel) for (const pr of tunnel.props) put(TRS.prop, pr.x, 128, TRS.prop.ox, TRS.prop.oy, 1.5);   // the pit-props going by
     if (tunnel && tunnel.props.some(pr => pr.x > player.x - camX && pr.x < VW + 40 && Math.floor(time * 6) % 2)) center(T.textSprite('DUCK!', '#ffd34a', 2), 60);
     if (tunnel && tunnel.st === 'warn' && (tunnel.t < S.tunnel.warn - 0.6 || Math.floor(tunnel.t * 8) % 2 === 0)) {   // (steady, then it blinks: here it comes)
       center(T.textSprite('TUNNEL!', '#ff9d3c', 3), 56); center(T.textSprite('DUCK! HOLD DOWN', '#ffd34a', 1), 82);
@@ -1760,11 +1765,7 @@ T.runBrawler = function (A) {
     const bg = ride ? Math.min(ride.d, S.ride.tread) : 0;          // the ride: the sky layers keep going over the treadmill
     const run = S.train ? time : 0;                 // the train: the scenery streams by on its own
     layer(ART.far, (cx + bg) * 0.25 + run * TR.FAR); layer(ART.mid, (cx + bg) * 0.5 + run * TR.V);
-    if (tunnel && tunnel.st !== 'warn') {           // in the tunnel: its rock wall behind the train (right of the mouth coming,
-      const tn = tunnel, x0 = tn.st === 'mouth' ? Math.max(0, Math.round(tn.x) + 16) : 0,   // all of it inside, left of the way out)
-        x1 = tn.st === 'exit' ? Math.min(VW, Math.round(tn.x) - 16) : VW;
-      if (x1 > x0) { ctx.save(); ctx.beginPath(); ctx.rect(x0, 0, x1 - x0, VH); ctx.clip(); layer(ART.rock, cx * 0.5 + run * TR.V); ctx.restore(); }
-    }
+    if (rockOn()) layer(ART.rock, cx * 0.5 + run * TR.V);   // in the tunnel: its rock wall behind the train (the middle layer's other map)
     layer(ART.street, ride && ride.d < S.ride.tread ? Math.floor(ride.d) % T.RANCH.LOOP : cx);
     for (let i = DL.length - 1; i >= 0; i--) {
       const d = DL[i]; if (d.dropped) continue;

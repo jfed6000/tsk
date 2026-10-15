@@ -80,22 +80,24 @@ def previews():
                         p = tiles[n * 256 + y * 16 + x]
                         if p and 0 <= x0 + x < img.width:
                             img.putpixel((x0 + x, ty * 16 + y), tc[p])
-    dusk = (ASSETS / 'clut_dusk.bin').read_bytes()
-    for sk, sf in (('BH', 'bh'), ('MS', 'ms')):
+    for sk, sf in (('BH', 'bh'), ('MS', 'ms'), ('TH', 'th')):
+        tc = clut(f'tpal_{sf}.bin')                              # (its own tile palette, and its shades)
+        dusk = (ASSETS / f'shade_{sf}.bin').read_bytes() if (ASSETS / f'shade_{sf}.bin').exists() else b''
         tiles = (ASSETS / f'tiles_{sf}.bin').read_bytes()
         maps = (ASSETS / f'maps_{sf}.bin').read_bytes()
-        for scroll, shade in ((0, None), (800, None)) + (((1200, 60),) if sk == 'MS' else ()):
+        for scroll, shade in ((0, None), (800, None)) + (((1200, 60),) if sk in ('MS', 'TH') else ()):
             if shade is not None:
                 tc = [(dusk[shade * 1024 + i * 4 + 2], dusk[shade * 1024 + i * 4 + 1], dusk[shade * 1024 + i * 4], 255) for i in range(256)]
             img = Image.new('RGBA', (320, 240), (0, 0, 0, 255))
-            for i, rate in ((0, 0.25), (1, 0.5), (2, 1.0)):
-                draw_map(img, i, scroll * rate)
+            mid = 3 if sk == 'TH' and shade else 1             # (the train in a tunnel: the rock wall for the desert)
+            for i, rate in ((0, 0.25), (mid, 0.5), (2, 1.0)):
+                draw_map(img, i, (scroll * rate) % (D[f'{sk}.MAP{i}.W'] * 16 - 336) if sk == 'TH' and i != 2 else scroll * rate)
             img.convert('RGB').resize((640, 480), Image.NEAREST).save(PREVIEW / f'layers_{sf}_{scroll}{"_night" if shade else ""}.png')
-            tc = clut('clut_tile.bin')
+            tc = clut(f'tpal_{sf}.bin')
 
     # every animation frame rebuilt from cells + frame table, facing right and mirrored
     shared = (ASSETS / 'sprites.bin').read_bytes()
-    banks = {'TB': 'bh', 'BD': 'ms', 'RT': 'gt', 'GL': 'gt', 'GP': 'gt', 'RD': 'cd', 'RO': 'cd', 'JK': 'cd'}       # stage groups: their cells come from spr_<stage>.bin
+    banks = {'TB': 'bh', 'BD': 'ms', 'RT': 'gt', 'GL': 'gt', 'GP': 'gt', 'RD': 'cd', 'RO': 'cd', 'JK': 'cd', 'SC': 'th', 'TP': 'th', 'TQ': 'th'}       # stage groups: their cells come from spr_<stage>.bin
     frm = (ASSETS / 'frames.bin').read_bytes()
     sc = clut('clut_spr.bin')
     nf = struct.unpack('>H', frm[:2])[0]
@@ -112,7 +114,7 @@ def previews():
             for y in range(32):
                 for x in range(32):
                     p = spr[cell * 1024 + y * 32 + x]
-                    if p:
+                    if p and 0 <= ox + dx + x < img.width and 0 <= oy + dy + y < img.height:   # (the tunnel's mouth is taller than a cell)
                         img.putpixel((ox + dx + x, oy + dy + y), sc[p])
         return n
     prefixes = [k[:-6] for k in D if k.endswith('.First')]

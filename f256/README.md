@@ -9,7 +9,7 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 |---|---|
 | `tools/export.py` | The asset exporter. It runs the browser prototype headless with `?export` (`../game/js/export.js` draws and packs), writes `assets/*.bin` and the generated `src/tskassets.d`, then rebuilds `assets/preview/*.png` **from the binaries alone** to prove the data |
 | `src/tsk.asm` + `src/*.a` | **tsk**, the game's core (P4, `docs/port-plan.md`) |
-| `src/tskms.asm`, `tskgt.asm`, `tskcd.asm` | **The stage modules**: Main Street's, Ghost Town's and the Cattle Drive's own code (`dillon.a`; `ghost.a`; `ride.a`, `jack.a`), at most 8K each, `F$Load`ed with the stage from the game's directory (`src/stgmod.a`, port-plan item 12) |
+| `src/tskms.asm`, `tskgt.asm`, `tskcd.asm`, `tskth.asm` | **The stage modules**: Main Street's, Ghost Town's, the Cattle Drive's and the Train Heist's own code (`dillon.a`; `ghost.a`; `ride.a`, `jack.a`; `train.a`, `sting.a`), at most 8K each, `F$Load`ed with the stage from the game's directory (`src/stgmod.a`, port-plan item 12) |
 | `tools/stagegen.py` | Writes the glue between tsk and the stage modules (`src/tskvec.d`, `tskhook.a`, `tskhk_*.a`, `tskcore.d`); run by make |
 | `src/tskview.asm` | **tskview**, the asset viewer and graphics harness |
 | `tools/compose.py`, `tools/render.py` | The music, written as code into `game/music/*.mid`, and rendered to MP3 through fluidsynth (previews, and the browser's music) |
@@ -41,8 +41,8 @@ Files are per stage where they differ: `tiles_bh.bin`/`tiles_ms.bin`, `maps_*`, 
 ## tsk: the game
 
 ```
-make                 # tsk (25.1K of 32,768; data area 5.0K of 7,936), the stage modules tskms, tskgt, tskcd (8K each), tskview
-make install DSK=/absolute/path/to/image.dsk   # tsk to CMDS; the assets and the stage modules (tskms, tskgt, tskcd) to TSK
+make                 # tsk (26.0K of 32,768; data area 5.4K of 7,936), the stage modules tskms, tskgt, tskcd, tskth (8K each), tskview
+make install DSK=/absolute/path/to/image.dsk   # tsk to CMDS; the assets and the stage modules (tskms, tskgt, tskcd, tskth) to TSK
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
 make mamebot         # the autopilot playing the opening and the first waves in MAME
@@ -53,6 +53,7 @@ make mamedillon      # straight to Big Shell Dillon (tsk mkbg) in MAME
 make mamedeath       # the death scene: Dillon against a frail hero (tsk mkf), four deaths and game over
 make mamegila        # straight to Doc Gila (tsk hkg) in MAME
 make mamecattle      # the Cattle Drive: the ride, the corral, Jackrabbit Jack (tsk cbg) in MAME
+make mametrain       # the Train Heist: the roofs, the tunnels, Sting (tsk tbg) in MAME
 make music           # compose, convert and render the music (game/music/*.mid, *.mp3)
 python3 tools/hostrun.py --args bg --passes 5000 --every 100 --watch phase,wavei,score --enemies --slow 80000
 ```
@@ -65,10 +66,11 @@ SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other lett
 | `d` | The scripted demo |
 | `b` | The autopilot plays |
 | `g` | Nothing hurts him |
-| `k` | Start at the stage's boss (Two-Bit; with `m` Big Shell Dillon, with `h` Doc Gila, with `c` Jackrabbit Jack), skipping the opening and the waves |
+| `k` | Start at the stage's boss (Two-Bit; with `m` Big Shell Dillon, with `h` Doc Gila, with `c` Jackrabbit Jack, with `t` Sting), skipping the opening and the waves |
 | `m` | Start on Main Street |
 | `h` | Start in Ghost Town (haunted) |
 | `c` | Start on the Cattle Drive |
+| `t` | Start on the Train Heist |
 | `f` | Frail: any hit kills (to see the death scene) |
 
 | Key | Does |

@@ -44,9 +44,13 @@ st0h                cmpa      #'h                 h = start in Ghost Town (haunt
                     bne       st0cd
                     orb       #64
 st0cd               cmpa      #'c                 c = start on the Cattle Drive
-                    bne       st0
+                    bne       st0t
                     orb       #128
                     bra       st0
+st0t                cmpa      #'t                 t = start on the Train Heist (h and c together)
+                    lbne      st0
+                    orb       #192
+                    lbra      st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
                     ldy       #StkBase
@@ -82,8 +86,12 @@ st1g                lsrb
                     sta       stgarg,u
 st1h                lsrb
                     bcc       st2
-                    lda       #3                  (tsk c: the Cattle Drive)
-                    sta       stgarg,u
+                    lda       #3                  (tsk c: the Cattle Drive; with h, tsk t: the Train Heist)
+                    ldb       stgarg,u
+                    cmpb      #2
+                    bne       st1i
+                    lda       #4
+st1i                sta       stgarg,u
 st2                 lda       #$FF                no stage's art loaded yet
                     sta       ldstg,u
                     lbsr      CvInit              the stage modules' links (stgmod.a)
@@ -443,12 +451,6 @@ LoadAll             lda       <sprblk             the shared sprites (a stage's 
                     ldb       #SPR.Base/8         LoadStage, as do its tiles and maps)
                     ldy       #0
                     leax      FSprites,pcr
-                    lbsr      LoadFile
-                    lbcs      lax
-                    lda       duskblk,u           Main Street's 61 shades of night
-                    ldb       #NDuskBlk
-                    ldy       #0
-                    leax      FDusk,pcr
                     lbsr      LoadFile
                     lbcs      lax
                     leax      FFri,pcr            the frames' index (the records themselves in frblk)
@@ -977,8 +979,6 @@ WriteLn             pshs      d,x,y,u
 * Names and messages
 ********************************************************************
 FSprites            fcc       /sprites.bin/
-                    fcb       $0D
-FDusk               fcc       /clut_dusk.bin/
                     fcb       $0D
 FFri                fcc       /fri.bin/
                     fcb       $0D
