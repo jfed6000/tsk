@@ -17,6 +17,8 @@ Songs:
     boothill  "Boot Hill": a slow minor blues at midnight, tremolo guitar and a lonely whistle (loops)
     deadman   "Dead Man's Hand": Ghost Town and Doc Gila's saloon - a minor-key saloon boogie on a honky-tonk
               piano, a wailing harmonica, the slide from the boogie in the break (loops)
+    stampede  "Stampede!": the Cattle Drive and Jackrabbit Jack - a galloping train beat in A, a fiddle up front, the
+              harmonica answering, a stop-time breakdown with whip cracks (loops)
     clear     a stage-clear tag (once)
     over      game over: a dying blues turnaround (once)
 """
@@ -442,6 +444,69 @@ def deadman():
     return s, 2 * 4, 30 * 4                       # loop from bar 2 (after the intro), end after bar 29
 
 
+# ---------------------------------------------------------------------------------------------- the Cattle Drive
+FIDDLE, STEEL_STR = 110, 25
+def stampede():
+    """Stampede!: the Cattle Drive and Jackrabbit Jack. A galloping country train beat in A, 168 bpm, straight: the
+    acoustic guitar's boom-chicka, the bass galloping root and fifth with pickups, the snare's train beat on the
+    eighths; a fiddle tune up front, the harmonica answering it the second time; a stop-time breakdown with whip
+    cracks (a slap) before it loops."""
+    s = Song(168)
+    s.prog(0, FIDDLE, vol=100, pan=46)
+    s.prog(1, STEEL_STR, vol=86, pan=86)          # the boom-chicka
+    s.prog(2, FINGER_BASS, vol=110)
+    s.prog(3, HARMONICA, vol=96, pan=74)
+    s.cc(9, 0, 7, 106)
+    ROOT = {'A': 'A2', 'D': 'D3', 'E': 'E2'}
+
+    def gallop(bar, ch):
+        """Boom-chicka: the bass on 1 and 3 (root, fifth) with a pickup, the guitar's chord on the off-beats"""
+        r = n(ROOT[ch]); base = bar * 4
+        s.note(2, base, r - 12, 0.9, 112); s.note(2, base + 1.5, r - 12 + 4, 0.4, 92)
+        s.note(2, base + 2, r - 12 + 7, 0.9, 106); s.note(2, base + 3.5, r - 12 + 5, 0.4, 92)
+        maj = [r + 12, r + 16, r + 19]
+        for b in (1, 3):
+            s.chord(1, base + b, maj, 0.35, 92)
+        for b in (0.5, 1.5, 2.5, 3.5):
+            s.chord(1, base + b, maj[1:], 0.2, 70)
+        s.drum(base, KICK, 110); s.drum(base + 2, KICK, 104)
+        for i in range(8):
+            s.drum(base + i * 0.5, SNARE if i % 2 else RIM, 76 if i % 2 else 60)       # the train beat
+        s.drum(base + 1, SNARE, 106); s.drum(base + 3, SNARE, 110)
+
+    form = ['A', 'A', 'D', 'A', 'E', 'D', 'A', 'E'] * 2           # two times 8 bars
+    tune = [  # (beat in 8 bars, note, length): a fiddle hoedown
+        (0, 'E5', 0.5), (0.5, 'C#5', 0.5), (1, 'A4', 0.5), (1.5, 'C#5', 0.5), (2, 'E5', 1), (3, 'F#5', 0.5), (3.5, 'E5', 0.5),
+        (4, 'C#5', 1), (5, 'A4', 1), (6, 'B4', 0.5), (6.5, 'C#5', 0.5), (7, 'A4', 1),
+        (8, 'D5', 0.5), (8.5, 'F#5', 0.5), (9, 'A5', 1), (10, 'F#5', 0.5), (10.5, 'D5', 0.5), (11, 'E5', 1),
+        (12, 'C#5', 0.5), (12.5, 'E5', 0.5), (13, 'A5', 1.5), (14.5, 'G#5', 0.5), (15, 'A5', 1),
+        (16, 'B5', 0.5), (16.5, 'A5', 0.5), (17, 'G#5', 0.5), (17.5, 'E5', 0.5), (18, 'B4', 1), (19, 'E5', 1),
+        (20, 'F#5', 0.5), (20.5, 'E5', 0.5), (21, 'D5', 0.5), (21.5, 'B4', 0.5), (22, 'A4', 1), (23, 'D5', 1),
+        (24, 'C#5', 0.5), (24.5, 'E5', 0.5), (25, 'A5', 1), (26, 'E5', 0.5), (26.5, 'C#5', 0.5), (27, 'A4', 1),
+        (28, 'B4', 0.5), (28.5, 'C#5', 0.5), (29, 'D5', 0.5), (29.5, 'D#5', 0.5), (30, 'E5', 2),
+    ]
+    for k, ch in enumerate(form):
+        gallop(k, ch)
+    for half in range(2):
+        for b, nt, ln in tune:
+            beat = half * 32 + b
+            if half == 0 or b % 4 >= 2:                  # the fiddle; the second time the harmonica takes the answers
+                s.note(0, beat, nt, ln * 0.9, 108)
+            else:
+                s.note(3, beat, n(nt) - 12, ln * 0.9, 104)
+    s.drum(0, CRASH, 110); s.drum(32, CRASH, 110)
+    # the breakdown, 4 bars: stop-time hits, the whip, the fiddle sawing (bars 16-19)
+    for k in range(4):
+        base = (16 + k) * 4
+        s.chord(1, base, ['A2', 'E3', 'A3', 'C#4', 'E4'], 0.5, 112); s.note(2, base, 'A1', 0.5, 118)
+        s.drum(base, KICK, 120); s.drum(base, CRASH if k % 2 == 0 else SPLASH, 100)
+        s.drum(base + 2.5, 28, 120)                    # the whip crack (GM slap)
+        for i in range(4):
+            s.note(0, base + 1 + i * 0.25, 'A5' if i % 2 == 0 else 'E5', 0.22, 100)
+    s.drum(79, SNARE, 100); s.drum(79.25, SNARE, 106); s.drum(79.5, SNARE, 112); s.drum(79.75, SNARE, 120)
+    return s, 0, 20 * 4                             # loops from the top, ends after bar 19
+
+
 # ---------------------------------------------------------------------------------------------- Boot Hill
 def boothill():
     """Boot Hill at midnight: E minor, 76 bpm. Tremolo guitar picking the chords, a whistle that could be the
@@ -526,7 +591,7 @@ def over():
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie),
-                     ('deadman', deadman)):
+                     ('deadman', deadman), ('stampede', stampede)):
         song, loop, end = fn()
         k = song.save(OUT / f'{name}.mid', loop, end)
         secs = end * 60 / song.bpm

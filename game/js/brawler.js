@@ -57,6 +57,7 @@ T.runBrawler = function (A) {
   const HAT_BITS = T.buildHatBits(HAT);           // the hat crumbling, in the death scene
   let death = null;                              // the death scene, while it plays
   let signs = [];                                // Ghost Town's hanging signs
+  let ride = null, obstacles = [], runners = [], stampede = [];   // the Cattle Drive: the ride, fences and rocks, horses and steers running free
   const H = T.HERO, CB = T.BOSS, E = T.ENEMY;
   const SKEL = T.buildSkeleton();
   const MANGY = T.buildCoyote('mangy');
@@ -64,6 +65,7 @@ T.runBrawler = function (A) {
   const TUMBLE = T.buildTumbleweed();
   const DILLON = T.buildDillon();
   const RATTLER = T.buildRattler(), GILA = T.buildGila(), GPROPS = T.buildGhostProps();
+  const RSP = T.buildRanchSprites(), JACK = T.buildJack(), RIDE_V = 120, SADDLE = T.RANCH.SADDLE;
   const PICK = T.buildPick();
 
   // ---------------------------------------------------------------- the stages
@@ -101,7 +103,7 @@ T.runBrawler = function (A) {
       barrels: [[250, 20, 'beans'], [560, 60, 'whip'], [960, 10, 'beans'], [1330, 50, 'gun'], [1520, 15, 'whip'], [1800, 66, 'gun'], [1900, 20, 'beans']],
     },
     ghosttown: {                                 // level 3: Doc Gila's town, the street then his saloon
-      name: 'GHOST TOWN', sub: 'MOONRISE', W: T.GHOST.W, gang: MANGY, next: null,
+      name: 'GHOST TOWN', sub: 'MOONRISE', W: T.GHOST.W, gang: MANGY, next: 'cattledrive',
       art: () => T.buildGhostTown(VW, VH, FLOOR),
       waves: [
         { cam: 0, gang: ['rattler', 'coyote', 'skel'] },
@@ -114,6 +116,19 @@ T.runBrawler = function (A) {
       barrels: [[240, 20, 'beans'], [520, 60, 'whip'], [880, 30, 'beans'], [1000, 62, 'gun']],
       tables: [[1300, 24, null], [1420, 58, 'beans'], [1560, 34, 'whip'], [1640, 66, null], [1780, 20, 'gun'], [1880, 50, 'beans']],
       signs: [[200, 'BARBER'], [470, 'DENTIST'], [760, 'WHISKEY'], [980, 'GUNS']],   // hanging signs that fall as you pass
+    },
+    cattledrive: {                               // level 4: on a longhorn along the trail, then Jackrabbit Jack's corral
+      name: 'THE CATTLE DRIVE', sub: 'SUNUP', W: T.RANCH.W, gang: MANGY, next: null,
+      art: () => T.buildRanch(VW, VH, FLOOR),
+      ride: { end: T.RANCH.GATE - 150,             // the camera's spot where the ride ends: WHOA!
+        spawns: [[40, 'rider', -1], [150, 'rider', 1], [300, 'rider', -1], [380, 'rider', 1], [520, 'rider', -1], [600, 'rider', 1],
+          [690, 'rider', -1], [800, 'rider', 1], [860, 'rider', -1], [960, 'rider', 1]] },
+      obstacles: [['rock', 380, 20], ['rock', 470, 62], ['fence', 560], ['rock', 700, 40], ['rock', 790, 14], ['fence', 900], ['rock', 1000, 70], ['rock', 1060, 30]],
+      waves: [
+        { cam: 1150, gang: ['coyote', 'rattler', 'coyote', 'skel'] },               // at the corral gate, on foot
+        { cam: 1712, boss: 'jack' },
+      ],
+      barrels: [[1300, 30, 'beans'], [1420, 64, 'whip'], [1560, 20, 'gun'], [1660, 50, 'beans']],
     },
     desert: {
       name: 'THE DESERT', sub: 'NOON', W: 2400, gang: COYOTE, next: null, art: deserted,
@@ -143,7 +158,7 @@ T.runBrawler = function (A) {
 
   // ---------------------------------------------------------------- music: the songs rendered from game/music/*.mid
   // (f256/tools/compose.py -> render.py), the same notes the F256 sends its SAM2695. M mutes.
-  const SONGS = { title: true, boothill: true, clear: false, over: false, boogie: true, deadman: true };     // name: loops
+  const SONGS = { title: true, boothill: true, clear: false, over: false, boogie: true, deadman: true, stampede: true };     // name: loops
   let song = null, songName = null, musicOff = false;
   function music(name) {
     if (name === songName) return;
@@ -195,7 +210,10 @@ T.runBrawler = function (A) {
     phase = S.intro && !params.has('nointro') && !keep ? 'intro' : 'play'; phaseT = 0;
     intro.hatOn = false;
     if (phase === 'intro') { player.x = 96; player.z = 34; }
-    music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : name === 'ghosttown' ? 'deadman' : 'title');
+    music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : name === 'ghosttown' ? 'deadman' : name === 'cattledrive' ? 'stampede' : 'title');
+    ride = S.ride ? { on: true, spawnI: 0 } : null; player.mounted = !!S.ride;
+    obstacles = (S.obstacles || []).map(([kind, x, z]) => ({ kind, x, z: z ?? 40, hit: false }));
+    runners = []; stampede = [];
   }
 
   // ---------------------------------------------------------------- spawning
@@ -207,8 +225,8 @@ T.runBrawler = function (A) {
       type, x, z: 8 + Math.random() * (ZMAX - 16), h: 0, vx: 0, vz: 0, vh: 0, face: -side, state: rising ? 'rise' : 'enter', t: 0,
       flash: 0, cd: 0.6 + Math.random() * 1.4, slot: side, anim: Math.random() * 3,
       name: type === 'coyote' ? NAMES[(Math.random() * NAMES.length) | 0] : type === 'skel' ? DEAD_NAMES[(Math.random() * DEAD_NAMES.length) | 0]
-        : type === 'rattler' ? SNAKE_NAMES[(Math.random() * SNAKE_NAMES.length) | 0] : 'DILLO',
-      hp: { coyote: 9, dillo: 4, skel: 7, rattler: 7 }[type], ammo: 6, skull: true,
+        : type === 'rattler' ? SNAKE_NAMES[(Math.random() * SNAKE_NAMES.length) | 0] : type === 'rider' ? NAMES[(Math.random() * NAMES.length) | 0] : 'DILLO',
+      hp: { coyote: 9, dillo: 4, skel: 7, rattler: 7, rider: 6 }[type], ammo: 6, skull: true,
     };
     e.max = e.hp;
     if (rising) { e.face = Math.sign(player.x - e.x) || 1; dirt(e.x, e.z, 8); sfx('dig'); }
@@ -247,17 +265,17 @@ T.runBrawler = function (A) {
   function bolt() { flashT = 0.16; sfx('thunder'); }
 
   // ---------------------------------------------------------------- hit boxes in (x, height) space, plus a lane check
-  const eHeight = e => ({ coyote: 44, dillo: 16, skel: 46, twobit: 44, dillon: 48, rattler: 22, gila: 46 }[e.type]);
+  const eHeight = e => ({ coyote: 44, dillo: 16, skel: 46, twobit: 44, dillon: 48, rattler: 22, gila: 46, rider: 66, jack: 50 }[e.type]);
   const inLane = (a, b, tol = LANE) => Math.abs(a.z - b.z) < tol;
   function heroHitBox() {
     const p = player, a = HERO[p.anim], hb = a.hits && a.hits[p.frame];
     if (!hb) return null;
     const [hx, hy, hw, hh] = hb;
-    const x0 = p.face > 0 ? p.x + hx : p.x - hx - hw;
-    return { x0, x1: x0 + hw, h0: p.h - hy - hh, h1: p.h - hy };
+    const x0 = p.face > 0 ? p.x + hx : p.x - hx - hw, lift = p.mounted ? SADDLE : 0;   // (in the saddle he's higher)
+    return { x0, x1: x0 + hw, h0: p.h + lift - hy - hh, h1: p.h + lift - hy };
   }
   const hits = (b, e) => b.x0 < e.x + 11 && b.x1 > e.x - 11 && b.h0 < e.h + eHeight(e) && b.h1 > e.h;
-  const hittable = e => !['down', 'getup', 'ko', 'held', 'enter', 'rise', 'under', 'rumble', 'dig', 'intro', 'curl', 'roll', 'vanish', 'leap', 'hang', 'drop'].includes(e.state) && !(e.state === 'air' && e.thrown) && !e.cover;
+  const hittable = e => !['down', 'getup', 'ko', 'held', 'enter', 'rise', 'under', 'rumble', 'dig', 'intro', 'curl', 'roll', 'vanish', 'leap', 'hang', 'drop', 'hopping', 'leave'].includes(e.state) && !(e.state === 'air' && e.thrown) && !e.cover;
   const allFoes = () => (boss ? enemies.concat([boss]) : enemies);
 
   // light hits stagger; knockdowns launch; out of health = kicked into the next county (or back to the grave)
@@ -275,6 +293,7 @@ T.runBrawler = function (A) {
       return;
     }
     if (knock) {
+      if (e.type === 'rider') unhorse(e);
       e.state = 'air'; e.thrown = false; e.vx = dir * 150; e.vh = 220; e.t = 0;
       sfx('hit'); hitstop = 0.06; shake = Math.max(shake, 3); addScore(30, e.x, FLOOR + e.z - eHeight(e));
     } else {
@@ -283,11 +302,16 @@ T.runBrawler = function (A) {
       sfx('hit'); hitstop = 0.04; shake = Math.max(shake, 1.5); addScore(10, e.x, FLOOR + e.z - eHeight(e));
     }
   }
+  function unhorse(e) {                          // knocked out of the saddle: on foot now, and the horse bolts
+    e.type = 'coyote'; e.h = Math.max(e.h, 24);
+    runners.push({ x: e.x, z: e.z, vx: RIDE_V + 170, img: 'horse', face: 1 });
+  }
   function koE(e, dir) {
+    if (e.type === 'rider') unhorse(e);
     e.state = 'ko'; e.vx = dir * 240; e.vh = 330; e.t = 0;
     sfx('ko'); hitstop = 0.08; shake = Math.max(shake, 4);
     const y = FLOOR + e.z - eHeight(e);
-    addScore({ coyote: 300, dillo: 150, skel: 350, rattler: 250 }[e.type], e.x, y);
+    addScore({ coyote: 300, dillo: 150, skel: 350, rattler: 250, rider: 350 }[e.type] || 300, e.x, y);
     if (e.type === 'skel') {
       shatter(e); popup(e.x, y, BONE_WORDS[(Math.random() * BONE_WORDS.length) | 0]);
       if (Math.random() < 0.35) items.push({ type: 'gun', x: e.x, z: e.z, h: 20, vh: 140, ammo: 2 + ((Math.random() * 5) | 0) });
@@ -305,6 +329,7 @@ T.runBrawler = function (A) {
     if (p.weapon && p.weapon.type === 'whip') dropWeapon();
     if (p.hp <= 0) {                               // the death scene: the hat crumbles, he topples over
       p.hp = 0; p.inv = 0; p.weapon = null; p.held = null; setS('die'); p.vx *= 0.6;
+      if (p.mounted) { p.mounted = false; p.remount = true; }
       sfx('ko'); shake = Math.max(shake, 5); hitstop = 0.12; ebullets = []; clods = [];
       for (let i = 0; i < 8; i++) parts.push({ k: 'chunk', img: HAT_BITS[i], x: p.x + p.face * ((i % 4) * 8 - 12), z: p.z, h: 44 - (i >> 2) * 8,
         vx: ((i % 4) - 1.5) * 40 + (Math.random() - 0.5) * 50, vh: 100 + Math.random() * 120, life: 0.7 + Math.random() * 0.3, max: 1 });
@@ -365,6 +390,7 @@ T.runBrawler = function (A) {
         const k = Math.min(1, d.hop / 0.16), hx = p.x + p.face * 0.6, hy = sy(p.z, p.h) - 31.6;
         d.hat.x += (hx - d.hat.x) * k; d.hat.y += (hy - d.hat.y) * k;
         if (k >= 1) {
+          if (p.remount) { p.remount = false; p.mounted = !!(ride && ride.on); }
           death = null; setS('idle'); p.hp = MAX_HP; p.inv = 2.2; sfx('tip'); shake = Math.max(shake, 3);
           popup(p.x, FLOOR + p.z - 56, "STILL KICKIN'!", '#ffd34a', 2, 1.4);
           for (const e of enemies) if (hittable(e) && Math.abs(e.x - p.x) < 120) { e.state = 'air'; e.vx = Math.sign(e.x - p.x || 1) * 160; e.vh = 200; e.t = 0; }
@@ -394,7 +420,7 @@ T.runBrawler = function (A) {
       else if (pressed.snap && p.weapon && p.weapon.type === 'gun') { setS('shoot'); fire(); }
       else if (pressed.snap) { p.step = p.chainT > 0 && p.step < 3 ? p.step + 1 : 1; setS('snap'); sfx('whoosh'); }
       else if (pressed.taunt) { setS('taunt'); sfx('tip'); }
-      else if (dx && grabTarget(dx)) { p.held = grabTarget(dx); p.held.state = 'held'; setS('grab'); p.knees = 0; sfx('land'); }
+      else if (dx && !p.mounted && grabTarget(dx)) { p.held = grabTarget(dx); p.held.state = 'held'; setS('grab'); p.knees = 0; sfx('land'); }
       else { const want = dx || dz ? 'walk' : 'idle'; if (p.state !== want) { p.from = p.state; setS(want); } }
     }
     switch (p.state) {
@@ -422,6 +448,12 @@ T.runBrawler = function (A) {
         }
         break;
       case 'land': p.vx *= 0.5; break;
+      case 'roped': {                                 // on the end of Jack's lasso: yanked to him (no say in it)
+        const b = boss;
+        if (!b || b.state !== 'reel') { setS('idle'); break; }
+        p.vx = Math.sign(b.x - p.x) * 220; p.vz = Math.abs(b.z - p.z) > 2 ? Math.sign(b.z - p.z) * 80 : 0; p.face = Math.sign(b.x - p.x) || p.face;
+        break;
+      }
       case 'grab': {
         const e = p.held;
         p.vx = p.vz = 0;
@@ -481,8 +513,9 @@ T.runBrawler = function (A) {
         break;
     }
     p.x += p.vx * dt; p.z += p.vz * dt;
+    if (p.mounted && ride && ride.on) p.x += RIDE_V * dt;              // carried along at the gallop
     p.z = Math.max(0, Math.min(ZMAX, p.z));
-    const lo = (lock ?? camX) + 10, hi = lock !== null ? lock + VW - 10 : W - 10;
+    const lo = (lock ?? camX) + (p.mounted ? 24 : 10), hi = lock !== null ? lock + VW - 10 : p.mounted ? camX + VW - 30 : W - 10;
     p.x = Math.max(lo, Math.min(hi, p.x));
     if (!['knee', 'grab', 'throw'].includes(p.state)) resolveHeroAttacks();
     for (const it of items) if (it.type === 'beans' && it.h <= 0 && Math.abs(it.x - p.x) < 14 && Math.abs(it.z - p.z) < 10) {
@@ -537,6 +570,8 @@ T.runBrawler = function (A) {
   }
 
   function pickAnim(p) {
+    if (p.mounted && (p.state === 'idle' || p.state === 'walk')) { p.anim = 'jump'; p.frame = 1; return; }   // in the saddle
+    if (p.state === 'roped') { p.anim = 'hurt'; p.frame = 0; return; }
     const at = (name, loop) => { const a = HERO[name]; p.anim = name; const f = Math.floor(p.t * a.fps); p.frame = loop ? f % a.frames.length : Math.min(f, a.frames.length - 1); };
     switch (p.state) {
       case 'idle': if (p.t < 0.1) { p.anim = 'turn'; p.frame = 0; } else { p.anim = 'idle'; p.frame = Math.floor((p.t - 0.1) * HERO.idle.fps) % HERO.idle.frames.length; } break;
@@ -569,7 +604,8 @@ T.runBrawler = function (A) {
     const attackers = enemies.filter(e => ['windup', 'strike'].includes(e.state)).length;
     for (const e of enemies) {
       e.t += dt; e.flash -= dt; e.anim += dt; e.cd -= dt;
-      const coy = e.type === 'coyote', skel = e.type === 'skel';
+      if (e.type === 'rider' && ride && ride.on && !death) e.x += RIDE_V * dt;   // keeping up at the gallop
+      const coy = e.type === 'coyote' || e.type === 'rider', skel = e.type === 'skel';
       switch (e.state) {
         case 'enter':
           e.vx = -e.slot * 60; e.face = -e.slot;
@@ -579,7 +615,7 @@ T.runBrawler = function (A) {
         case 'approach': {
           const side = Math.sign(e.x - p.x) || e.slot, busy = attackers >= 2;
           const rat = e.type === 'rattler';                   // a rattler keeps 70 px off: its lunge is long
-          const tx = p.x + side * (skel || death ? 100 : busy ? 80 : rat ? 70 : coy ? 36 : 28), tz = p.z;   // (the death scene: they hang back)
+          const tx = p.x + side * (skel || death ? 100 : busy ? 80 : rat ? 70 : e.type === 'rider' ? 44 : coy ? 36 : 28), tz = p.z;   // (the death scene: they hang back)
           const sp = skel ? 46 : rat ? 64 : coy ? 58 : 72;
           e.vx = Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x) * 4, sp);
           e.vz = Math.sign(tz - e.z) * Math.min(Math.abs(tz - e.z) * 4, 42);
@@ -599,7 +635,8 @@ T.runBrawler = function (A) {
         case 'strike':
           if (coy) {
             e.vx = 0;
-            if (!e.hitDone && e.t < 0.2 && inLane(e, p, 10) && p.h < 24 && Math.sign(p.x - e.x) === e.face && Math.abs(p.x - e.x) < 44) { e.hitDone = true; hurtPlayer(e, 2); }
+            const reach = e.type === 'rider' ? 58 : 44, high = e.type === 'rider' ? 34 : 24;   // a rider's lasso reaches further
+            if (!e.hitDone && e.t < 0.2 && inLane(e, p, 10) && p.h < high && Math.sign(p.x - e.x) === e.face && Math.abs(p.x - e.x) < reach) { e.hitDone = true; hurtPlayer(e, 2); }
             if (e.t > 0.25) { e.state = 'recover'; e.t = 0; }
           } else if (e.type === 'rattler') {       // the lunge: low and long - jump it, then kick it while it's stretched out
             e.vx = e.t < 0.28 ? e.face * 270 : 0; e.vz = 0;
@@ -624,6 +661,7 @@ T.runBrawler = function (A) {
           break;
         }
         case 'held': e.vx = e.vz = 0; break;
+        case 'leave': e.vx = 240; e.vz = 0; if (e.x > camX + VW + 80) e.gone = true; break;   // a rider making off at the ride's end
         case 'air':                                // knocked down or thrown: an arc, then flat on the ground
           e.vh -= GRAV * dt; e.h += e.vh * dt;
           if (e.thrown) for (const o of allFoes()) if (o !== e && hittable(o) && inLane(o, e, 14) && Math.abs(o.x - e.x) < 22 && o.h < 30) {
@@ -643,7 +681,7 @@ T.runBrawler = function (A) {
       e.z = Math.max(0, Math.min(ZMAX, e.z));
       if (lock !== null && e.state !== 'enter' && e.state !== 'ko') e.x = Math.max(lock + 6, Math.min(lock + VW - 6, e.x));
     }
-    enemies = enemies.filter(e => !(e.state === 'ko' && (e.h < -260 || e.type === 'skel')));
+    enemies = enemies.filter(e => !e.gone && !(e.state === 'ko' && (e.h < -260 || e.type === 'skel')));
   }
 
   // skulls: knocked off, they bounce to the floor; a headless body gropes for its own; kicked, they bowl outlaws over
@@ -671,6 +709,11 @@ T.runBrawler = function (A) {
   // approach -> (close) wind up + shovel swing | (far) fling three clods at you | (every third) dig in, tunnel through
   // the dirt toward you and burst up underneath, which leaves him dizzy. At half health he raises two of the dead.
   function startBoss(kind) {
+    if (kind === 'jack') {                         // Jackrabbit Jack hops in over the corral fence
+      boss = { type: 'jack', name: 'JACKRABBIT JACK', x: lock + 250, z: 40, h: 60, vx: 0, vz: 0, vh: -100, face: -1, hp: 46, max: 46,
+        state: 'intro', t: 0, n: 0, flash: 0, said: false, summoned: false, anim: 0, lasso: null, tx: 0, tz: 0 };
+      return;
+    }
     if (kind === 'gila') {                         // Doc Gila deals himself in
       boss = { type: 'gila', name: 'DOC GILA', x: lock + 250, z: 40, h: 0, vx: 0, vz: 0, vh: 0, face: -1, hp: 44, max: 44,
         state: 'intro', t: 0, n: 0, flash: 0, said: false, summoned: false, anim: 0, table: null, cover: false, volleys: 0 };
@@ -690,6 +733,9 @@ T.runBrawler = function (A) {
   function bSet(s) { boss.state = s; boss.t = 0; }
   function hitBoss(dmg, dir, knock) {
     const b = boss;
+    if (b.type === 'jack' && ['approach', 'intro'].includes(b.state) && Math.random() < 0.65) {   // too quick for you: over the kick
+      b.dodge = true; bSet('crouch'); b.vx = 0; popup(b.x, FLOOR + b.z - 66, 'TOO SLOW!', '#ffd34a', 1); sfx('whoosh'); return;
+    }
     if (b.state === 'daze') dmg = Math.ceil(dmg * 1.5);
     if (b.type === 'dillon' && b.state === 'daze' && (b.dazeDmg = (b.dazeDmg || 0) + dmg) >= 14 && b.hp > dmg) bSet('approach');   // he shakes it off
     b.hp -= dmg; b.flash = 0.12; lastHit = b; lastHitT = 99;
@@ -702,11 +748,15 @@ T.runBrawler = function (A) {
       return;
     }
     // staggered; Big Shell Dillon's armour shrugs off hits while he walks: only a whiff leaves him open
-    if ((b.type === 'dillon' ? ['recover'] : b.type === 'gila' ? ['recover', 'deal'] : ['approach', 'recover', 'throw']).includes(b.state)) { bSet('stagger'); b.vx = dir * 70; }
+    if ((b.type === 'dillon' ? ['recover'] : b.type === 'gila' ? ['recover', 'deal'] : b.type === 'jack' ? ['land', 'recover', 'spin'] : ['approach', 'recover', 'throw']).includes(b.state)) { bSet('stagger'); b.vx = dir * 70; b.lasso = null; }
     if (!b.summoned && b.hp < b.max / 2) {                           // half health: he calls in his own
       b.summoned = true;
       if (b.type === 'dillon') { popup(b.x, FLOOR + b.z - 70, 'ROLL OUT, BOYS!', '#ff9d3c', 1, 1.6); spawn('dillo', 1, 0); spawn('dillo', -1, 0); }
       else if (b.type === 'gila') { popup(b.x, FLOOR + b.z - 70, "DEAL 'EM IN!", '#ff9d3c', 1, 1.6); spawn('rattler', 1, 0); spawn('rattler', -1, 0); }
+      else if (b.type === 'jack') {                 // the herd, turned loose on you
+        popup(b.x, FLOOR + b.z - 70, 'STAMPEDE!', '#ff9d3c', 1, 1.6); shake = Math.max(shake, 6);
+        [10, 40, 70].forEach((z, i) => stampede.push({ x: camX + VW + 60 + i * 90, z, vx: -260 }));
+      }
       else { popup(b.x, FLOOR + b.z - 66, 'RISE, BOYS!', '#ff9d3c', 1, 1.6); spawn('skel@', 1, 0); spawn('skel@', -1, 0); }
     }
     // Doc Gila won't stand for a big hit: a card trick (gone, then back behind you) or a leap to land on you, turn about
@@ -718,6 +768,7 @@ T.runBrawler = function (A) {
     if (death && b.state !== 'ko') { b.flash -= dt; b.vx = b.vz = 0; return; }   // the death scene: he waits
     if (b.type === 'dillon') return updateDillon(dt);
     if (b.type === 'gila') return updateGila(dt);
+    if (b.type === 'jack') return updateJack(dt);
     b.t += dt; b.flash -= dt; b.anim += dt;
     const dx = p.x - b.x, dz = p.z - b.z, toward = Math.sign(dx) || b.face;
     switch (b.state) {
@@ -1048,6 +1099,77 @@ T.runBrawler = function (A) {
     b.x += b.vx * dt; b.z = Math.max(0, Math.min(ZMAX, b.z + b.vz * dt));
     b.x = Math.max(L0 - 4, Math.min(L1 + 4, b.x));
   }
+  // Jackrabbit Jack: hop from spot to spot (open as he lands) | up close, turn and mule-kick | every third, spin the
+  // lasso and throw it down his lane: caught, you're yanked to him and kicked. A kick at him on his feet he hops clean
+  // over (TOO SLOW!) - hit him as he lands. STAMPEDE! at half health.
+  function updateJack(dt) {
+    const b = boss, p = player;
+    b.t += dt; b.flash -= dt; b.anim += dt;
+    const dx = p.x - b.x, dz = p.z - b.z, toward = Math.sign(dx) || b.face;
+    const L0 = lock + 24, L1 = lock + VW - 24;
+    const stop = () => { b.vx = b.vz = 0; };
+    if (b.lasso) {                                   // the rope flying down the lane
+      const L2 = b.lasso; L2.x += L2.vx * dt; L2.d += Math.abs(L2.vx) * dt;
+      if (p.state !== 'roped' && !death && Math.abs(p.x - L2.x) < 12 && inLane(L2, p, 10) && p.h < 20 && p.inv <= 0 && !p.mounted && phase === 'play') {
+        setS('roped'); p.vx = p.vz = 0; sfx('whoosh'); popup(p.x, FLOOR + p.z - 62, 'ROPED!', '#ff6b4a', 1); b.lasso = null; bSet('reel');
+      } else if (L2.d > 150) b.lasso = null;
+    }
+    switch (b.state) {
+      case 'intro':                                  // in over the fence
+        if (b.h > 0) { b.vh -= GRAV * dt; b.h = Math.max(0, b.h + b.vh * dt); if (b.h === 0) { puff(b.x, b.z, 5); sfx('land'); } break; }
+        b.face = toward; stop();
+        if (!b.said && b.t > 0.6) { b.said = true; popup(b.x, FLOOR + b.z - 66, 'FINDERS KEEPERS, BOOTS!', '#fff3c4', 1, 2.2); }
+        if (b.t > 2.6) bSet('approach');
+        break;
+      case 'approach': {
+        b.face = toward; stop();
+        if (b.t > 0.7) {
+          b.n++;
+          const close = Math.abs(dx) < 46 && Math.abs(dz) < 10;
+          if (b.n % 3 === 0) {                                                       // the lasso: from a distance
+            if (close) { b.dodge = true; b.next = 'spin'; bSet('crouch'); } else { bSet('spin'); sfx('whoosh'); }
+          } else if (close) bSet('turn');                                           // up close: the mule kick
+          else bSet('crouch');                                                      // a hop somewhere new
+        }
+        break;
+      }
+      case 'crouch': stop(); if (b.t > 0.18) {
+        const side = b.dodge ? -toward : (Math.random() < 0.5 ? -1 : 1);
+        b.tx = Math.max(L0, Math.min(L1, b.dodge ? b.x - toward * 70 : p.x + side * (60 + Math.random() * 40)));
+        b.tz = Math.max(0, Math.min(ZMAX, b.dodge ? b.z : p.z + (Math.random() - 0.5) * 40));
+        b.vx = (b.tx - b.x) / 0.6; b.vz = (b.tz - b.z) / 0.6; b.vh = 330; b.dodge = false; bSet('hopping'); sfx('jump');
+      } break;
+      case 'hopping':
+        b.vh -= GRAV * 0.8 * dt; b.h += b.vh * dt; b.face = Math.sign(b.vx) || b.face;
+        if (b.h <= 0) { b.h = 0; b.vh = 0; stop(); puff(b.x, b.z, 3); sfx('land'); b.face = toward; if (b.next) { bSet(b.next); b.next = null; sfx('whoosh'); } else bSet('land'); }
+        break;
+      case 'land': stop(); if (b.t > 0.45) bSet('approach'); break;               // open: hit him now
+      case 'turn': stop(); b.face = -toward; if (b.t > 0.3) { bSet('kick'); sfx('whoosh'); b.hitDone = false; } break;
+      case 'kick':                                   // both hind feet, backwards into you
+        stop();
+        if (!b.hitDone && b.t < 0.15 && inLane(b, p, 12) && p.h < 26 && Math.sign(dx) === -b.face && Math.abs(dx) < 44) { b.hitDone = true; hurtPlayer(b, 3); }
+        if (b.t > 0.35) bSet('recover');
+        break;
+      case 'spin': stop(); b.face = toward;
+        if (b.t > 0.6) { bSet('throw'); b.lasso = { x: b.x + b.face * 16, z: b.z, vx: b.face * 280, d: 0 }; sfx('whoosh'); }
+        break;
+      case 'throw': stop(); if (b.t > 0.55 && !b.lasso) bSet('recover'); break;
+      case 'reel':                                   // you, on the end of his rope: pulled in, and kicked
+        stop(); b.face = toward;
+        if (p.state !== 'roped') bSet('recover');
+        else if (Math.abs(p.x - b.x) < 30) { p.state = 'idle'; hurtPlayer(b, 3); popup(p.x, FLOOR + p.z - 62, 'HOG-TIED!', '#ff6b4a', 1); bSet('recover'); }
+        break;
+      case 'recover': stop(); if (b.t > 0.7) bSet('approach'); break;
+      case 'stagger': b.vx *= Math.pow(0.01, dt); b.vz = 0; if (b.t > 0.3) bSet('approach'); break;
+      case 'daze': stop(); if (b.t > 2) bSet('approach'); break;
+      case 'ko':
+        b.vh -= GRAV * 0.6 * dt; b.h += b.vh * dt; b.x += b.vx * dt;
+        if (b.t > 2 && phase === 'play') { boss = null; lock = null; waveI++; stageClear(); }
+        return;
+    }
+    b.x += b.vx * dt; b.z = Math.max(0, Math.min(ZMAX, b.z + b.vz * dt));
+    b.x = Math.max(L0 - 4, Math.min(L1 + 4, b.x));
+  }
   function cardBurst(n) {                        // a puff of cards: the trick
     const b = boss;
     for (let i = 0; i < n; i++) parts.push({ k: 'chunk', img: GILA.card[i % 4], x: b.x, z: b.z, h: 20 + Math.random() * 20,
@@ -1090,6 +1212,41 @@ T.runBrawler = function (A) {
     if (p.state === 'side' || p.state === 'jumpkick') { t.sliding = true; t.vx = p.face * 300; popup(t.x, FLOOR + t.z - 40, 'ANTE UP!', '#ffd34a', 1); }
     else if (--t.hp <= 0) { breakTable(); b.cover = false; }
   }
+  // the Cattle Drive: riders join the chase on a schedule; fences (every lane) and rocks (one lane) to jump; at the
+  // corral the ride ends - WHOA! - and he's on foot. Horses and steers running loose; Jack's stampede.
+  function updateRide(dt) {
+    const p = player;
+    if (ride && ride.on) {
+      const sp = S.ride.spawns;
+      const riders = enemies.filter(e => e.type === 'rider' && e.state !== 'ko').length;   // three in the saddle at most
+      if (ride.spawnI < sp.length && camX >= sp[ride.spawnI][0] && phase === 'play' && riders < 3) { const [, type, side] = sp[ride.spawnI++]; spawn(type, side, 0); }
+      for (const e of enemies) if (e.x < camX - 70 && e.state !== 'ko') e.gone = true;   // left behind on the trail
+      for (const o of obstacles) {
+        if (o.hit || !p.mounted || death || p.h >= 14 || Math.abs(p.x - o.x) > 14) continue;
+        if (o.kind === 'fence' || inLane(p, o, 10)) {
+          o.hit = true;
+          if (o.kind === 'fence') { sfx('break'); for (let i = 0; i < 6; i++) parts.push({ k: 'chunk', img: GPROPS.plank, x: o.x, z: p.z, h: 8 + Math.random() * 14, vx: (Math.random() - 0.2) * 200, vh: 100 + Math.random() * 140, life: 1, max: 1 }); }
+          if (hurtPlayer(o, 2)) popup(p.x, FLOOR + p.z - 70, 'OOF!', '#ff6b4a', 1);
+        }
+      }
+      if (camX >= S.ride.end && !death && phase === 'play') {                  // the corral: off he gets
+        ride.on = false; p.mounted = false; p.h = 0; p.vh = 0; setS('land'); sfx('land'); puff(p.x, p.z, 4);
+        popup(p.x, FLOOR + p.z - 66, 'WHOA!', '#ffd34a', 2);
+        runners.push({ x: p.x, z: p.z, vx: 200, img: 'steer', face: 1 });
+        for (const e of enemies) if (e.type === 'rider' && e.state !== 'ko') { e.state = 'leave'; e.t = 0; }
+      }
+    }
+    for (const r of runners) { r.x += r.vx * dt; if (r.x > camX + VW + 80 || r.x < camX - 80) r.gone = true; }
+    runners = runners.filter(r => !r.gone);
+    for (const c of stampede) {                       // Jack's stampede: steers charging across the corral
+      c.x += c.vx * dt;
+      if (!c.hit && Math.abs(c.x - p.x) < 20 && inLane(c, p, 12) && p.h < 16 && hurtPlayer(c, 2)) { c.hit = true; popup(p.x, FLOOR + p.z - 62, 'TRAMPLED!', '#ff6b4a', 1); }
+      for (const e of enemies) if (hittable(e) && inLane(e, c, 12) && Math.abs(e.x - c.x) < 20) hitE(e, 3, true, Math.sign(c.vx));
+      if (c.x < camX - 80) c.gone = true;
+    }
+    stampede = stampede.filter(c => !c.gone);
+  }
+
   // Ghost Town's hanging signs: one creaks as you pass, then drops; it hits whoever's under it
   function updateSigns(dt) {
     const p = player;
@@ -1121,6 +1278,12 @@ T.runBrawler = function (A) {
   }
 
   function bossImg(b) {
+    if (b.type === 'jack') {
+      const J = JACK;
+      return { intro: b.h > 0 ? J.hop : J.talk[(b.t * 6 | 0) % 2], approach: J.idle[(b.anim * 3 | 0) % 2], crouch: J.crouch, hopping: J.hop,
+        land: J.crouch, turn: J.crouch, kick: J.kick, spin: J.spin[(b.anim * 10 | 0) % 2], throw: J.throw, reel: J.throw, recover: J.idle[0],
+        stagger: J.hurt, daze: J.daze[(b.t * 8 | 0) % 4], ko: J.ko }[b.state];
+    }
     if (b.type === 'gila') {
       const G = GILA;
       return { intro: G.talk[(b.t * 6 | 0) % 2], approach: (b.vx || b.vz) ? G.walk[(b.anim * 7 | 0) % 4] : G.idle[(b.anim * 3 | 0) % 2],
@@ -1181,15 +1344,36 @@ T.runBrawler = function (A) {
         put(img, wx(p.x), sy(p.z, 0), H.OX, H.OY, depth(p.z));
       }
       if (!intro.hatOn) put(HAT, wx(intro.hx), intro.hy, T.HAT.OX, T.HAT.OY, depth(p.z) - 0.01);
-    } else if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2)) put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h), H.OX, H.OY, depth(p.z) - 0.001, p.face);
+    } else {
+      if (p.mounted) put(p.h > 0 ? RSP.steerJump : RSP.steer[(time * 10 | 0) % 4], wx(p.x), sy(p.z, p.h), CB.OX, CB.OY, depth(p.z) - 0.0005, p.face);
+      if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2)) put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h + (p.mounted ? SADDLE : 0)), H.OX, H.OY, depth(p.z) - 0.001, p.face);
+    }
     if (death && death.hat) put(HAT, wx(death.hat.x), Math.round(death.hat.y), T.HAT.OX, T.HAT.OY, death.caught ? depth(p.z) - 0.002 : 0);
     if (phase !== 'intro' || phaseT >= IN.rise) put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
     if (S.intro) {                               // Ringo's headstone, and the grave he came out of
       put(PROPS.headstone, wx(STONE.x), sy(STONE.z, 0), PROPS.headstone.ox, PROPS.headstone.oy, depth(STONE.z));
       put(phase === 'intro' && phaseT < IN.rise ? PROPS.mound : PROPS.hole, wx(96), sy(34, 0), 20, 11, 8.9);
     }
+    for (const o of obstacles) {
+      if (o.kind === 'rock') { put(RSP.rock, wx(o.x), sy(o.z, 0), RSP.rock.ox, RSP.rock.oy, depth(o.z)); continue; }
+      if (!o.hit) for (const z of [6, 30, 54, 78]) put(RSP.fence, wx(o.x) + (z - 40) * 0.25, sy(z, 0), RSP.fence.ox, RSP.fence.oy, depth(z));   // a fence across the trail
+    }
+    for (const r of runners) put(r.img === 'steer' ? RSP.steer[(time * 12 | 0) % 4] : RSP.horse[(time * 12 | 0) % 4], wx(r.x), sy(r.z, 0), CB.OX, CB.OY, depth(r.z), r.face);
+    for (const c of stampede) { put(RSP.steer[(time * 12 | 0) % 4], wx(c.x), sy(c.z, 0), CB.OX, CB.OY, depth(c.z), -1); put(PICK.shadow, wx(c.x), sy(c.z, 0), 16, 4, 9); }
+    if (boss && boss.lasso) {                         // Jack's rope, out along the lane to its loop
+      const L2 = boss.lasso, hx = boss.x + boss.face * 12, n = Math.floor(Math.abs(L2.x - hx) / 14);
+      for (let i = 0; i < n; i++) put(JACK.rope, wx(hx + boss.face * (i * 14 + (boss.face < 0 ? 14 : 0))), sy(L2.z, 28), 0, 1, depth(L2.z) - 0.003);
+      put(JACK.loop, wx(L2.x), sy(L2.z, 26), 8, 6, depth(L2.z) - 0.003);
+    }
     for (const e of enemies) {
       if (e.type === 'skel' && e.state === 'ko') continue;
+      if (e.type === 'rider') {                       // a rustler in the saddle
+        put(RSP.horse[(time * 12 | 0) % 4], wx(e.x), sy(e.z, e.h), CB.OX, CB.OY, depth(e.z) + 0.0005, e.face, e.flash > 0 ? 'flash' : null);
+        const C = S.gang, im = e.state === 'windup' ? C.windup : e.state === 'strike' ? C.swing : e.state === 'stagger' ? C.hurt : C.idle[0];
+        put(im, wx(e.x) - e.face * 2, sy(e.z, e.h + 24), CB.OX, CB.OY, depth(e.z), e.face, e.flash > 0 ? 'flash' : null);
+        put(PICK.shadow, wx(e.x), sy(e.z, 0), 16, 4, 9);
+        continue;
+      }
       const img = enemyImg(e), big = e.type !== 'dillo';
       if (img) put(img, wx(e.x), sy(e.z, e.h), big ? CB.OX : E.OX, big ? CB.OY : E.OY, depth(e.z), e.face, e.flash > 0 ? 'flash' : null);
       if (e.state !== 'ko') put(big ? PICK.shadow : PICK.shadowS, wx(e.x), sy(e.z, 0), big ? 16 : 12, 4, 9);
@@ -1277,6 +1461,13 @@ T.runBrawler = function (A) {
       else if (!boss.deflected) keys[p.z > boss.z ? 'down' : 'up'] = Math.abs(p.z - boss.z) < 14 && Math.abs(dx) < 90;
       return;
     }
+    if (p.mounted && ride && ride.on && p.h <= 0 && botT <= 0) {                // the trail: jump fences, and rocks in the lane
+      const o = obstacles.find(o2 => !o2.hit && o2.x > p.x && o2.x - p.x < 46 && (o2.kind === 'fence' || inLane(o2, p, 12)));
+      if (o) { pressed.jump = true; botT = 0.3; return; }
+    }
+    if (boss && boss.type === 'jack' && boss.lasso) {                              // the rope coming: out of its lane
+      keys[p.z > boss.lasso.z ? 'down' : 'up'] = Math.abs(p.z - boss.lasso.z) < 16; return;
+    }
     if (boss && boss.type === 'gila' && ['leap', 'hang', 'drop'].includes(boss.state)) {   // his shadow: get out from under it
       keys[p.z > boss.z ? 'down' : 'up'] = Math.abs(p.z - boss.z) < 16;
       keys[p.x > boss.x ? 'right' : 'left'] = Math.abs(p.x - boss.x) < 30;
@@ -1336,7 +1527,7 @@ T.runBrawler = function (A) {
       if (p.state === 'die' && p.t >= HERO.die.dur) setS('dead');
       if (p.state === 'die' || p.state === 'dead') pickAnim(p);
     }
-    updateEnemies(dt); updateBoss(dt); updateSkulls(dt); updateShots(dt); updateClods(dt); updateParts(dt); updateSigns(dt);
+    updateEnemies(dt); updateBoss(dt); updateSkulls(dt); updateShots(dt); updateClods(dt); updateParts(dt); updateSigns(dt); updateRide(dt);
     if (phase === 'play' && !death) updateWaves(dt);
     if (S.dusk) dark += (DARK[Math.min(waveI, DARK.length - 1)] - dark) * Math.min(1, dt * 0.6);
     // ambience: a tumbleweed now and then; on Main Street, dust motes in the low sun
@@ -1347,8 +1538,11 @@ T.runBrawler = function (A) {
       if (tumble.x > camX + VW + 30) { tumble = null; tumbleT = 6 + Math.random() * 8; }
     }
     if (S.dusk && Math.random() < dt * 2.5) parts.push({ k: 'mote', x: camX + Math.random() * VW, z: Math.random() * ZMAX, h: 20 + Math.random() * 90, vx: 8 + Math.random() * 10, vh: -3, life: 4, max: 4 });
-    const target = lock !== null ? lock : Math.max(camX, Math.min(W - VW, player.x - VW * 0.45));
-    camX += (target - camX) * Math.min(1, dt * 5);
+    if (ride && ride.on) { if (!death && phase === 'play') camX = Math.min(S.ride.end, camX + RIDE_V * dt); }   // the ride: the trail rolls by
+    else {
+      const target = lock !== null ? lock : Math.max(camX, Math.min(W - VW, player.x - VW * 0.45));
+      camX += (target - camX) * Math.min(1, dt * 5);
+    }
     if (lock !== null && Math.abs(camX - lock) < 0.5) camX = lock;
     for (const k in pressed) pressed[k] = false;
   }

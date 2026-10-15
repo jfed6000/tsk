@@ -986,9 +986,11 @@ MusFiles            fcc       /mus_title.bin/
                     fcb       $0D
                     fcc       /mus_boogie.bin/
                     fcb       $0D
-                    fcc       /mus_deadman.bin/     (Ghost Town's, for when it's ported)
+                    fcc       /mus_deadman.bin/     (Ghost Town's)
                     fcb       $0D
-                    ifne      MU.N-6
+                    fcc       /mus_stampede.bin/    (the Cattle Drive's)
+                    fcb       $0D
+                    ifne      MU.N-7
                     error     "the song list here doesn't match tskmusic.d"
                     endc
 MsgLoad             fcc       /Texas Shitkickers - saddling up.../

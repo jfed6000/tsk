@@ -7,5 +7,6 @@ MU.clear      equ       2
 MU.over       equ       3
 MU.boogie     equ       4
 MU.deadman    equ       5
+MU.stampede   equ       6
 
-MU.N       equ       6
+MU.N       equ       7
