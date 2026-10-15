@@ -679,7 +679,7 @@ T.runBrawler = function (A) {
       }
       e.x += e.vx * dt; e.z += e.vz * dt;
       e.z = Math.max(0, Math.min(ZMAX, e.z));
-      if (lock !== null && e.state !== 'enter' && e.state !== 'ko') e.x = Math.max(lock + 6, Math.min(lock + VW - 6, e.x));
+      if (lock !== null && e.state !== 'enter' && e.state !== 'ko' && e.state !== 'leave') e.x = Math.max(lock + 6, Math.min(lock + VW - 6, e.x));   // (riders leaving go)
     }
     enemies = enemies.filter(e => !e.gone && !(e.state === 'ko' && (e.h < -260 || e.type === 'skel')));
   }
@@ -874,7 +874,7 @@ T.runBrawler = function (A) {
 
   // waves: walk right to trigger the next gang; clear it to get "GO >>"
   function updateWaves(dt) {
-    if (lock !== null && !boss && !enemies.some(e => e.state !== 'ko')) {
+    if (lock !== null && !boss && !enemies.some(e => e.state !== 'ko' && e.state !== 'leave')) {
       lock = null; waveI++; goT = 3; sfx('check');
       if (waveI >= S.waves.length) stageClear();
     }
