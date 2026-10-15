@@ -58,7 +58,7 @@ SPR.ShSize equ $0B8000  sprites.bin
 
 * frames.bin
 FRM.N    equ 444         frames
-FRM.Size equ $1722
+FRM.Size equ $16C6
 
 * animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)
 * the mirrored (facing left) copy of frame f is f + <group>.Mir

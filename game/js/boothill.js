@@ -141,7 +141,12 @@ const CPAL = {
   v0: '#2c2436', v1: '#453850', v2: '#5f4f6c', h0: '#141218', h1: '#2a2630', h2: '#423c4c', band: '#7a2a2a',
   s0: '#4a4a52', s1: '#7a7c86', s2: '#a6a9b4', wd0: '#4a3020', wd1: '#7a5236',
   eyeW: PAL.eyeW, pupil: PAL.pupil, mouth: PAL.mouth, teeth: PAL.teeth, nose: '#141014', star: '#ffd34a',
+  bd0: '#7a1414', bd1: '#b02c2c', bd2: '#d85a4a', bl0: '#4a2e18', bl1: '#6e4626', brass: '#d0a440',
 };
+// 'outlaw': Main Street's gang (the user's pick, 2026-10-14): no topper, a red bandana mask with its tails
+// flying, a cartridge bandolier, and a Bowie knife where Two-Bit has his shovel. The poses are Two-Bit's, so
+// the knife follows the shovel's angle.
+let STYLE = 'twobit';
 const CB = {
   lean: 0, by: 0, legs: [0, 0], shovel: -0.9, grip: [9, -24], arms: 0, mouth: 0, eyes: 'mad', hat: 0, sink: 0, stars: -1, squash: 1,
 };
@@ -174,7 +179,13 @@ function drawCoyote(ctx, o) {
   ctx.fillStyle = CPAL.c3; ell(ctx, 3.6, -25, 3, 7); ctx.fill();          // pale chest
   ctx.fillStyle = CPAL.v1; ctx.beginPath(); ctx.moveTo(-8, -36); ctx.lineTo(2, -36); ctx.lineTo(1, -16); ctx.lineTo(-3, -18); ctx.lineTo(-5, -15); ctx.lineTo(-8, -17); ctx.fill();
   ctx.fillStyle = CPAL.v2; ctx.fillRect(-7, -35, 2, 18);
-  ctx.fillStyle = CPAL.star; ctx.fillRect(-0.6, -29, 1.4, 1.4); ctx.fillRect(-0.6, -24, 1.4, 1.4);  // buttons
+  if (STYLE === 'outlaw') {                          // a bandolier, shoulder to hip, a row of brass
+    ctx.strokeStyle = CPAL.bl0; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(-6, -35); ctx.lineTo(6, -18); ctx.stroke();
+    ctx.strokeStyle = CPAL.bl1; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-6, -35); ctx.lineTo(6, -18); ctx.stroke();
+    ctx.fillStyle = CPAL.brass; for (let k = 0; k < 5; k++) ctx.fillRect(-4.6 + k * 2.4, -33 + k * 3.4, 1.2, 1.6);
+  } else {
+    ctx.fillStyle = CPAL.star; ctx.fillRect(-0.6, -29, 1.4, 1.4); ctx.fillRect(-0.6, -24, 1.4, 1.4);  // buttons
+  }
   ctx.restore();
   // head: long snout to the right, tall ears, scruffy cheek
   ctx.save(); ctx.translate(2, -39);
@@ -202,7 +213,22 @@ function drawCoyote(ctx, o) {
     else ctx.fillRect(4.4, -2.4, 1.3, 1.6);
     if (p.eyes === 'mad') { ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(1.6, -4.6); ctx.lineTo(6.2, -3); ctx.stroke(); }
   }
-  // the battered undertaker's topper
+  if (STYLE === 'outlaw') {
+    // the bandana: over the snout below the eyes, the nose poking out; the knot and two tails behind the head
+    ctx.beginPath(); ctx.moveTo(-5.4, -0.6); ctx.lineTo(3.4, -0.4); ctx.lineTo(12.2, 0.6); ctx.lineTo(11, 3.2);
+    ctx.lineTo(6.4, 7.4 + 1.4 * p.mouth); ctx.lineTo(1.6, 5.6); ctx.lineTo(-5, 3.6); ctx.closePath();
+    ctx.fillStyle = CPAL.bd1; ctx.fill(); ctx.strokeStyle = CPAL.out; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = CPAL.bd2; ctx.fillRect(1, 0.4, 7, 1);                                  // a fold catching the light
+    ctx.fillStyle = CPAL.bd0; ctx.fillRect(3, 3.4, 1.2, 1.2); ctx.fillRect(7, 2.6, 1.2, 1.2);   // its spots
+    ell(ctx, -5.6, 1.2, 1.8, 1.6); ctx.fillStyle = CPAL.bd0; ctx.fill(); ctx.stroke();   // the knot
+    for (const [dx, dy] of [[-10.4, 3.4], [-9.4, 6.4]]) {
+      ctx.beginPath(); ctx.moveTo(-6.4, 1.4); ctx.lineTo(dx, dy); ctx.lineTo(dx + 1.6, dy + 1.2); ctx.closePath();
+      ctx.fillStyle = CPAL.bd1; ctx.fill(); ctx.stroke();
+    }
+    ell(ctx, 13.4, 0.3, 1.5, 1.3); ctx.fillStyle = CPAL.nose; ctx.fill();                   // the nose over the mask
+  }
+  // the battered undertaker's topper (Two-Bit's alone)
+  if (STYLE !== 'outlaw') {
   ctx.save(); ctx.translate(-1, -4.6 - p.hat); ctx.rotate(-0.16 - p.hat * 0.04);
   ctx.fillStyle = CPAL.h1; ctx.beginPath(); ctx.moveTo(-4.6, 0); ctx.lineTo(-4, -9); ctx.lineTo(1, -8); ctx.lineTo(4, -10.4); ctx.lineTo(4.4, 0); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = CPAL.out; ctx.lineWidth = 1; ctx.stroke();
@@ -210,9 +236,20 @@ function drawCoyote(ctx, o) {
   ctx.fillStyle = CPAL.band; ctx.fillRect(-4.4, -2.6, 8.8, 1.8);
   ctx.fillStyle = CPAL.h0; ctx.beginPath(); ctx.moveTo(-8, 0.6); ctx.lineTo(8, -0.4); ctx.lineTo(8, 1.4); ctx.lineTo(-8, 2.2); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.restore();
+  }
   ctx.restore();   // head
-  // the shovel: a handle through the grip, blade at the far end
   const ca = Math.cos(p.shovel), sa = Math.sin(p.shovel);
+  if (STYLE === 'outlaw') {
+    // the Bowie knife: a short handle in the fist, a guard, a long clip-point blade along the shovel's angle
+    ctx.save(); ctx.translate(gx, gy); ctx.rotate(p.shovel);
+    ctx.fillStyle = CPAL.wd0; ctx.fillRect(-4, -1.2, 5, 2.4); ctx.strokeStyle = CPAL.out; ctx.lineWidth = 1; ctx.strokeRect(-4, -1.2, 5, 2.4);
+    ctx.fillStyle = CPAL.brass; ctx.fillRect(1, -2.4, 1.4, 4.8);
+    ctx.beginPath(); ctx.moveTo(2.4, -1.6); ctx.lineTo(11, -1.6); ctx.lineTo(14.4, -0.2); ctx.lineTo(12, 0.4); ctx.lineTo(11.4, 1.6); ctx.lineTo(2.4, 1.6); ctx.closePath();
+    ctx.fillStyle = CPAL.s1; ctx.fill(); ctx.stroke();
+    ctx.fillStyle = CPAL.s2; ctx.fillRect(3.4, -1, 8, 0.9);
+    ctx.restore();
+  } else {
+  // the shovel: a handle through the grip, blade at the far end
   const end0 = [gx - ca * 10, gy - sa * 10], end1 = [gx + ca * 15, gy + sa * 15];
   limb([end0, end1], 1.8, CPAL.wd1);
   ctx.save(); ctx.translate(end1[0], end1[1]); ctx.rotate(p.shovel);
@@ -220,7 +257,8 @@ function drawCoyote(ctx, o) {
   ctx.fillStyle = CPAL.s1; ctx.fill(); ctx.strokeStyle = CPAL.out; ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = CPAL.s2; ctx.fillRect(1, -2.6, 5, 1.4);
   ctx.restore();
-  // front arm to the shovel
+  }
+  // front arm to the shovel (or the knife)
   limb([[2, -31], [6 + p.arms, -26], [gx + 2, gy]], 2.8, CPAL.c1);
   ell(ctx, gx + 2, gy, 2.2, 2); ctx.fillStyle = CPAL.c2; ctx.fill(); ctx.strokeStyle = CPAL.out; ctx.lineWidth = 1; ctx.stroke();
   ctx.restore();   // lean
@@ -239,8 +277,8 @@ T.BOSS = { FW: 64, FH: 64, OX: 26, OY: 60 };
 const MANGY = { c0: '#3e3228', c1: '#5e5040', c2: '#7c6c56', c3: '#9a8a70', v1: '#2e2834', v2: '#3e3646', band: '#6a1010', eyeW: '#e8cc30' };
 T.buildCoyote = function (variant) {
   const saved = Object.assign({}, CPAL);
-  if (variant === 'mangy') Object.assign(CPAL, MANGY);
-  try { return coyoteFrames(); } finally { Object.assign(CPAL, saved); }
+  if (variant === 'mangy') { Object.assign(CPAL, MANGY); STYLE = 'outlaw'; }   // Main Street's gang: bandana outlaws
+  try { return coyoteFrames(); } finally { Object.assign(CPAL, saved); STYLE = 'twobit'; }
 };
 function coyoteFrames() {
   const B = T.BOSS, mk = o => bake(B.FW, B.FH, B.OX, B.OY, CPAL, ctx => drawCoyote(ctx, o));
