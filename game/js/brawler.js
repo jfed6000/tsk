@@ -123,10 +123,10 @@ T.runBrawler = function (A) {
       // the ride (d = how far he's ridden): the first TREAD px the camera holds still and the trail runs under him (its
       // first LOOP px, twice: ranch.js), then the camera rolls on to the corral; it ends at camera end: WHOA!
       ride: { end: T.RANCH.GATE - 150, tread: 2 * T.RANCH.LOOP,
-        spawns: [[40, 'rider', -1], [150, 'rider', 1], [300, 'rider', -1], [380, 'rider', 1], [520, 'rider', -1], [600, 'rider', 1],
-          [690, 'rider', -1], [800, 'rider', 1], [900, 'rider', -1], [1020, 'rider', 1], [1150, 'rider', -1], [1260, 'rider', 1],
-          [1400, 'rider', -1], [1480, 'rider', 1], [1600, 'rider', -1], [1700, 'rider', 1], [1820, 'rider', -1], [1900, 'rider', 1],
-          [2000, 'rider', -1], [2120, 'rider', 1], [2200, 'rider', -1]] },
+        spawns: [[40, 'rider', -1], [150, 'rider', 1], [300, 'gunner', -1], [380, 'rider', 1], [520, 'rider', -1], [600, 'gunner', 1],
+          [690, 'rider', -1], [800, 'gunner', -1], [900, 'rider', 1], [1020, 'rider', -1], [1150, 'gunner', -1], [1260, 'rider', 1],
+          [1400, 'gunner', -1], [1480, 'rider', 1], [1600, 'rider', -1], [1700, 'gunner', 1], [1820, 'rider', -1], [1900, 'gunner', -1],
+          [2000, 'rider', 1], [2120, 'gunner', -1], [2200, 'rider', 1]] },   // (gunner: a gunslinger, a third of them, mostly behind you)
       obstacles: [['rock', 380, 20], ['rock', 470, 62], ['fence', 560], ['rock', 700, 40], ['rock', 790, 14], ['fence', 900], ['rock', 1000, 70],
         ['rock', 1100, 30], ['fence', 1230], ['rock', 1340, 50], ['rock', 1420, 12], ['rock', 1520, 66], ['fence', 1650], ['rock', 1760, 36],
         ['rock', 1840, 70], ['fence', 1960], ['rock', 2080, 24], ['rock', 2180, 58], ['fence', 2280], ['rock', 2340, 40]],
@@ -224,8 +224,9 @@ T.runBrawler = function (A) {
 
   // ---------------------------------------------------------------- spawning
   function spawn(type, side, i) {
-    const rising = type === 'skel@';
+    const rising = type === 'skel@', gunner = type === 'gunner';
     if (rising) type = 'skel';
+    if (gunner) type = 'rider';                    // a gunslinger: a rider with a six-shooter
     const x = rising ? camX + 50 + Math.random() * (VW - 100) : side > 0 ? camX + VW + 24 + i * 18 : camX - 24 - i * 18;
     const e = {
       type, x, z: 8 + Math.random() * (ZMAX - 16), h: 0, vx: 0, vz: 0, vh: 0, face: -side, state: rising ? 'rise' : 'enter', t: 0,
@@ -235,6 +236,7 @@ T.runBrawler = function (A) {
       hp: { coyote: 9, dillo: 4, skel: 7, rattler: 7, rider: 6 }[type], ammo: 6, skull: true,
     };
     e.max = e.hp;
+    if (gunner) { e.gun = true; e.ammo = 6; }
     if (rising) { e.face = Math.sign(player.x - e.x) || 1; dirt(e.x, e.z, 8); sfx('dig'); }
     enemies.push(e);
     return e;
@@ -624,21 +626,23 @@ T.runBrawler = function (A) {
         case 'approach': {
           const side = Math.sign(e.x - p.x) || e.slot, busy = attackers >= 2;
           const rat = e.type === 'rattler';                   // a rattler keeps 70 px off: its lunge is long
-          const tx = p.x + side * (skel || death ? 100 : busy ? 80 : rat ? 70 : e.type === 'rider' ? 44 : coy ? 36 : 28), tz = p.z;   // (the death scene: they hang back)
+          const gunsl = e.type === 'rider' && e.gun && e.ammo > 0;   // a gunslinger hangs back 130 px and shoots
+          const tx = p.x + side * (skel || death ? 100 : gunsl ? 130 : busy ? 80 : rat ? 70 : e.type === 'rider' ? 44 : coy ? 36 : 28), tz = p.z;   // (the death scene: they hang back)
           const sp = skel ? 46 : rat ? 64 : coy ? 58 : 72;
           e.vx = Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x) * 4, sp);
           e.vz = Math.sign(tz - e.z) * Math.min(Math.abs(tz - e.z) * 4, 42);
           e.face = Math.sign(p.x - e.x) || e.face;
           if (phase !== 'play' || death) break;
-          if (skel) { if (e.cd <= 0 && Math.abs(tz - e.z) < 5 && Math.abs(tx - e.x) < 40) { e.state = 'aim'; e.t = 0; e.vx = e.vz = 0; sfx('shell'); } }
+          if (skel || gunsl) { if (e.cd <= 0 && Math.abs(tz - e.z) < 5 && Math.abs(tx - e.x) < 40) { e.state = 'aim'; e.t = 0; e.vx = e.vz = 0; sfx('shell'); } }
           else if (!busy && e.cd <= 0 && Math.abs(tx - e.x) < 8 && Math.abs(tz - e.z) < 5) { e.state = 'windup'; e.t = 0; e.vx = e.vz = 0; if (rat) sfx('rattle'); }
           break;
         }
         case 'aim':
           e.vx = e.vz = 0; e.face = Math.sign(p.x - e.x) || e.face;
-          if (e.t > 0.55) { e.state = 'shoot'; e.t = 0; ebullets.push({ x: e.x + e.face * 22, z: e.z, h: 28, vx: e.face * 230 }); sfx('break'); e.ammo--; }
+          if (e.type === 'rider' && e.t > 0.25 && !e.glint) { e.glint = true; parts.push({ k: 'star', x: e.x + e.face * 20, z: e.z, h: 56, life: 0.12, max: 0.12, big: false }); }   // the glint: it's coming
+          if (e.t > 0.55) { e.state = 'shoot'; e.t = 0; e.glint = false; ebullets.push({ x: e.x + e.face * 22, z: e.z, h: e.type === 'rider' ? 54 : 28, vx: e.face * 230 }); sfx('break'); e.ammo--; }
           break;
-        case 'shoot': if (e.t > 0.35) { if (e.ammo <= 0) { e.state = 'reload'; e.t = 0; } else { e.state = 'approach'; e.cd = 0.8 + Math.random(); } } break;
+        case 'shoot': if (e.t > 0.35) { if (e.ammo <= 0) { e.state = e.type === 'rider' ? 'approach' : 'reload'; e.t = 0; } else { e.state = 'approach'; e.cd = 0.8 + Math.random(); } } break;
         case 'reload': e.vx = e.vz = 0; if (e.t > 1.5) { e.ammo = 6; e.state = 'approach'; e.cd = 0.3; } break;
         case 'windup': e.vx = e.vz = 0; if (e.t > (coy ? 0.42 : e.type === 'rattler' ? 0.6 : 0.3)) { e.state = 'strike'; e.t = 0; e.hitDone = false; sfx('whoosh'); } break;
         case 'strike':
@@ -863,7 +867,9 @@ T.runBrawler = function (A) {
     bullets = bullets.filter(b => !b.dead);
     for (const b of ebullets) {                  // the posse's: step out of the lane, or jump them
       b.x += b.vx * dt;
-      if (Math.abs(b.x - p.x) < 9 && inLane(b, p, 8) && b.h > p.h && b.h < p.h + 40 && hurtPlayer(b, 2)) b.dead = true;
+      if (ride && ride.on && !rideTread()) b.x += RIDE_V * dt;           // (fired from the gallop: they keep its pace)
+      const lift = p.mounted ? SADDLE : 0;                               // in the saddle his body's higher
+      if (Math.abs(b.x - p.x) < 9 && inLane(b, p, 8) && b.h > p.h + lift && b.h < p.h + lift + 40 && hurtPlayer(b, 2)) b.dead = true;
       if (b.x < camX - 20 || b.x > camX + VW + 20) b.dead = true;
     }
     ebullets = ebullets.filter(b => !b.dead);
@@ -1380,7 +1386,8 @@ T.runBrawler = function (A) {
       if (e.type === 'skel' && e.state === 'ko') continue;
       if (e.type === 'rider') {                       // a rustler in the saddle
         put(RSP.horse[(time * 12 | 0) % 4], wx(e.x), sy(e.z, e.h), CB.OX, CB.OY, depth(e.z) + 0.0005, e.face, e.flash > 0 ? 'flash' : null);
-        const C = S.gang, im = e.state === 'windup' ? C.windup : e.state === 'strike' ? C.swing : e.state === 'stagger' ? C.hurt : C.idle[0];
+        const C = S.gang, im = e.state === 'windup' ? C.windup : e.state === 'strike' ? C.swing : e.state === 'stagger' ? C.hurt
+          : e.state === 'aim' ? C.aim : e.state === 'shoot' ? (e.t < 0.1 ? C.shoot : C.aim) : C.idle[0];
         put(im, wx(e.x) - e.face * 2, sy(e.z, e.h + 24), CB.OX, CB.OY, depth(e.z), e.face, e.flash > 0 ? 'flash' : null);
         put(PICK.shadow, wx(e.x), sy(e.z, 0), 16, 4, 9);
         continue;

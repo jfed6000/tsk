@@ -239,7 +239,18 @@ function drawCoyote(ctx, o) {
   }
   ctx.restore();   // head
   const ca = Math.cos(p.shovel), sa = Math.sin(p.shovel);
-  if (STYLE === 'outlaw') {
+  if (STYLE === 'outlaw' && p.gun) {
+    // a six-shooter (the Cattle Drive's gunslingers): grip in the fist, the cylinder, the barrel along the shovel's
+    // angle; firing (2), the muzzle flash
+    ctx.save(); ctx.translate(gx, gy); ctx.rotate(p.shovel);
+    ctx.fillStyle = CPAL.wd0; ctx.beginPath(); ctx.moveTo(-1, -1); ctx.lineTo(1.6, -1); ctx.lineTo(0.4, 4); ctx.lineTo(-2.4, 3.4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = CPAL.out; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = CPAL.s1; ctx.fillRect(0, -3, 4, 3.4); ctx.strokeRect(0, -3, 4, 3.4);
+    ctx.fillRect(3.6, -2.6, 8, 2); ctx.strokeRect(3.6, -2.6, 8, 2);
+    ctx.fillStyle = CPAL.s2; ctx.fillRect(4, -2.4, 7, 0.8);
+    if (p.gun === 2) { ctx.fillStyle = CPAL.star; ctx.fillRect(12, -4, 5, 5); ctx.fillRect(11, -1.8, 9, 1.2); ctx.fillRect(14, -6, 1.2, 9); }
+    ctx.restore();
+  } else if (STYLE === 'outlaw') {
     // the Bowie knife: a short handle in the fist, a guard, a long clip-point blade along the shovel's angle
     ctx.save(); ctx.translate(gx, gy); ctx.rotate(p.shovel);
     ctx.fillStyle = CPAL.wd0; ctx.fillRect(-4, -1.2, 5, 2.4); ctx.strokeStyle = CPAL.out; ctx.lineWidth = 1; ctx.strokeRect(-4, -1.2, 5, 2.4);
@@ -295,6 +306,8 @@ function coyoteFrames() {
     daze: [0, 1, 2, 3].map(i => mk({ eyes: 'daze', lean: -0.15 + (i % 2) * 0.08, shovel: 1.1, grip: [6, -16], mouth: 0.4, stars: i / 4 * TAU / 3, hat: 2 })),
     hurt: mk({ lean: -0.35, eyes: 'x', mouth: 1, shovel: -1.6, grip: [4, -26], hat: 3 }),
     ko: mk({ lean: -0.6, eyes: 'x', mouth: 1, shovel: -2.8, grip: [0, -30], hat: 6, legs: [1.2, -1.2] }),
+    aim: mk({ gun: 1, shovel: -0.05, grip: [14, -30], arms: 4, eyes: 'mad' }),                       // (the outlaw's six-shooter)
+    shoot: mk({ gun: 2, shovel: -0.3, grip: [13, -32], arms: 4, mouth: 1, lean: -0.06 }),
     // flat on his back (the brawler's knockdown): the standing drawing tipped over
     down: bake(B.FW, B.FH, B.OX, B.OY, CPAL, ctx => { ctx.translate(24, -3); ctx.rotate(-Math.PI / 2 + 0.06); drawCoyote(ctx, { eyes: 'x', mouth: 1, shovel: 0.4, grip: [8, -22], hat: 4 }); }),
   };
