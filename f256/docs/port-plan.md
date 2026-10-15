@@ -180,7 +180,19 @@ One program module, **`tsk`**, assembled from:
      1.27 MB (was 1.14).
    - **Fixed along the way:** the stage start cleared every table, the enemies' slot ids with it, so no enemy's
      name or bar had shown in the HUD since sprint 5. The ids are set again after the clear.
-7. The grab and throw, the pad harness, co-op.
+7. ✓ **The death scene** *(2026-10-15, asked for by the user: `tsk` 23.1K, data 13.7K)*: `death.a`. Losing a life
+   no longer just blinks: his hat crumbles (eight 8x8 pieces, `FX.hbit`, as falling chunks) and he topples over
+   backwards (`ST.Die`, baked frames: no rotation on the F256), flat out (`ST.Dead`). At 1.1 s the last hat on the
+   lives lifts off and drifts down, rocking (`SwayTab`), easing toward his hand; he reaches up (`ST.Reach`), catches
+   it, gets up with it held high (`ST.GetUp`; the hat rides his hand, `HandTab` from the exporter), and it hops onto
+   his head: "STILL KICKIN'!", full health, 2.2 s untouchable, those near him blown back. About 4 s in all.
+   Meanwhile the gang hangs back (attackers held at two, no aiming), the boss waits (Dillon uncurls first), and no
+   wave starts. The last life: he topples and lies there, GAME OVER. `tsk f` (frail) makes any hit kill;
+   `make mamedeath` runs `tsk mkf`.
+   - **Memory:** the 16 new hero frames and the hat bits add 96K of sprite cells: the peak is about 1.37 MB.
+   - **Host fix:** `hostrun.py` mapped blocks at $D000, inside the module once it passed 20K ($8000 + 23K), so the
+     HUD's cells overwrote the code. Its windows are now $4000 and $6000, the parameters at $3F00.
+8. The grab and throw, the pad harness, co-op.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

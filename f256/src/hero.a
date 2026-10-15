@@ -19,6 +19,10 @@ ST.Taunt            equ       8
 ST.Hurt             equ       9                   hit: knocked back, then free again
 ST.Whip             equ       10                  X with the whip
 ST.Shoot            equ       11                  X with the six-shooter
+ST.Die              equ       12                  the death scene (death.a): toppling over
+ST.Dead             equ       13                  flat out
+ST.Reach            equ       14                  reaching up for the hat
+ST.GetUp            equ       15                  up again, the hat held high
 
 * speeds, 12.4 per pass (browser: px/s at 60 passes)
 WalkX               equ       28                  105 px/s
@@ -50,6 +54,8 @@ HeroInit            ldd       #70*16
                     lbsr      SetS
                     lda       #TurnLen            straight to the idle, no turn
                     sta       <ht
+                    clr       dying,u
+                    clr       dhat,u
                     rts
 
 * SetS - A = the new state.  Its time starts at 0, its animation from frame 0,
@@ -83,7 +89,9 @@ h0a                 lda       <hchain
                     beq       h1
                     dec       <hchain
 * dx, dz: -1, 0 or 1 from what is held
-h1                  clr       <hdx
+h1                  tst       dying,u             the death scene: no input
+                    lbne      HeroDeath
+                    clr       <hdx
                     clr       <hdz
                     lda       <inp
                     bita      #IN.Right
@@ -458,7 +466,11 @@ HeroPassive         lda       <ht
                     beq       hv1
                     sta       <ht
 hv1                 lda       <hst
-                    cmpa      #ST.Taunt
+                    cmpa      #ST.Die             (the game's over: he topples and lies there)
+                    blo       hv1a
+                    lbsr      DeathFall
+                    lbra      PickAnim
+hv1a                cmpa      #ST.Taunt
                     bne       hv2
                     lda       <ht
                     cmpa      #TauntDur
@@ -533,7 +545,7 @@ hfr1                rts
 * a state's sound as it starts ($FF = none): idle, walk, jump, flying
 *   kick, stomp, land, snap, side, taunt, hurt, whip, shoot
 SetSfx              fcb       $FF,$FF,SF.Jump,SF.Whoosh,SF.Whoosh,SF.Land,SF.Whoosh,SF.Whoosh,SF.Tip,$FF
-                    fcb       SF.Whoosh,$FF
+                    fcb       SF.Whoosh,$FF,$FF,$FF,$FF,$FF
 
 AnTab               fdb       AnIdle-AnTab
                     fdb       AnRun-AnTab
@@ -547,6 +559,19 @@ AnTab               fdb       AnIdle-AnTab
                     fdb       AnHurt-AnTab
                     fdb       AnWhip-AnTab
                     fdb       AnShoot-AnTab
+                    fdb       AnDie-AnTab
+                    fdb       AnDead-AnTab
+                    fdb       AnReach-AnTab
+                    fdb       AnGetUp-AnTab
+
+AnDie               fdb       HR.die
+                    fcb       HR.die.N,HR.die.T,0
+AnDead              fdb       HR.dead
+                    fcb       1,255,0
+AnReach             fdb       HR.reach
+                    fcb       HR.reach.N,HR.reach.T,1
+AnGetUp             fdb       HR.getup
+                    fcb       HR.getup.N,HR.getup.T,0
 
 AnWhip              fdb       HR.whip
                     fcb       HR.whip.N,HR.whip.T,0

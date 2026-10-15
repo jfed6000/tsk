@@ -1,0 +1,417 @@
+********************************************************************
+* death.a - the death scene (brawler.js hurtPlayer, updateDeath).
+*   His hat crumbles and he topples over backwards; a hat lifts off the
+*   lives and floats down like a leaf; flat on his back he reaches up,
+*   catches it, gets up with it held high, and it goes on his head:
+*   "STILL KICKIN'!", full health, those near him blown back.  The gang
+*   hangs back meanwhile (attackers held at two, no aiming), the boss
+*   waits, and no wave starts.  On the last life he just lies there.
+*
+*   dhat: 0 = no hat yet, 1 = drifting down, 2 = in his hand, 3 = the hop
+*   onto his head.  The hat is at dhx (world px) and dhh (px up from the
+*   street at his z).
+********************************************************************
+
+DieDur              equ       HR.die.N*HR.die.T
+GetupDur            equ       HR.getup.N*HR.getup.T
+HatAt               equ       66                  a hat off the lives at 1.1 s
+ReachAt             equ       42                  he reaches 0.7 s into its fall
+DriftT              equ       128                 2.1 s down to his hand
+HopT                equ       10                  then onto his head
+
+* Die - his health's gone (HurtHero): the hat crumbles, he topples.
+*   Exit: carry set if that was the last life (game over)
+Die                 lda       #ST.Die
+                    lbsr      SetS
+                    clr       <hhp
+                    clr       <hinv               (no blinking: it's a scene)
+                    clr       <hwep
+                    lda       #SF.Ko
+                    lbsr      Sfx
+                    lda       #7
+                    sta       <hitstop
+                    lbsr      HatBits
+                    lbsr      Blowback            everyone near him blown back
+                    ldx       <bslot              Dillon curled or rolling: he uncurls, to wait
+                    beq       xdi0
+                    tst       bkind,u
+                    beq       xdi0
+                    lda       <bst
+                    cmpa      #DS.Curl
+                    beq       xdi00
+                    cmpa      #DS.Roll
+                    bne       xdi0
+xdi00               lda       #DS.Recov
+                    lbsr      DSet
+                    lbsr      EStop
+xdi0                equ       *
+                    leay      eb,u                and the bullets gone
+                    ldb       #NEb
+xdi1                 clr       EB.St,y
+                    leay      EB.Size,y
+                    decb
+                    bne       xdi1
+                    lda       <hlives
+                    cmpa      #1
+                    bhi       xdi2
+                    clr       <hlives             the last one
+                    comb
+                    rts
+xdi2                 lda       #1
+                    sta       dying,u
+                    clr       dtime,u
+                    clr       dhat,u
+                    andcc     #$FE
+                    rts
+
+* HatBits - the hat in eight pieces off his head, falling and bouncing
+HatBits             lda       #8
+                    sta       <kcnt
+xhb1                 lda       <kcnt               piece k-1: column (k-1) & 3, row (k-1) >> 2
+                    deca
+                    anda      #3
+                    ldb       #8*16               x: his + 8 column - 12
+                    mul
+                    subd      #12*16
+                    addd      <hx
+                    std       <sx
+                    ldd       <hz
+                    std       <sz
+                    ldd       #44*16              up 44, or 36 for the lower row (pieces 4-7)
+                    ldb       <kcnt
+                    cmpb      #5
+                    blo       xhb3
+                    ldd       #36*16
+                    bra       xhb4
+xhb3                 ldd       #44*16
+xhb4                 std       <sh
+                    lbsr      NewPt
+                    bcs       xhb9
+                    lda       <kcnt
+                    deca
+                    tfr       a,b
+                    clra
+                    addd      #FX.hbit
+                    std       PT.F,y
+                    lda       #12
+                    lbsr      RandN
+                    adda      #42
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       <kcnt               flung out from the middle
+                    deca
+                    anda      #3
+                    leax      HbVx,pcr
+                    ldb       a,x
+                    sex
+                    pshs      d
+                    lda       #7
+                    lbsr      RandS
+                    addd      ,s++
+                    std       PT.VX,y
+                    lda       #32
+                    lbsr      RandN
+                    adda      #27
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+xhb9                 dec       <kcnt
+                    bne       xhb1
+                    rts
+
+********************************************************************
+* HeroDeath - one pass of the scene (from Hero, its clocks done)
+********************************************************************
+HeroDeath           bsr       DeathFall
+                    lda       dtime,u
+                    inca
+                    beq       xhd0
+                    sta       dtime,u
+xhd0                 lda       dhat,u
+                    beq       hdWait
+                    cmpa      #1
+                    lbeq      hdDrift
+                    lbra      hdHeld
+
+* DeathFall - his slide and fall; the topple ends flat out.  Also for the
+*   last life, when the game's over (HeroPassive)
+DeathFall           ldd       <hvx                (Decay never gets below 1 px a pass: stop there)
+                    lbsr      Decay
+                    cmpd      #16
+                    bge       xdf0b
+                    cmpd      #-16
+                    ble       xdf0b
+                    ldd       #0
+xdf0b               std       <hvx
+                    ldd       #0
+                    std       <hvz
+                    ldd       <hh
+                    bne       xdf1
+                    ldd       <hvh
+                    beq       xdf2
+xdf1                 ldd       <hvh
+                    subd      #Grav
+                    std       <hvh
+                    addd      <hh
+                    std       <hh
+                    bgt       xdf2
+                    ldd       #0
+                    std       <hh
+                    std       <hvh
+xdf2                 ldd       <cam                on the screen: cam + 12 .. cam + 308
+                    addd      #12
+                    lbsr      To124
+                    std       <tmp
+                    ldd       <hx
+                    addd      <hvx
+                    cmpd      <tmp
+                    bge       xdf3
+                    ldd       <tmp
+xdf3                 pshs      d
+                    ldd       <tmp
+                    addd      #296*16
+                    cmpd      ,s
+                    bge       xdf4
+                    std       ,s
+xdf4                 puls      d
+                    std       <hx
+                    lda       <hst
+                    cmpa      #ST.Die
+                    bne       xdf9
+                    lda       <ht
+                    cmpa      #DieDur
+                    blo       xdf9
+                    lda       #ST.Dead
+                    lbsr      SetS
+xdf9                 rts
+
+* waiting: at 1.1 s the last hat on the lives lifts off
+hdWait              lda       dtime,u
+                    cmpa      #HatAt
+                    lblo      PickAnim
+                    dec       <hlives
+                    lda       <hlives             where it was: x = cam + 124 + 24 lives,
+                    ldb       #24
+                    mul
+                    addd      #108+16
+                    addd      <cam
+                    std       dhx,u
+                    ldd       <hz                 y = 20 on the screen: up FLOOR.Y + z - 20
+                    lbsr      Asr4
+                    addd      #FLOOR.Y-20
+                    std       dhh,u
+                    stb       dhh0,u
+                    clr       dht,u
+                    lda       #1
+                    sta       dhat,u
+                    lda       #SF.Tip
+                    lbsr      Sfx
+                    lbra      PickAnim
+
+* drifting down to where his hand will be, rocking (DrawDHat sways it)
+hdDrift             lda       dht,u
+                    cmpa      #DriftT
+                    bhs       xhdd0
+                    inc       dht,u
+xhdd0                lda       <hst                lying there: he reaches up
+                    cmpa      #ST.Dead
+                    bne       xhdd1
+                    lda       dht,u
+                    cmpa      #ReachAt
+                    blo       xhdd1
+                    lda       #ST.Reach
+                    lbsr      SetS
+xhdd1                clrb                          his hand, reaching
+                    lbsr      HandXY
+                    ldd       <tdx                x: 1/16 of the way there a pass, at least 1
+                    subd      dhx,u
+                    beq       xhdd2
+                    std       <tmp
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    cmpd      #0
+                    beq       xhdd1a
+                    cmpd      #-1
+                    bne       xhdd2a
+xhdd1a              ldd       #1
+                    tst       <tmp
+                    bpl       xhdd2a
+                    ldd       #-1
+xhdd2a              addd      dhx,u
+                    std       dhx,u
+xhdd2               equ       *
+                    lda       dht,u               the height: h0 - (h0 - hand) t / 128
+                    cmpa      #DriftT
+                    bhs       xhdd3
+                    lda       dhh0,u
+                    suba      <tdz+1
+                    ldb       dht,u
+                    lslb
+                    mul
+                    sta       <tmpk
+                    clra
+                    ldb       dhh0,u
+                    subb      <tmpk
+                    sbca      #0
+                    std       dhh,u
+                    lbra      PickAnim
+xhdd3                ldd       <tdz                down: caught, if he's reaching
+                    std       dhh,u
+                    lda       <hst
+                    cmpa      #ST.Reach
+                    lbne      PickAnim
+                    lda       #2
+                    sta       dhat,u
+                    lda       #ST.GetUp
+                    lbsr      SetS
+                    lda       #SF.Land
+                    lbsr      Sfx
+* in his hand as he gets up; at the top, the hop
+hdHeld              lda       dhat,u
+                    cmpa      #3
+                    beq       hdHop
+                    lbsr      PickAnim            (this pass's frame)
+                    ldb       <hfr
+                    incb
+                    lbsr      HandXY
+                    ldd       <tdx
+                    std       dhx,u
+                    ldd       <tdz
+                    std       dhh,u
+                    lda       <ht
+                    cmpa      #GetupDur
+                    blo       xhh9x
+                    lda       #3
+                    sta       dhat,u
+                    clr       dht,u
+xhh9x                rts
+hdHop               inc       dht,u               half the way to his head a pass
+                    ldd       <hx
+                    lbsr      Asr4
+                    subd      dhx,u
+                    asra
+                    rorb
+                    addd      dhx,u
+                    std       dhx,u
+                    ldd       <hh
+                    lbsr      Asr4
+                    addd      #32
+                    subd      dhh,u
+                    asra
+                    rorb
+                    addd      dhh,u
+                    std       dhh,u
+                    lda       dht,u
+                    cmpa      #HopT
+                    lblo      PickAnim
+* he's up
+                    clr       dying,u
+                    clr       dhat,u
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lda       #MaxHp
+                    sta       <hhp
+                    lda       #RespT
+                    sta       <hinv
+                    lda       #SF.Tip
+                    lbsr      Sfx
+                    lda       #6
+                    lbsr      Shk
+                    ldx       #TX.kickin
+                    lda       #56
+                    lbsr      WordH
+                    lbsr      Blowback            those near him blown back
+                    lbra      PickAnim
+
+* HandXY - B = the HandTab entry (0 reaching, 1.. getting up):
+*   tdx = his front hand's x (world px), tdz = its height (px, + 1)
+HandXY              leax      HandTab,pcr
+                    lslb
+                    abx
+                    ldb       ,x
+                    sex
+                    tst       <hface
+                    beq       xhx1
+                    lbsr      NegD
+xhx1                 pshs      d
+                    ldd       <hx
+                    lbsr      Asr4
+                    addd      ,s++
+                    std       <tdx
+                    ldb       1,x                 up is negative: the height is -dy + 1
+                    negb
+                    incb
+                    sex
+                    pshs      d
+                    ldd       <hh
+                    lbsr      Asr4
+                    addd      ,s++
+                    std       <tdz
+                    rts
+
+* DrawDHat - the hat in the scene, in front of everything
+DrawDHat            tst       dhat,u
+                    beq       xdd9x
+                    ldd       #PR.hat
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #$FF
+                    sta       <ekey
+                    ldd       dhx,u
+                    std       <tmp
+                    lda       dhat,u              drifting: it rocks, less and less
+                    cmpa      #1
+                    bne       xdd2x
+                    lda       dht,u
+                    cmpa      #DriftT
+                    bhs       xdd2x
+                    ldb       #3                  sway(t * 3 / 8), times (128 - t) / 128
+                    mul
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    andb      #31
+                    leax      SwayTab,pcr
+                    lda       b,x
+                    pshs      a
+                    bpl       xdd1x
+                    nega
+xdd1x                ldb       #DriftT
+                    subb      dht,u
+                    lslb
+                    mul
+                    tst       ,s+
+                    bpl       xdd1y
+                    nega
+xdd1y                tfr       a,b
+                    sex
+                    addd      <tmp
+                    std       <tmp
+xdd2x                ldd       <tmp
+                    lbsr      To124
+                    std       <ex
+                    ldd       <hz
+                    std       <ez
+                    ldd       dhh,u
+                    lbsr      To124
+                    std       <eh
+                    lbra      Ent
+xdd9x                rts
+
+* the pieces' sideways speeds, by column (brawler.js: (column - 1.5) * 40 px/s)
+HbVx                fcb       -11,-4,4,11
+
+* sin(2 pi k / 32) * 16
+SwayTab             fcb       0,3,6,9,11,13,15,16,16,16,15,13,11,9,6,3
+                    fcb       0,-3,-6,-9,-11,-13,-15,-16,-16,-16,-15,-13,-11,-9,-6,-3

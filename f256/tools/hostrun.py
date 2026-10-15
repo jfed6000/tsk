@@ -18,8 +18,9 @@ from cpu6809 import CPU6809, C  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 F256 = os.path.dirname(HERE)
-MODBASE, PARAMS = 0x8000, 0x7F00                      # the data area is at 0 (up to 16K)
-WINDOWS = [0x4000, 0xD000]                             # F$MapBlk's windows: two at once at most (port-guide)
+MODBASE, PARAMS = 0x8000, 0x3F00                      # the data area is at 0 (up to 16K; the parameters at its top)
+WINDOWS = [0x4000, 0x6000]                             # F$MapBlk's windows: two at once at most (port-guide), below
+                                                       # the module (it has $8000-$FFFF: 32K, enough for now)
 F_EXIT, F_ICPT, F_SLEEP, F_MAPBLK, F_CLRBLK = 0x06, 0x09, 0x0A, 0x4F, 0x50
 I_OPEN, I_READ, I_WRITLN, I_GETSTT, I_SETSTT, I_CLOSE = 0x84, 0x89, 0x8C, 0x8D, 0x8E, 0x8F
 SS_MCR, SS_LIVEKEYS, SS_GFXALLOC, SS_SPRPUSH = 0x8C, 0xC6, 0xD4, 0xD1

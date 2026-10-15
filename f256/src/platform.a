@@ -18,7 +18,7 @@ KY.Space            equ       %10000000
 * start - X = the parameters, U = DP = the data area
 ********************************************************************
 start               clrb                          the parameters: d = demo, b = autopilot,
-st0                 lda       ,x+                 g = nothing hurts him
+st0                 lda       ,x+                 g = nothing hurts him, k = the boss, m = Main Street, f = frail
                     cmpa      #$0D
                     beq       st0d
                     ora       #$20
@@ -35,8 +35,11 @@ st0c                cmpa      #'k                 k = straight to Two-Bit
                     bne       st0e
                     orb       #8
 st0e                cmpa      #'m                 m = start on Main Street
-                    bne       st0
+                    bne       st0f
                     orb       #16
+st0f                cmpa      #'f                 f = frail: any hit kills (the death scene)
+                    bne       st0
+                    orb       #32
                     bra       st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
@@ -62,8 +65,11 @@ st1c                lsrb
                     bcc       st1d
                     inc       <skipb
 st1d                lsrb
-                    bcc       st2
+                    bcc       st1e
                     inc       stgarg,u
+st1e                lsrb
+                    bcc       st2
+                    inc       frail,u
 st2                 lda       #$FF                no stage's art loaded yet
                     sta       ldstg,u
                     leax      pt+NPt*PT.Size,u    (NewPt's wrap)

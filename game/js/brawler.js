@@ -54,6 +54,8 @@ T.runBrawler = function (A) {
 
   // ---------------------------------------------------------------- shared art
   const HAT = T.buildHat();
+  const HAT_BITS = T.buildHatBits(HAT);           // the hat crumbling, in the death scene
+  let death = null;                              // the death scene, while it plays
   const H = T.HERO, CB = T.BOSS, E = T.ENEMY;
   const SKEL = T.buildSkeleton();
   const MANGY = T.buildCoyote('mangy');
@@ -166,7 +168,7 @@ T.runBrawler = function (A) {
   function loadStage(name, keep) {
     S = STAGES[name]; W = S.W;
     ART = artCache[name] || (artCache[name] = S.art());
-    enemies = []; items = []; bullets = []; ebullets = []; clods = []; skulls = []; parts = []; popups = []; boss = null; tumble = null;
+    enemies = []; items = []; bullets = []; ebullets = []; clods = []; skulls = []; parts = []; popups = []; boss = null; tumble = null; death = null;
     barrels = S.barrels.map(([x, z, item]) => ({ x, z, item, alive: true }));
     camX = 0; lock = null; waveI = 0; goT = 0; dark = 0; titleT = 0; lastHit = null;
     resetPlayer(keep);
@@ -275,18 +277,22 @@ T.runBrawler = function (A) {
 
   function hurtPlayer(from, dmg) {
     const p = player;
-    if (p.inv > 0 || phase !== 'play' || params.has('god')) return false;
+    if (p.inv > 0 || phase !== 'play' || death || params.has('god')) return false;
     if (p.held) { p.held.state = 'stagger'; p.held.t = 0; p.held = null; }
     p.hp -= dmg; p.inv = 0.9; p.state = 'hurt'; p.t = 0; p.vx = -(Math.sign(from.x - p.x) || p.face) * 120; p.vz = 0; p.vh = 0;
     sfx('hurt'); shake = Math.max(shake, 3);
     if (p.weapon && p.weapon.type === 'whip') dropWeapon();
-    if (p.hp <= 0) {
-      p.lives--;
-      if (p.lives <= 0) { phase = 'over'; phaseT = 0; saveHi(); music('over'); popup(p.x, FLOOR + p.z - 60, 'GAME OVER', '#ff6b4a', 2, 9); return true; }
-      p.hp = MAX_HP; p.inv = 2.2; p.weapon = null;
-      popup(p.x, FLOOR + p.z - 56, 'DAGNABBIT!', '#ff6b4a', 2, 1.4);
+    if (p.hp <= 0) {                               // the death scene: the hat crumbles, he topples over
+      p.hp = 0; p.inv = 0; p.weapon = null; p.held = null; setS('die'); p.vx *= 0.6;
+      sfx('ko'); shake = Math.max(shake, 5); hitstop = 0.12; ebullets = []; clods = [];
+      for (let i = 0; i < 8; i++) parts.push({ k: 'chunk', img: HAT_BITS[i], x: p.x + p.face * ((i % 4) * 8 - 12), z: p.z, h: 44 - (i >> 2) * 8,
+        vx: ((i % 4) - 1.5) * 40 + (Math.random() - 0.5) * 50, vh: 100 + Math.random() * 120, life: 0.7 + Math.random() * 0.3, max: 1 });
+      puff(p.x, p.z, 5, 38);
       for (const e of enemies) if (hittable(e) && Math.abs(e.x - p.x) < 120) { e.state = 'air'; e.vx = Math.sign(e.x - p.x || 1) * 160; e.vh = 200; e.t = 0; }
-      ebullets = []; clods = [];
+      if (boss && (boss.state === 'curl' || boss.state === 'roll')) { bSet('recover'); boss.vx = 0; }   // Dillon uncurls to wait
+      if (p.lives <= 1) { p.lives = 0; phase = 'over'; phaseT = 0; saveHi(); music('over'); popup(p.x, FLOOR + p.z - 60, 'GAME OVER', '#ff6b4a', 2, 9); return true; }
+      death = { t: 0, hat: null, caught: false, hop: 0 };
+      popup(p.x, FLOOR + p.z - 56, 'DAGNABBIT!', '#ff6b4a', 2, 1.4);
     } else popup(p.x, FLOOR + p.z - 52, 'OUCH!', '#ff6b4a', 2);
     return true;
   }
@@ -308,8 +314,47 @@ T.runBrawler = function (A) {
     return enemies.find(e => (e.state === 'stagger' || e.state === 'approach' || e.state === 'headless') && inLane(e, p, 9) && Math.sign(e.x - p.x) === dir && Math.abs(e.x - p.x) < 24 && e.h <= 0);
   }
 
+  // the death scene: he falls, a hat lifts off the lives and floats down like a leaf; he reaches up, catches it,
+  // gets up with it held high and puts it on. Those near him are blown back as he falls and again as he gets up;
+  // meanwhile the gang hangs back and the boss waits.
+  const HUD_HAT = i => [108 + i * 24 + T.HAT.OX, 6 + T.HAT.OY];   // a lives hat's place on the screen
+  function updateDeath(dt) {
+    const p = player, d = death;
+    d.t += dt; p.t += dt;
+    p.vh -= GRAV * dt; p.h = Math.max(0, p.h + p.vh * dt); if (p.h <= 0) p.vh = 0;
+    p.x = Math.max(camX + 12, Math.min(camX + VW - 12, p.x + p.vx * dt)); p.vx *= Math.pow(0.02, dt); p.vz = 0;
+    if (p.state === 'die' && p.t >= HERO.die.dur) setS('dead');
+    if (!d.hat && d.t > 1.1) {                     // a hat off the lives
+      p.lives--; const [hx, hy] = HUD_HAT(p.lives);
+      d.hat = { x0: camX + hx, y0: hy, x: camX + hx, y: hy, t: 0 }; sfx('tip');
+    }
+    const hand = (anim, f) => { const h = HERO[anim].hand[f]; return [p.x + p.face * h[0], sy(p.z, p.h) + h[1] - 1]; };
+    if (d.hat && !d.caught) {                     // drifting down, rocking side to side
+      const h = d.hat, [tx, ty] = hand('reach', 0), k = Math.min(1, (h.t += dt) / 2);
+      const e = k * k * (3 - 2 * k);
+      h.x = h.x0 + (tx - h.x0) * e + Math.sin(h.t * 4.5) * 16 * (1 - k); h.y = h.y0 + (ty - h.y0) * (0.5 * k + 0.5 * e);
+      if (p.state === 'dead' && h.t > 0.7) setS('reach');
+      if (k >= 1 && p.state === 'reach') { d.caught = true; setS('getup'); sfx('land'); }
+    } else if (d.caught) {                         // in his hand as he gets up; at the top it goes on
+      const f = Math.min(HERO.getup.frames.length - 1, Math.floor(p.t * HERO.getup.fps));
+      [d.hat.x, d.hat.y] = hand('getup', f);
+      if (p.t >= HERO.getup.dur) {
+        d.hop += dt;
+        const k = Math.min(1, d.hop / 0.16), hx = p.x + p.face * 0.6, hy = sy(p.z, p.h) - 31.6;
+        d.hat.x += (hx - d.hat.x) * k; d.hat.y += (hy - d.hat.y) * k;
+        if (k >= 1) {
+          death = null; setS('idle'); p.hp = MAX_HP; p.inv = 2.2; sfx('tip'); shake = Math.max(shake, 3);
+          popup(p.x, FLOOR + p.z - 56, "STILL KICKIN'!", '#ffd34a', 2, 1.4);
+          for (const e of enemies) if (hittable(e) && Math.abs(e.x - p.x) < 120) { e.state = 'air'; e.vx = Math.sign(e.x - p.x || 1) * 160; e.vh = 200; e.t = 0; }
+        }
+      }
+    }
+    pickAnim(p);
+  }
+
   function updatePlayer(dt) {
     const p = player;
+    if (death) return updateDeath(dt);
     const dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0), dz = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
     p.t += dt; p.inv -= dt; p.chainT -= dt;
     const free = p.state === 'idle' || p.state === 'walk' || (p.state === 'land' && p.t > 0.08);
@@ -486,6 +531,10 @@ T.runBrawler = function (A) {
       case 'whip': at('whip'); break;
       case 'shoot': at('shoot'); break;
       case 'hurt': p.anim = 'hurt'; p.frame = p.t < 0.2 ? 0 : 1; break;
+      case 'die': at('die'); break;
+      case 'dead': p.anim = 'dead'; p.frame = 0; break;
+      case 'reach': at('reach', true); break;
+      case 'getup': at('getup'); break;
     }
   }
 
@@ -507,12 +556,12 @@ T.runBrawler = function (A) {
         case 'rise': e.vx = e.vz = 0; if (e.t > 0.9) { e.state = 'approach'; e.cd = 0.8; } break;
         case 'approach': {
           const side = Math.sign(e.x - p.x) || e.slot, busy = attackers >= 2;
-          const tx = p.x + side * (skel ? 100 : busy ? 80 : coy ? 36 : 28), tz = p.z;
+          const tx = p.x + side * (skel || death ? 100 : busy ? 80 : coy ? 36 : 28), tz = p.z;   // (the death scene: they hang back)
           const sp = skel ? 46 : coy ? 58 : 72;
           e.vx = Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x) * 4, sp);
           e.vz = Math.sign(tz - e.z) * Math.min(Math.abs(tz - e.z) * 4, 42);
           e.face = Math.sign(p.x - e.x) || e.face;
-          if (phase !== 'play') break;
+          if (phase !== 'play' || death) break;
           if (skel) { if (e.cd <= 0 && Math.abs(tz - e.z) < 5 && Math.abs(tx - e.x) < 40) { e.state = 'aim'; e.t = 0; e.vx = e.vz = 0; sfx('shell'); } }
           else if (!busy && e.cd <= 0 && Math.abs(tx - e.x) < 8 && Math.abs(tz - e.z) < 5) { e.state = 'windup'; e.t = 0; e.vx = e.vz = 0; }
           break;
@@ -630,6 +679,7 @@ T.runBrawler = function (A) {
   function updateBoss(dt) {
     const b = boss, p = player;
     if (!b) return;
+    if (death && b.state !== 'ko') { b.flash -= dt; b.vx = b.vz = 0; return; }   // the death scene: he waits
     if (b.type === 'dillon') return updateDillon(dt);
     b.t += dt; b.flash -= dt; b.anim += dt;
     const dx = p.x - b.x, dz = p.z - b.z, toward = Math.sign(dx) || b.face;
@@ -932,7 +982,8 @@ T.runBrawler = function (A) {
         put(img, wx(p.x), sy(p.z, 0), H.OX, H.OY, depth(p.z));
       }
       if (!intro.hatOn) put(HAT, wx(intro.hx), intro.hy, T.HAT.OX, T.HAT.OY, depth(p.z) - 0.01);
-    } else if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2) && phase !== 'over') put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h), H.OX, H.OY, depth(p.z) - 0.001, p.face);
+    } else if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2)) put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h), H.OX, H.OY, depth(p.z) - 0.001, p.face);
+    if (death && death.hat) put(HAT, wx(death.hat.x), Math.round(death.hat.y), T.HAT.OX, T.HAT.OY, death.caught ? depth(p.z) - 0.002 : 0);
     if (phase !== 'intro' || phaseT >= IN.rise) put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
     if (S.intro) {                               // Ringo's headstone, and the grave he came out of
       put(PROPS.headstone, wx(STONE.x), sy(STONE.z, 0), PROPS.headstone.ox, PROPS.headstone.oy, depth(STONE.z));
@@ -1052,8 +1103,13 @@ T.runBrawler = function (A) {
       const p = player; p.t += dt; if (p.state === 'taunt' && p.t >= HERO.taunt.dur) setS('idle'); pickAnim(p);
       if (phaseT > 3.5) { if (S.next) loadStage(S.next, { lives: p.lives, hp: Math.min(MAX_HP, p.hp + 6), weapon: null }); else { phase = 'end'; phaseT = 0; saveHi(); music('title'); } }
     } else if ((phase === 'end' || phase === 'over') && phaseT > 2 && pressed.jump) toTitle();
+    if (phase === 'over') {                        // the last life: he topples and lies there
+      const p = player; p.t += dt; p.vh -= GRAV * dt; p.h = Math.max(0, p.h + p.vh * dt); p.x += p.vx * dt; p.vx *= Math.pow(0.02, dt);
+      if (p.state === 'die' && p.t >= HERO.die.dur) setS('dead');
+      if (p.state === 'die' || p.state === 'dead') pickAnim(p);
+    }
     updateEnemies(dt); updateBoss(dt); updateSkulls(dt); updateShots(dt); updateClods(dt); updateParts(dt);
-    if (phase === 'play') updateWaves(dt);
+    if (phase === 'play' && !death) updateWaves(dt);
     if (S.dusk) dark += (DARK[Math.min(waveI, DARK.length - 1)] - dark) * Math.min(1, dt * 0.6);
     // ambience: a tumbleweed now and then; on Main Street, dust motes in the low sun
     if (!S.intro && !tumble && (tumbleT -= dt) <= 0) tumble = { x: camX - 20, z: Math.random() * ZMAX, h: 0, vh: 0, vx: 55 + Math.random() * 40 };

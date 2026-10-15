@@ -319,6 +319,14 @@ bkind               rmb       1                   the boss: 0 Two-Bit, 1 Big She
 dbnc                rmb       1                   Dillon's roll: bounces off the edges
 ddefl               rmb       1                   1 = his shell's been kicked back
 ddmg                rmb       1                   the damage he's taken dizzy (14: he shakes it off)
+frail               rmb       1                   1 = any hit kills (tsk f)
+dying               rmb       1                   1 = the death scene's playing (death.a)
+dtime               rmb       1                   its passes
+dhat                rmb       1                   its hat: 0 none yet, 1 drifting, 2 in his hand, 3 the hop
+dht                 rmb       1                   the hat's passes
+dhh0                rmb       1                   the height it started from
+dhx                 rmb       2                   the hat: x (world px)
+dhh                 rmb       2                   and up from the street at his z (px)
 ptfull              rmb       1                   1 = NewPt found the particles full this pass
 recs                rmb       NRecs*8             our sprite table, registered with the driver
 dl                  rmb       NDL*DL.Size         the display list

@@ -127,7 +127,8 @@ T.runExport = function (A) {
   addGroup('FX', [['shadow', [shadow], 1, false], ['shadowS', [shadowS], 1, false, 12, 4],
     ['star', FXA.star, 1, false, 16, 16], ['bit', FXA.bit, 1, false, 4, 4], ['dust', FXA.dust.map(d => d[0]), 1, false, 4, 4],
     ['skull', SKEL.skull, 12, true, 8, 8], ['hat', [SKEL.hat], 1, false, 12, 12], ['bone', SKEL.bones, 1, false, 6, 6],
-    ['ebul', [SKEL.bullet], 1, false, 4, 4], ['chunk', FXA.chunk, 1, false, 1, 1]], 16, 4);
+    ['ebul', [SKEL.bullet], 1, false, 4, 4], ['chunk', FXA.chunk, 1, false, 1, 1],
+    ['hbit', T.buildHatBits(T.buildHat()), 1, false, 4, 4]], 16, 4);
   // sprint 3: the dillo, Two-Bit (the coyote art), and the props and pickups
   const E = T.ENEMY, B = T.BOSS, PROPS = T.buildProps(), PICK = T.buildPick(), HAT = T.buildHat();
   addGroup('DL', [['walk', DILLO.walk, 8, true], ['ball', DILLO.ball, 24, true]], E.OX, E.OY);
@@ -146,7 +147,7 @@ T.runExport = function (A) {
     ['ko4', 'WHOOP!', '#ffd34a', 2], ['ko5', 'SKEDADDLE!', '#ffd34a', 2],
     ['bone0', 'BONE DRY!', '#ffd34a', 2], ['bone1', 'RATTLED!', '#ffd34a', 2], ['bone2', 'DUST TO DUST!', '#ffd34a', 2],
     ['bone3', 'BACK TO THE GRAVE!', '#ffd34a', 2], ['bone4', 'KICKED THE BUCKET!', '#ffd34a', 2],
-    ['headsup', 'HEADS UP!', '#ffd34a', 1], ['dagnab', 'DAGNABBIT!', '#ff6b4a', 2], ['ouch', 'OUCH!', '#ff6b4a', 2],
+    ['headsup', 'HEADS UP!', '#ffd34a', 1], ['dagnab', 'DAGNABBIT!', '#ff6b4a', 2], ['kickin', "STILL KICKIN'!", '#ffd34a', 2], ['ouch', 'OUCH!', '#ff6b4a', 2],
     ['sixsh', 'SIX-SHOOTER!', '#ffd34a', 1], ['bwhip', 'BULLWHIP!', '#ffd34a', 1], ['wbroke', 'WHIP BROKE!', '#ff9d3c', 1],
     ['click', 'CLICK!', '#ff9d3c', 1], ['beans', 'BEANS!', '#ffd34a', 1], ['fore', 'FORE!', '#ffd34a', 1],
     ['stomp', 'STOMP!', '#ff8a3c', 2], ['bossko', 'YEEHAW!', '#ffd34a', 3], ['rise', 'RISE, BOYS!', '#ff9d3c', 1],
@@ -292,6 +293,13 @@ T.runExport = function (A) {
       if (b.some(v => v < -128 || v > 127)) throw new Error('hit box out of range');
       TB.push(`                    fcb       ${b.join(',')}`.padEnd(56) + `${a.name} ${i}`);
     });
+  }
+  // the death scene's hand: where his front hand is (dx, dy from the feet, facing right) flat out reaching, and
+  // in each frame of getting up; the hat rides there (sprites.js handAt)
+  TB.push('', '* HandTab: the front hand, dx, dy from the feet: reach 0, then getup 0..n-1 (the death scene\'s hat rides it)', 'HandTab');
+  for (const [a, f] of [['reach', 0], ...HERO.getup.hand.map((_, i) => ['getup', i])]) {
+    const [x, y] = HERO[a].hand[f];
+    TB.push(`                    fcb       ${Math.round(x)},${Math.round(y)}`.padEnd(56) + `${a} ${f}`);
   }
   // GlyTab: the HUD font (brawler.js drawText, 3x5 with a 1-pixel outline) as 5x7 stamps, ASCII 32..90:
   // 35 bytes each, row by row, 0 = clear, 1 = outline, 2 = fill (the colours come from the caller)

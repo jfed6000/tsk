@@ -299,7 +299,12 @@ gd2                 leax      EN.Size,x
 * BossStep - X = him: one pass (brawler.js updateBoss)
 ********************************************************************
 BossStep            stx       <bslot
-                    tst       bkind,u
+                    tst       dying,u             the death scene: he waits (unless he's down)
+                    beq       wbs0
+                    tst       EN.Hp,x
+                    beq       wbs0
+                    lbra      EStop
+wbs0                tst       bkind,u
                     lbne      DillonStep
                     lda       <bst
                     leay      BsTab,pcr

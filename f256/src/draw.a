@@ -61,9 +61,7 @@ cm5                 ldd       <camf
 ********************************************************************
 Draw                lbsr      ShakeXY
                     clr       <dln
-                    lda       <phase              game over: he's gone
-                    cmpa      #PH.Over
-                    beq       dw0a
+                    lda       <phase
 * the hero: on alternate beats while he's untouchable only his shadow
                     cmpa      #PH.Intro           the opening: rising from the grave
                     bne       dwh
@@ -90,6 +88,7 @@ dw0                 sta       <ectl
                     ldd       <hh
                     std       <eh
                     lbsr      Ent
+                    lbsr      DrawDHat            the death scene's hat (death.a)
 * the posse, loose skulls, bullets, particles (enemy.a)
 dw0a
                     lbsr      DrawEn

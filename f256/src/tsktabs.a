@@ -75,6 +75,29 @@ HitTab
                     fcb       0,0,0,0                   rise 5
                     fcb       0,0,0,0                   rise 6
                     fcb       0,0,0,0                   wake 0
+                    fcb       0,0,0,0                   die 0
+                    fcb       0,0,0,0                   die 1
+                    fcb       0,0,0,0                   die 2
+                    fcb       0,0,0,0                   die 3
+                    fcb       0,0,0,0                   die 4
+                    fcb       0,0,0,0                   die 5
+                    fcb       0,0,0,0                   dead 0
+                    fcb       0,0,0,0                   reach 0
+                    fcb       0,0,0,0                   reach 1
+                    fcb       0,0,0,0                   getup 0
+                    fcb       0,0,0,0                   getup 1
+                    fcb       0,0,0,0                   getup 2
+                    fcb       0,0,0,0                   getup 3
+                    fcb       0,0,0,0                   getup 4
+
+* HandTab: the front hand, dx, dy from the feet: reach 0, then getup 0..n-1 (the death scene's hat rides it)
+HandTab
+                    fcb       -17,-23                   reach 0
+                    fcb       -12,-27                   getup 0
+                    fcb       -10,-31                   getup 1
+                    fcb       -5,-32                    getup 2
+                    fcb       0,-30                     getup 3
+                    fcb       2,-33                     getup 4
 
 * GlyTab: the HUD font as 5x7 stamps for ASCII 32-90, 35 bytes each, column by column (7 rows down each of
 * 5 columns): 0 clear, 1 outline, 2 fill.

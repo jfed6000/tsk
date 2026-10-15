@@ -424,7 +424,11 @@ es0a                inc       <attackers
 es0b                leax      EN.Size,x
                     decb
                     bne       es0
-                    clr       <eleft
+                    tst       dying,u             the death scene: they hang back, as if two were at him
+                    beq       es0c
+                    lda       #2
+                    sta       <attackers
+es0c                clr       <eleft
                     leax      en,u
                     lda       #NEn
                     sta       <eloop
@@ -525,6 +529,8 @@ ea2                 subd      EN.X,x
                     lbsr      AbsD
                     cmpd      #40*16
                     lbhs      EnMove
+                    tst       dying,u             (not while he's down)
+                    lbne      EnMove
                     lda       #SF.Shell           the hammer's cocked
                     lbsr      Sfx
                     lda       #ES.Aim
@@ -1252,11 +1258,16 @@ ko6                 leay      SL.Size,y
 ********************************************************************
 HurtHero            tst       <hinv
                     bne       hu0
+                    tst       dying,u
+                    bne       hu0
                     tst       <phase
                     bne       hu0
                     tst       <god
                     bne       hu0
-                    sta       <dmg
+                    tst       frail,u             (tsk f: any hit kills)
+                    beq       hu00
+                    lda       #99
+hu00                sta       <dmg
                     lda       <hhp
                     suba      <dmg
                     sta       <hhp
@@ -1284,29 +1295,17 @@ hu3                 std       <hvx
                     lbsr      Shk
                     tst       <hhp
                     bgt       hu7
-                    dec       <hlives             a life gone: full health, a while untouchable
-                    bne       hu5
+                    lbsr      Die                 a life gone: the death scene (death.a)
+                    bcc       hu5
                     lbsr      GameOver            the last one
                     bra       hu4
 hu7                 ldx       #TX.ouch
                     lda       #52
                     lbsr      WordH
                     bra       hu4
-hu5                 clr       <hwep              a life gone takes the weapon too
-                    ldx       #TX.dagnab
+hu5                 ldx       #TX.dagnab
                     lda       #56
                     lbsr      WordH
-                    lda       #MaxHp
-                    sta       <hhp
-                    lda       #RespT
-                    sta       <hinv
-                    bsr       Blowback            and everyone near him blown back
-                    leay      eb,u                and the bullets gone
-                    ldb       #NEb
-hu6                 clr       EB.St,y
-                    leay      EB.Size,y
-                    decb
-                    bne       hu6
 hu4                 lda       #1
                     rts
 hu0                 clra

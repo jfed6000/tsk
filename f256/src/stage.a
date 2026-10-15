@@ -258,6 +258,8 @@ sg1                 lda       <phase
                     cmpa      #PH.Play
                     bne       sg2
                     lbsr      Hero
+                    tst       dying,u             (no wave while he's down)
+                    bne       sgx
                     lbra      Waves
 sg2                 cmpa      #PH.Clear
                     bne       sg4
@@ -282,7 +284,10 @@ sg3                 lbsr      HiScore             TO BE CONTINUED: the title the
                     lbsr      Music
                     lda       #PH.End
                     bra       SetPh
-sg4                 ldd       <phaset             the end, game over: jump to go again
+sg4                 cmpa      #PH.Over            game over: he topples, lies there
+                    bne       sg4a
+                    lbsr      HeroPassive
+sg4a                ldd       <phaset             the end, game over: jump to go again
                     cmpd      #WaitT
                     blo       sgx
                     lda       <ipress

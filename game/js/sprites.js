@@ -649,11 +649,52 @@ function heroAnims() {
   };
   A.wake = { fps: 1, loop: false, poses: [pose(Object.assign({}, stand, { yaw: 0, noHat: true, arms: 'crossed', pupil: [0, -0.4] }))] };
 
+  // the death scene: his hat crumbles and he topples over backwards (`tip`: the whole of him turned about the back
+  // heel, baked, as the F256 can't rotate); flat on his back he reaches up for the hat that floats down off the
+  // lives, then gets up with it held high
+  const FLAT = -1.42, down = o => pose(Object.assign({ noHat: true, tip: FLAT, nl: leg(-0.1), fl: leg(0.1, 0, -2) }, o));
+  A.die = { fps: 12, loop: false, poses: [
+    pose({ noHat: true, tip: -0.12, br: -0.2, fh: [-2, -33], bh: [-9, -31], fb: -1, bb: -1, face: 'yell', nl: leg(-0.5, 2), fl: leg(0.2, 0, -2) }),
+    pose({ noHat: true, tip: -0.42, br: -0.15, fh: [-4, -34], bh: [-11, -30], fb: -1, bb: -1, face: 'squint', nl: leg(-0.6, 3), fl: leg(0.1, 0, -2) }),
+    pose({ noHat: true, tip: -0.85, fh: [-1, -33], bh: [-10, -29], fb: -1, bb: -1, face: 'squint', nl: leg(-0.4, 2), fl: leg(0.1, 0, -2) }),
+    pose({ noHat: true, tip: -1.28, fh: [6, -28], bh: [-6, -27], fb: -1, bb: -1, face: 'blink', nl: leg(-0.3, 1) }),
+    down({ tip: FLAT - 0.06, fh: [11, -22], bh: [-2, -24], face: 'blink', bsy: 0.95 }),
+    down({ fh: [11, -12], bh: [7, -10], face: 'blink' }),
+  ] };
+  A.dead = { fps: 1, loop: false, poses: [down({ fh: [11, -12], bh: [7, -10], face: 'blink' })] };
+  // flat out, one hand up for the hat (the sky is his front, now): the hand opens and closes
+  A.reach = { fps: 4, loop: true, poses: [
+    down({ fh: [13, -21], bh: [7, -10], face: 'mad', pupil: [1.2, 0], armL: 6.5 }),
+    down({ fh: [12.5, -19.5], bh: [7, -10], face: 'mad', pupil: [1.2, 0], armL: 6.5 }),
+  ] };
+  // up again, the hat held high, and at the top it goes on (the brawler draws the hat at `hand`)
+  A.getup = { fps: 10, loop: false, poses: [
+    down({ tip: -1.15, fh: [13, -21], bh: [-2, -14], face: 'mad', pupil: [1.2, 0], armL: 6.5, nl: leg(-0.8, 4) }),
+    pose({ noHat: true, tip: -0.8, fh: [10, -27], bh: [-6, -18], face: 'mad', pupil: [1, -0.6], armL: 6.5, nl: leg(-0.9, 5), fl: leg(0.2, 0, -2) }),
+    pose({ noHat: true, tip: -0.45, by: 1, fh: [7, -31], bh: [-9, -22], face: 'mad', pupil: [0.6, -1], armL: 6.5, nl: leg(-0.6, 3), fl: leg(0.2, 0, -2) }),
+    pose({ noHat: true, tip: -0.15, by: 1.5, bsy: 0.95, fh: [4, -35], bh: [-10, -24], face: 'smug', pupil: [0.3, -1], armL: 7, nl: leg(-0.2) }),
+    pose({ noHat: true, fh: [2, -37], bh: [-10, -24], face: 'smug', pupil: [0.2, -1], armL: 7.5 }),
+  ] };
+
   for (const a of Object.values(A)) a.poses.forEach((p, i) => { if (p.hit) (a.hits = a.hits || {})[i] = autoHit(p); });
   return A;
 }
 
 const HERO_FW = 100, HERO_FH = 76, HERO_OX = 38, HERO_OY = 68;
+// toppling: about the back heel, and slid forward as he goes so his top stays in the frame
+const TIP_X = -7, TIP_DX = 8;
+// where a pose's front hand is (origin at his feet, facing right): the arm's reach (IK) through the top's lean and
+// squash and the whole-body tip. The death scene holds the hat there.
+function handAt(p) {
+  const w = halfW(p.yaw), j = ik(lerp(w - 0.6, 1.2, p.yaw), lerp(-20, -18.4, p.yaw), p.fh[0], p.fh[1], p.armL, p.armL, p.fb);
+  const c = Math.cos(p.br), s = Math.sin(p.br), x = j.hx * p.bsx, y = j.hy * p.bsy;
+  let hx = p.bx + c * x - s * y, hy = p.by + s * x + c * y;
+  if (p.tip) {
+    const t = p.tip, dx = hx - TIP_X, ct = Math.cos(t), st = Math.sin(t);
+    hx = TIP_X + ct * dx - st * hy + TIP_DX * t / -1.42; hy = st * dx + ct * hy;
+  }
+  return [hx, hy];
+}
 
 // the hat on its own (it waits on Ringo's headstone in the opening): origin at the middle of the brim's underside
 T.HAT = { OX: 16, OY: 14 };
@@ -663,6 +704,15 @@ T.buildHat = function () {
   return pixelize(c, PAL, PAL.out, CLUT.spr);
 };
 T.HERO = { FW: HERO_FW, FH: HERO_FH, OX: HERO_OX, OY: HERO_OY };
+// the hat's bits, when it crumbles in the death scene: its 32x16 in eight 8x8 pieces, origin in the middle
+T.buildHatBits = function (hat) {
+  return [0, 1, 2, 3, 4, 5, 6, 7].map(i => {
+    const c = canvas(8, 8), sx = (i % 4) * 8, sy = (i >> 2) * 8;
+    c.getContext('2d').drawImage(hat, sx, sy, 8, 8, 0, 0, 8, 8); c.ox = 4; c.oy = 4;
+    c.idx = new Uint8Array(64); for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) c.idx[y * 8 + x] = hat.idx[(sy + y) * hat.width + sx + x];
+    return c;
+  });
+};
 
 T.buildHero = function () {
   const anims = heroAnims();
@@ -673,10 +723,12 @@ T.buildHero = function () {
       const c = canvas(HERO_FW, HERO_FH), ctx = c.getContext('2d');
       ctx.translate(HERO_OX, HERO_OY);
       if (p.bury) { ctx.beginPath(); ctx.rect(-HERO_OX, -HERO_OY, HERO_FW, HERO_OY - 1); ctx.clip(); ctx.translate(0, p.bury); }
+      if (p.tip) { ctx.translate(TIP_DX * p.tip / -1.42 + TIP_X, 0); ctx.rotate(p.tip); ctx.translate(-TIP_X, 0); }
       drawHero(ctx, p);
       return pixelize(c, PAL, PAL.out, CLUT.spr);
     });
     a.dur = a.frames.length / a.fps;
+    a.hand = a.poses.map(handAt);
   }
   return anims;
 };
