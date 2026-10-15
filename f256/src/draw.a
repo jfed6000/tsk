@@ -462,3 +462,15 @@ SprPush             pshs      u
                     ldb       #SS.SprPush
                     os9       I$SetStt
                     puls      u,pc
+
+* Cam16 - D = the camera in 1/16 px
+Cam16               ldd       <cam
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    rts

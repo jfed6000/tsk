@@ -12,12 +12,8 @@
 *   stampede.
 ********************************************************************
 
-RideV               equ       32                  2 px a pass
 Tread               equ       1280                the treadmill: the trail's first Loop, twice
 RideEnd             equ       1100                the camera's spot at the gate: WHOA!
-Loop                equ       640
-Saddle              equ       26                  how high he sits on the steer
-RdHp                equ       6
 RdSpd               equ       19                  70 px/s
 
 * RideInit - from StageInit: a ride stage starts him in the saddle
@@ -432,18 +428,6 @@ qsst1                inc       SM.On,x
                     bne       qsst1
                     lda       #12
                     lbra      Shk
-
-* Cam16 - D = the camera in 1/16 px
-Cam16               ldd       <cam
-                    lslb
-                    rola
-                    lslb
-                    rola
-                    lslb
-                    rola
-                    lslb
-                    rola
-                    rts
 
 * Planks - A = how many: wood flying from sx, sz
 Planks              sta       <kcnt

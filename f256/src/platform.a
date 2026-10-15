@@ -86,6 +86,8 @@ st1h                lsrb
                     sta       stgarg,u
 st2                 lda       #$FF                no stage's art loaded yet
                     sta       ldstg,u
+                    lbsr      CvInit              the stage modules' links (stgmod.a)
+                    lbsr      StgFree
                     leax      pt+NPt*PT.Size,u    (NewPt's wrap)
                     stx       ptend,u
                     leax      recs+NRecs*8,u
@@ -880,6 +882,7 @@ BlkAddr             clrb
 ********************************************************************
 Cleanup             pshs      cc,d,x,y
                     lbsr      WSigClr
+                    lbsr      StgFree             the stage module unlinked
                     lbsr      SndOff              silence: every note off, the song unmapped
                     tst       <regd
                     beq       cu1
@@ -1004,5 +1007,5 @@ MsgLoad             fcc       /Texas Shitkickers - saddling up.../
                     fcb       $0D
 MsgBye              fcc       /So long, partner./
                     fcb       $0D
-MsgErr              fcc       "tsk failed - run it from the TSK directory (chd /dd/TSK)"
+MsgErr              fcc       "tsk failed - run it from the TSK directory (chd /dd/TSK), with tskms, tskgt and tskcd in CMDS"
                     fcb       $0D

@@ -8,7 +8,9 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 | | |
 |---|---|
 | `tools/export.py` | The asset exporter. It runs the browser prototype headless with `?export` (`../game/js/export.js` draws and packs), writes `assets/*.bin` and the generated `src/tskassets.d`, then rebuilds `assets/preview/*.png` **from the binaries alone** to prove the data |
-| `src/tsk.asm` + `src/*.a` | **tsk**, the game (P4, `docs/port-plan.md`) |
+| `src/tsk.asm` + `src/*.a` | **tsk**, the game's core (P4, `docs/port-plan.md`) |
+| `src/tskms.asm`, `tskgt.asm`, `tskcd.asm` | **The stage modules**: Main Street's, Ghost Town's and the Cattle Drive's own code (`dillon.a`; `ghost.a`; `ride.a`, `jack.a`), at most 8K each, `F$Load`ed with the stage from CMDS (`src/stgmod.a`, port-plan item 12) |
+| `tools/stagegen.py` | Writes the glue between tsk and the stage modules (`src/tskvec.d`, `tskhook.a`, `tskhk_*.a`, `tskcore.d`); run by make |
 | `src/tskview.asm` | **tskview**, the asset viewer and graphics harness |
 | `tools/compose.py`, `tools/render.py` | The music, written as code into `game/music/*.mid`, and rendered to MP3 through fluidsynth (previews, and the browser's music) |
 | `tools/midi2tsk.py` | `game/music/*.mid` → `assets/mus_*.bin` (one 8K block a song) and the generated `src/tskmusic.d` |
@@ -39,8 +41,8 @@ Files are per stage where they differ: `tiles_bh.bin`/`tiles_ms.bin`, `maps_*`, 
 ## tsk: the game
 
 ```
-make                 # tsk (32.7K of the 40,960-byte budget; data area 4.9K of 7,936) and tskview
-make install DSK=/absolute/path/to/image.dsk
+make                 # tsk (25.1K of 32,768; data area 5.0K of 7,936), the stage modules tskms, tskgt, tskcd (8K each), tskview
+make install DSK=/absolute/path/to/image.dsk   # tsk and the stage modules to CMDS, the assets to TSK
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
 make mamebot         # the autopilot playing the opening and the first waves in MAME

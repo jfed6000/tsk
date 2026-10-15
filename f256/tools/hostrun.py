@@ -18,9 +18,11 @@ from cpu6809 import CPU6809, C  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 F256 = os.path.dirname(HERE)
-MODBASE, PARAMS = 0x6000, 0x1F00                      # the data area is at 0 (one 8K block; the parameters at its top)
+MODBASE, PARAMS = 0x8000, 0x1F00                      # the data area is at 0 (one 8K block; the parameters at its top)
+STGBASE = 0x6000                                       # the stage module's slot (F$Load: stgmod.a)
 WINDOWS = [0x2000, 0x4000]                             # F$MapBlk's windows: two at once at most (port-guide), below
-                                                       # the module (it has $6000-$FFFF: 40K, tsk's budget)
+                                                       # the stage module and the core (it has $8000-$FFFF: 32K)
+F_LOAD, F_UNLINK = 0x01, 0x02
 F_EXIT, F_ICPT, F_SLEEP, F_MAPBLK, F_CLRBLK = 0x06, 0x09, 0x0A, 0x4F, 0x50
 I_OPEN, I_READ, I_WRITLN, I_GETSTT, I_SETSTT, I_CLOSE = 0x84, 0x89, 0x8C, 0x8D, 0x8E, 0x8F
 SS_MCR, SS_LIVEKEYS, SS_GFXALLOC, SS_SPRPUSH = 0x8C, 0xC6, 0xD4, 0xD1
@@ -38,6 +40,7 @@ class Host(CPU6809):
         self.enemies, self.kos, self.hits = enemies, 0, 0
         self.files, self.nextblk, self.npass, self.pushes = {}, 0x40, 0, []
         self.blocks, self.mapped = {}, {}        # block -> its 8K; window -> the block mapped there
+        self.stgmod, self.stglabs = None, {}     # the stage module in its slot; each one's labels (for --profile)
 
     def v(self, name, size=None):
         a = self.sym[name]
@@ -51,9 +54,13 @@ class Host(CPU6809):
         if self.npass == self.profile and self.profile:
             c0 = self.cycles
             self._step(pc)
-            off = pc - MODBASE
-            i = bisect.bisect_right(self.labofs, off) - 1
-            name = self.labnames[i] if i >= 0 else '?'
+            if STGBASE <= pc < MODBASE and self.stgmod:
+                ofs, names = self.stglabs.get(self.stgmod, ([], []))
+                i = bisect.bisect_right(ofs, pc - STGBASE) - 1
+                name = (self.stgmod + ':' + names[i]) if i >= 0 else '?'
+            else:
+                i = bisect.bisect_right(self.labofs, pc - MODBASE) - 1
+                name = self.labnames[i] if i >= 0 else '?'
             self.prof[name] = self.prof.get(name, 0) + self.cycles - c0
             return
         self._step(pc)
@@ -96,6 +103,33 @@ class Host(CPU6809):
                 self.blocks[blk] = bytes(self.mem[self.u:self.u + 0x2000])
             return 0
         if fn in (F_ICPT, I_CLOSE):
+            return 0
+        if fn == F_LOAD:                         # a stage module from the execution directory, into its slot
+            raw = bytes(self.mem[self.x:self.x + 32])
+            n = 0
+            while n < len(raw) and raw[n] > 0x20 and not raw[n] & 0x80:
+                n += 1
+            name = raw[:n].decode()
+            path = os.path.join(F256, name)
+            if not os.path.exists(path):
+                return E_PNNF
+            if self.stgmod:
+                raise Exit(f'F$Load {name} with {self.stgmod} still in its slot (no free slot)')
+            m = open(path, 'rb').read()
+            if len(m) > 0x2000:
+                raise Exit(f'F$Load {name}: {len(m)} bytes, over one block')
+            self.mem[STGBASE:STGBASE + 0x2000] = os.urandom(0x2000)
+            self.mem[STGBASE:STGBASE + len(m)] = m
+            self.stgmod = name
+            self.x = (self.x + n) & 0xFFFF
+            self.a, self.b = m[6], m[7]
+            self.u, self.y = STGBASE, STGBASE + (m[9] << 8 | m[10])
+            print(f'  [F$Load {name}: {len(m)} bytes at ${STGBASE:04X}]')
+            return 0
+        if fn == F_UNLINK:
+            if self.u == STGBASE and self.stgmod:
+                self.mem[STGBASE:STGBASE + 0x2000] = bytes([0x3F]) * 0x2000   # SWI: a call into a gone module stops
+                self.stgmod = None
             return 0
         if fn == F_MAPBLK:                       # the block's bytes into a free window
             free = [w for w in WINDOWS if w not in self.mapped]
@@ -200,6 +234,14 @@ def main():
     h.slow, h.profile, h.prof = a.slow, a.profile, {}
     labs = sorted((v, k) for k, v in sym.items() if re.match(r'^[A-Z][A-Za-z0-9]*$', k) and v < len(mod) and v >= 13)
     h.labofs, h.labnames = [v for v, k in labs], [k for v, k in labs]
+    for sm in ('tskms', 'tskgt', 'tskcd'):          # the stage modules' labels
+        mp = os.path.join(F256, sm + '.map')
+        if os.path.exists(mp):
+            ls = sorted((int(m.group(2), 16), m.group(1)) for m in
+                        (re.match(r'Symbol: (\S+) \(\S+\) = ([0-9A-F]+)', l) for l in open(mp))
+                        if m and re.match(r'^[A-Z][A-Za-z0-9]*$', m.group(1)) and 13 <= int(m.group(2), 16) < 0x2000
+                        and m.group(1) not in sym)          # (not the core's constants it was given)
+            h.stglabs[sm] = ([v for v, k in ls], [k for v, k in ls])
     h.load(MODBASE, mod)
     args = a.args if a.args is not None else 'd' if a.demo else ''
     h.load(PARAMS, args.encode() + b'\r')

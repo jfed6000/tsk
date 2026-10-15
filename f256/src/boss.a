@@ -1163,3 +1163,67 @@ wdc2x                leax      CL.Size,x
                     dec       <dloop
                     bne       wdc1x
                     rts
+
+* DMove - moving, kept in the band and on the screen (cam + 20 .. cam + 300)
+DMove               ldd       EN.Z,x
+                    addd      EN.VZ,x
+                    bpl       dm2x
+                    ldd       #0
+dm2x                cmpd      #ZMax*16
+                    ble       dm3x
+                    ldd       #ZMax*16
+dm3x                std       EN.Z,x
+                    ldd       <cam
+                    addd      #20
+                    lbsr      To124
+                    std       <tmp
+                    ldd       EN.X,x
+                    addd      EN.VX,x
+                    cmpd      <tmp
+                    bge       dm4x
+                    ldd       <tmp
+dm4x                pshs      d
+                    ldd       <tmp
+                    addd      #280*16
+                    cmpd      ,s
+                    bge       dm5x
+                    std       ,s
+dm5x                puls      d
+                    std       EN.X,x
+                    rts
+
+* OnScreen - D = an x (12.4): carry set if it's outside cam + 24 .. cam + 296
+OnScreen            pshs      d
+                    ldd       <cam
+                    addd      #24
+                    lbsr      To124
+                    cmpd      ,s
+                    bgt       gos8
+                    ldd       <cam
+                    addd      #296
+                    lbsr      To124
+                    cmpd      ,s
+                    blt       gos8
+                    puls      d
+                    andcc     #$FE
+                    rts
+gos8                puls      d
+                    orcc      #1
+                    rts
+
+* DSet - A = what he does now (DS.*): his clock from 0, hittable or not
+DSet                ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.Boss
+                    cmpa      #DS.Intro
+                    beq       dz1x
+                    cmpa      #DS.Curl
+                    beq       dz1x
+                    cmpa      #DS.Roll
+                    beq       dz1x
+                    cmpa      #DS.Ko
+                    bne       dz2x
+dz1x                ldb       #ES.BossX
+dz2x                stb       EN.St,x
+                    rts

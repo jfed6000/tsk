@@ -262,7 +262,28 @@ One program module, **`tsk`**, assembled from:
       cells (`SPR.Ovl`).
     - **Cost:** the worst pass in the ride is about 86K cycles (three riders, fence planks, a new name in the HUD),
       98K with a death mid-ride; Ghost Town → the Cattle Drive → Jack runs clean (`dlcheck.py` on every stage).
-12. The pad harness, co-op, the next stages.
+12. ✓ **Stage modules** *(2026-10-15, branch `stage-modules`: `tsk` 25.1K of 32,768; `tskms` 1.4K, `tskgt` 3.0K,
+    `tskcd` 4.2K, each of 8,192)*: a stage's own code is a module of its own, so the core holds one stage's at a time
+    and every new stage gets a whole 8K.
+    - **The slots:** of the process's eight 8K blocks, data 1, the music window 1, the service window 1, the stage
+      module 1, the core 4 (the makefile's budget is now 32,768).
+    - **Loading** (`stgmod.a`): the stage's file list ends with its module's name (empty for Boot Hill);
+      `LoadStage` calls `StgLoad`, which unlinks the last one and `F$Load`s this one from the execution directory
+      (CMDS: `make install` puts them there). NitrOS-9 maps it into the free slot; `Cleanup` unlinks it, and after
+      `q` `mdir` shows none left (checked in MAME).
+    - **Calls across the line** go through the data area, U-indexed: `HK.<x>` holds the address of the stage routine
+      x (from the module's `HookTab`), or `NoHook` (carry clear; `NoHookC`, carry set, for the bot hooks:
+      `HkDef`) when no module has it; the core's stub is `x jmp [HK.x,u]`. `CV.<x>` holds the core routine x
+      (`CvInit`, from `CoreTab`), and a module's stub is `x jmp [CV.x,u]`. So the sources call each other by
+      name, as before: about 8 cycles a call more.
+    - **`tools/stagegen.py`** writes all of that from the sources each build (`tskvec.d`, `tskhook.a`,
+      `tskhk_<s>.a`) and the core's constants for the modules (`tskcore.d`, from `tsk.map`). It refuses a
+      module's routine used by another module, a core table a module takes the address of, or a module's
+      constant the core uses; those go in the core (`rat.a`: the rattler, Ghost Town's and the corral's;
+      `DMove`, `OnScreen`, `DSet` in boss.a) or in `stages.d` (the bosses' states and health, the ride's numbers).
+    - **The host** (`hostrun.py`): the core at $8000, the stage module's slot at $6000, `F$Load`/`F$UnLink`
+      answered; a second load without an unlink stops the run.
+13. The pad harness, co-op, the next stages.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

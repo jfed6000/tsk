@@ -3,6 +3,8 @@
 *   then the larger tables, then the stack.  Cleared at start-up.
 ********************************************************************
 
+                    use       stages.d
+
 * sizes
 NRecs               equ       128                 sprite records we own (SS.SprReg): all of them
 NEn                 equ       6                   enemies at once (Main Street's last wave is six)
@@ -320,6 +322,7 @@ dpend               equ       .
 tmrec               rmb       12                  SS.TmSet record (reached by leax tmrec,u only)
 * the stage (stage.a): reached as name,u (the direct page is full)
 stgn                rmb       1                   0 Boot Hill, 1 Main Street
+stgmh               rmb       2                   the stage module's header (stgmod.a), 0 = none
 camsx               rmb       2                   the camera in 1/16 px, this draw pass (Ent)
 stgp                rmb       2                   its record in StgTab
 levw                rmb       2                   its width, px
@@ -416,6 +419,7 @@ pend                rmb       NPend*PN.Size       queued MIDI: note-offs, delaye
 mbuf                rmb       NMBuf               this frame's MIDI
 pt                  rmb       NPt*PT.Size         particles
 fridx               rmb       FRM.N*2             each frame's offset in the frame-record block (fri.bin)
+                    use       tskvec.d            the stage modules' slots (tools/stagegen.py)
 StkBase             equ       .
                     rmb       512                 stack
 size                equ       .

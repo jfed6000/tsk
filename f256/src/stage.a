@@ -92,8 +92,13 @@ gi1a                sta       EN.Id,x
                     lbsr      HeroInit
                     lbsr      CamInit
                     lbsr      PickInit
-                    lbsr      SignInit            (Ghost Town's signs, ghost.a)
-                    lbsr      RideInit            (the Cattle Drive's ride, ride.a)
+                    clr       riding,u            not riding (the core tests these; ride.a sets them)
+                    clr       hmount,u
+                    clr       hremount,u
+                    clr       rtread,u
+                    clr       lon,u
+                    lbsr      SignInit            (Ghost Town's signs: tskgt)
+                    lbsr      RideInit            (the Cattle Drive's ride: tskcd)
                     ldd       #0
                     std       <phaset
                     std       <titlet
@@ -178,10 +183,15 @@ LoadStage           lbsr      MapsOff
                     puls      x
                     bcs       ls9
                     bsr       NextName
+                    pshs      x
                     lda       frblk,u             frr_<s>.bin: its frames' records, after the shared ones
                     ldb       #1
                     ldy       #FRR.Sh
                     lbsr      LoadFile
+                    puls      x
+                    bcs       ls9
+                    bsr       NextName            its code: the stage module (stgmod.a)
+                    lbsr      StgLoad
                     bcs       ls9
                     lbra      StageGfx
 ls9                 rts
@@ -260,6 +270,7 @@ FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
                     fcc       /frr_bh.bin/
                     fcb       $0D
+                    fcb       $0D
 FileCD              fcc       /tiles_cd.bin/
                     fcb       $0D
                     fcc       /maps_cd.bin/
@@ -267,6 +278,8 @@ FileCD              fcc       /tiles_cd.bin/
                     fcc       /spr_cd.bin/
                     fcb       $0D
                     fcc       /frr_cd.bin/
+                    fcb       $0D
+                    fcc       /tskcd/
                     fcb       $0D
 FileGT              fcc       /tiles_gt.bin/
                     fcb       $0D
@@ -276,6 +289,8 @@ FileGT              fcc       /tiles_gt.bin/
                     fcb       $0D
                     fcc       /frr_gt.bin/
                     fcb       $0D
+                    fcc       /tskgt/
+                    fcb       $0D
 FileMS              fcc       /tiles_ms.bin/
                     fcb       $0D
                     fcc       /maps_ms.bin/
@@ -283,6 +298,8 @@ FileMS              fcc       /tiles_ms.bin/
                     fcc       /spr_ms.bin/
                     fcb       $0D
                     fcc       /frr_ms.bin/
+                    fcb       $0D
+                    fcc       /tskms/
                     fcb       $0D
 
 ********************************************************************

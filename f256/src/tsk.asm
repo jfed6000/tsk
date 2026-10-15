@@ -50,12 +50,11 @@ name                fcs       /tsk/
                     use       pickup.a
                     use       intro.a
                     use       boss.a
-                    use       dillon.a
                     use       death.a
                     use       grab.a
-                    use       ghost.a
-                    use       ride.a
-                    use       jack.a
+                    use       rat.a
+                    use       stgmod.a
+                    use       tskhook.a
                     use       snd.a
                     use       title.a
                     use       amb.a

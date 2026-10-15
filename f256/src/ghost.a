@@ -1,129 +1,8 @@
 ********************************************************************
-* ghost.a - Ghost Town (brawler.js STAGES.ghosttown): the rattler
-*   henchman, the hanging signs that fall, and Doc Gila, the Gila monster
-*   card sharp, with his cards and his card table.
+* ghost.a - Ghost Town (brawler.js STAGES.ghosttown): the hanging
+*   signs that fall, and Doc Gila, the Gila monster card sharp, with his
+*   cards and his card table (the tskgt stage module; the rattler is rat.a).
 ********************************************************************
-
-* ---------------------------------------------------------------- the rattler
-* It walks in (ES.Enter), keeps 70 px off in your lane (DAppr), coils
-*   with a rattle (ES.Wind, 0.6 s), lunges low and long (ES.Strike: 270
-*   px/s for 0.28 s, 2 if it meets you on the ground), then lies stretched
-*   out a second (ES.Recov) - jump the lunge, then kick it.
-RtHp                equ       7
-RtSpd               equ       17                  64 px/s
-RtWindT             equ       36
-RtLunge             equ       72                  270 px/s
-RtLungeT            equ       17
-RtStrikeT           equ       21
-RtRecT              equ       60
-
-NewRat              lda       #TY.Rat
-                    sta       <tmpk
-                    lda       #RtHp
-                    sta       <tmpf
-                    lbsr      NewWalk
-                    bcs       gnr9x
-                    lda       #8                  one of the snake names
-                    lbsr      RandN
-                    sta       EN.Nm,x
-gnr9x                rts
-
-* RStrike - X = a rattler, lunging
-RStrike             ldd       #0
-                    std       EN.VZ,x
-                    lda       EN.T,x
-                    cmpa      #RtLungeT
-                    bhs       grs1x
-                    ldd       #RtLunge
-                    lbsr      ByFace
-                    std       EN.VX,x
-                    bra       grs2x
-grs1x                ldd       #0
-                    std       EN.VX,x
-grs2x                tst       EN.Am,x             once a lunge
-                    bne       grs8x
-                    lda       EN.T,x
-                    cmpa      #RtLungeT+1
-                    bhs       grs8x
-                    ldd       EN.Z,x              in his lane, on the ground, at its head
-                    subd      <hz
-                    lbsr      AbsD
-                    cmpd      #10*16
-                    bhs       grs8x
-                    ldd       <hh
-                    cmpd      #14*16
-                    bge       grs8x
-                    ldd       #16*16              its head: 16 px ahead
-                    lbsr      ByFace
-                    addd      EN.X,x
-                    subd      <hx
-                    lbsr      AbsD
-                    cmpd      #16*16
-                    bhs       grs8x
-                    inc       EN.Am,x
-                    ldd       EN.X,x
-                    std       <sx
-                    lda       #2
-                    pshs      x
-                    lbsr      HurtHero
-                    puls      x
-grs8x                lda       EN.T,x
-                    cmpa      #RtStrikeT
-                    lbls      EnMove
-                    lda       #ES.Recov
-                    lbsr      SetE
-                    lbra      EnMove
-
-* RtFrame - X = a rattler -> D = its frame
-RtFrame             lda       EN.St,x
-                    cmpa      #ES.Wind
-                    bne       grf1x
-                    lda       EN.An,x             coiled, the rattle going
-                    lsra
-                    lsra
-                    anda      #1
-                    adda      #RT.coil-RT.First
-                    bra       grf9x
-grf1x                cmpa      #ES.Strike
-                    bne       grf2x
-                    lda       #RT.lunge-RT.First
-                    bra       grf9x
-grf2x                cmpa      #ES.Recov
-                    bne       grf3x
-                    lda       #RT.recover-RT.First
-                    bra       grf9x
-grf3x                cmpa      #ES.Down
-                    beq       grf4x
-                    cmpa      #ES.Getup
-                    bne       grf5x
-grf4x                lda       #RT.down-RT.First
-                    bra       grf9x
-grf5x                cmpa      #ES.Ko
-                    bne       grf6x
-                    lda       #RT.ko-RT.First
-                    bra       grf9x
-grf6x                cmpa      #ES.Stag
-                    beq       grf7x
-                    cmpa      #ES.Air
-                    beq       grf7x
-                    cmpa      #ES.Held
-                    beq       grf7x
-                    cmpa      #ES.Thrown
-                    bne       grf8x
-grf7x                lda       #RT.hurt-RT.First
-                    bra       grf9x
-grf8x                lda       EN.An,x             slithering, 8 frames a second
-                    ldb       #8
-                    lbsr      Div
-                    anda      #3
-                    adda      #RT.walk-RT.First
-grf9x                tst       EN.Fc,x
-                    beq       grf9y
-                    adda      #RT.Mir
-grf9y                tfr       a,b
-                    clra
-                    addd      #RT.First
-                    rts
 
 * ---------------------------------------------------------------- the hanging signs
 * One creaks as you come within 34 px, drops 0.35 s later, and whoever's
@@ -344,28 +223,8 @@ gds9x                rts
 * He shares the boss machinery with Two-Bit and Dillon (boss.a, bkind 2).
 *   His state numbers line up with Dillon's where the shared code tests
 *   them: 1 approach, 4 recover, 5 stagger, 8 dizzy, 9 KO.
-GS.Intro            equ       0                   "READ 'EM AND WEEP, BOOTS!"
-GS.Appr             equ       1
-GS.Deal             equ       2                   winding up a throw
-GS.Flick            equ       3                   the fan of cards flies
-GS.Recov            equ       4
-GS.Stag             equ       5
-GS.Cover            equ       6                   behind the table (not hittable)
-GS.CDeal            equ       7                   dealing from behind it (not hittable)
-GS.Daze             equ       8
-GS.Ko               equ       9
-GS.Jaws             equ       10                  the bite's wind-up
-GS.Bite             equ       11
-GS.CFlick           equ       12                  cards from behind the table (not hittable)
-GS.Vanish           equ       13                  the card trick: gone (not drawn, not hittable)
-GS.Crouch           equ       14                  about to leap
-GS.Leap             equ       15                  going up off the screen (not hittable)
-GS.Hang             equ       16                  up there, his shadow hunting you (not hittable)
-GS.Drop             equ       17                  coming down on it (not hittable)
-GS.Land             equ       18                  landed heavy: open a while, no tricks
 LeapV               equ       192                 720 px/s: off the top of the screen
 DropV               equ       -187                700 px/s down
-GilaHp              equ       44
 CardV               equ       56                  210 px/s
 TableV              equ       80                  a side-kicked table: 300 px/s
 
@@ -790,7 +649,7 @@ GVanish             lbsr      EStop
                     bne       gv1x
                     lbsr      NegD
 gv1x                addd      <hx
-                    bsr       OnScreen
+                    lbsr      OnScreen
                     bcc       gv2x
                     ldd       #64*16              (off the screen: in front of him)
                     tst       <hface
@@ -824,24 +683,6 @@ gv3x                lda       #GS.Deal
                     sta       EN.T,x
                     lbra      DMove
 
-* OnScreen - D = an x (12.4): carry set if it's outside cam + 24 .. cam + 296
-OnScreen            pshs      d
-                    ldd       <cam
-                    addd      #24
-                    lbsr      To124
-                    cmpd      ,s
-                    bgt       gos8
-                    ldd       <cam
-                    addd      #296
-                    lbsr      To124
-                    cmpd      ,s
-                    blt       gos8
-                    puls      d
-                    andcc     #$FE
-                    rts
-gos8                puls      d
-                    orcc      #1
-                    rts
 
 GCrouch             lbsr      EStop
                     lbsr      FaceHero

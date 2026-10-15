@@ -1,0 +1,125 @@
+********************************************************************
+* rat.a - the rattler henchman (Ghost Town's, and one in the Cattle
+*   Drive's corral): in the core, as two stages have him.
+********************************************************************
+
+* ---------------------------------------------------------------- the rattler
+* It walks in (ES.Enter), keeps 70 px off in your lane (DAppr), coils
+*   with a rattle (ES.Wind, 0.6 s), lunges low and long (ES.Strike: 270
+*   px/s for 0.28 s, 2 if it meets you on the ground), then lies stretched
+*   out a second (ES.Recov) - jump the lunge, then kick it.
+RtHp                equ       7
+RtSpd               equ       17                  64 px/s
+RtWindT             equ       36
+RtLunge             equ       72                  270 px/s
+RtLungeT            equ       17
+RtStrikeT           equ       21
+RtRecT              equ       60
+
+NewRat              lda       #TY.Rat
+                    sta       <tmpk
+                    lda       #RtHp
+                    sta       <tmpf
+                    lbsr      NewWalk
+                    bcs       gnr9x
+                    lda       #8                  one of the snake names
+                    lbsr      RandN
+                    sta       EN.Nm,x
+gnr9x                rts
+
+* RStrike - X = a rattler, lunging
+RStrike             ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #RtLungeT
+                    bhs       grs1x
+                    ldd       #RtLunge
+                    lbsr      ByFace
+                    std       EN.VX,x
+                    bra       grs2x
+grs1x                ldd       #0
+                    std       EN.VX,x
+grs2x                tst       EN.Am,x             once a lunge
+                    bne       grs8x
+                    lda       EN.T,x
+                    cmpa      #RtLungeT+1
+                    bhs       grs8x
+                    ldd       EN.Z,x              in his lane, on the ground, at its head
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       grs8x
+                    ldd       <hh
+                    cmpd      #14*16
+                    bge       grs8x
+                    ldd       #16*16              its head: 16 px ahead
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       grs8x
+                    inc       EN.Am,x
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #2
+                    pshs      x
+                    lbsr      HurtHero
+                    puls      x
+grs8x                lda       EN.T,x
+                    cmpa      #RtStrikeT
+                    lbls      EnMove
+                    lda       #ES.Recov
+                    lbsr      SetE
+                    lbra      EnMove
+
+* RtFrame - X = a rattler -> D = its frame
+RtFrame             lda       EN.St,x
+                    cmpa      #ES.Wind
+                    bne       grf1x
+                    lda       EN.An,x             coiled, the rattle going
+                    lsra
+                    lsra
+                    anda      #1
+                    adda      #RT.coil-RT.First
+                    bra       grf9x
+grf1x                cmpa      #ES.Strike
+                    bne       grf2x
+                    lda       #RT.lunge-RT.First
+                    bra       grf9x
+grf2x                cmpa      #ES.Recov
+                    bne       grf3x
+                    lda       #RT.recover-RT.First
+                    bra       grf9x
+grf3x                cmpa      #ES.Down
+                    beq       grf4x
+                    cmpa      #ES.Getup
+                    bne       grf5x
+grf4x                lda       #RT.down-RT.First
+                    bra       grf9x
+grf5x                cmpa      #ES.Ko
+                    bne       grf6x
+                    lda       #RT.ko-RT.First
+                    bra       grf9x
+grf6x                cmpa      #ES.Stag
+                    beq       grf7x
+                    cmpa      #ES.Air
+                    beq       grf7x
+                    cmpa      #ES.Held
+                    beq       grf7x
+                    cmpa      #ES.Thrown
+                    bne       grf8x
+grf7x                lda       #RT.hurt-RT.First
+                    bra       grf9x
+grf8x                lda       EN.An,x             slithering, 8 frames a second
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #RT.walk-RT.First
+grf9x                tst       EN.Fc,x
+                    beq       grf9y
+                    adda      #RT.Mir
+grf9y                tfr       a,b
+                    clra
+                    addd      #RT.First
+                    rts

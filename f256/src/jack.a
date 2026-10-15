@@ -11,21 +11,6 @@
 *   9 KO).
 ********************************************************************
 
-JS.Intro            equ       0                   over the fence: "FINDERS KEEPERS, BOOTS!"
-JS.Appr             equ       1
-JS.Crouch           equ       2                   about to hop
-JS.Hop              equ       3                   in the air (not hittable)
-JS.Recov            equ       4
-JS.Stag             equ       5
-JS.Land             equ       6                   landed: open
-JS.Turn             equ       7                   turning his back: the mule kick coming
-JS.Daze             equ       8
-JS.Ko               equ       9
-JS.Kick             equ       10
-JS.Spin             equ       11                  the lasso round his head
-JS.Throw            equ       12
-JS.Reel             equ       13                  you on the end of his rope
-JackHp              equ       46
 HopVH               equ       88                  330 px/s up, 0.8 g down: 0.73 s
 LassoV              equ       75                  280 px/s
 

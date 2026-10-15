@@ -1,0 +1,87 @@
+********************************************************************
+* stgmod.a - the stage modules: a stage's own code (its boss, its
+*   gimmicks) is a module of its own, at most 8K (tskms, tskgt, tskcd),
+*   F$Loaded with the stage's art into the process's free 8K slot and
+*   unlinked when another stage's comes.  The calls across the line go
+*   through the data area: HK.* (a stage routine the core calls; NoHook
+*   when no module has it) and CV.* (a core routine a module calls).
+*   tools/stagegen.py writes the slots (tskvec.d), the core's stubs and
+*   CoreTab (tskhook.a), and each module's hook table and stubs.
+********************************************************************
+
+* NoHook - no stage module's routine here: nothing (carry clear);
+*   NoHookC the same with carry set (HkDef says which)
+NoHook              andcc     #$FE
+                    rts
+NoHookC             orcc      #1
+                    rts
+
+* CvInit - the CV slots: the core routines' addresses (start-up)
+CvInit              leax      CoreTab,pcr
+                    pshs      x                   ,s = CoreTab
+                    leay      cvslots,u
+                    lda       #NCv
+                    sta       <tmpn
+cvi1                ldd       ,x++                an offset from CoreTab
+                    addd      ,s
+                    std       ,y++
+                    dec       <tmpn
+                    bne       cvi1
+                    puls      x,pc
+
+* StgFree - the stage module unlinked, if one's in; the hooks to NoHook
+StgFree             pshs      d,x,y
+                    ldd       stgmh,u
+                    beq       sgf1
+                    pshs      u
+                    tfr       d,u
+                    os9       F$UnLink
+                    puls      u
+                    ldd       #0
+                    std       stgmh,u
+sgf1                leax      HkDef,pcr
+                    leay      hkslots,u
+                    lda       #NHk
+                    sta       <tmpn
+sgf2                ldb       ,x+
+                    pshs      x
+                    leax      NoHook,pcr
+                    tstb
+                    beq       sgf3
+                    leax      NoHookC,pcr
+sgf3                stx       ,y++
+                    puls      x
+                    dec       <tmpn
+                    bne       sgf2
+                    puls      d,x,y,pc
+
+* StgLoad - X = a stage module's name ($0D-terminated; empty = none):
+*   the last one out, this one in (from the execution directory), its
+*   hooks set.  Exit: carry = error in B
+StgLoad             lbsr      StgFree
+                    lda       ,x
+                    cmpa      #$0D
+                    beq       sgl9
+                    pshs      u
+                    clra                          any type
+                    os9       F$Load              U = its header, Y = its hook table
+                    bcs       sgle
+                    tfr       u,d
+                    puls      u
+                    std       stgmh,u
+                    pshs      y                   ,s = HookTab
+                    leax      hkslots,u
+                    lda       #NHk
+                    sta       <tmpn
+sgl1                ldd       ,y++
+                    beq       sgl2                (none: NoHook stays)
+                    addd      ,s
+                    std       ,x
+sgl2                leax      2,x
+                    dec       <tmpn
+                    bne       sgl1
+                    puls      y
+sgl9                andcc     #$FE
+                    rts
+sgle                puls      u
+                    rts

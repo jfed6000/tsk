@@ -89,5 +89,9 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 5. ✓ Ghost Town on the F256 (2026-10-15): `tsk` 26.9K of 32,768, data 15.1K, peak memory about 1.55 MB.
 6. ✓ The Cattle Drive on the F256 (2026-10-15): the ride, the gunslingers, the corral, Jackrabbit Jack and his
    stampede; `tsk c`, `make mamecattle`. `tsk` 32.7K of 40,960, data 4.9K of 7,936.
-7. The next stages from `story.md`: the Train Heist, the Mission, High Noon.
-8. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).
+7. Stage modules on the F256 (2026-10-15, branch `stage-modules`, awaiting a K2 run before it merges): each stage's
+   own code is an 8K module loaded with the stage (`tskms`, `tskgt`, `tskcd`), so the core is 25.1K of 32,768 and
+   every new stage has a whole 8K of its own. Next on the F256 side: a per-stage sprite palette (236 of 255 colours
+   used).
+8. The next stages from `story.md`: the Train Heist, the Mission, High Noon.
+9. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).

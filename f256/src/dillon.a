@@ -14,18 +14,7 @@
 *   the KO; bkind = 1 says it's him.
 ********************************************************************
 
-DS.Intro            equ       0                   "THIS HERE'S MY TOWN!"
-DS.Appr             equ       1
-DS.Wind             equ       2
-DS.Swipe            equ       3
-DS.Recov            equ       4
-DS.Stag             equ       5
-DS.Curl             equ       6                   curling up (not hittable)
-DS.Roll             equ       7                   a boulder down the lane (not hittable: kick it back)
-DS.Daze             equ       8
-DS.Ko               equ       9
 
-DlnHp               equ       40
 DlnRoll             equ       56                  210 px/s
 DlnBack             equ       73                  kicked back: 1.3x
 
@@ -64,22 +53,7 @@ StartDillon         lda       #SF.Land
                     lbsr      Puff
 sd9x                rts
 
-* DSet - A = what he does now (DS.*): his clock from 0, hittable or not
-DSet                ldx       <bslot
-                    sta       <bst
-                    clr       EN.T,x
-                    ldb       #ES.Boss
-                    cmpa      #DS.Intro
-                    beq       dz1x
-                    cmpa      #DS.Curl
-                    beq       dz1x
-                    cmpa      #DS.Roll
-                    beq       dz1x
-                    cmpa      #DS.Ko
-                    bne       dz2x
-dz1x                ldb       #ES.BossX
-dz2x                stb       EN.St,x
-                    rts
+
 
 ********************************************************************
 * DillonStep - X = him: one pass
@@ -404,33 +378,6 @@ FaceDir             clr       EN.Fc,x
                     inc       EN.Fc,x
 fd9x                rts
 
-* DMove - moving, kept in the band and on the screen (cam + 20 .. cam + 300)
-DMove               ldd       EN.Z,x
-                    addd      EN.VZ,x
-                    bpl       dm2x
-                    ldd       #0
-dm2x                cmpd      #ZMax*16
-                    ble       dm3x
-                    ldd       #ZMax*16
-dm3x                std       EN.Z,x
-                    ldd       <cam
-                    addd      #20
-                    lbsr      To124
-                    std       <tmp
-                    ldd       EN.X,x
-                    addd      EN.VX,x
-                    cmpd      <tmp
-                    bge       dm4x
-                    ldd       <tmp
-dm4x                pshs      d
-                    ldd       <tmp
-                    addd      #280*16
-                    cmpd      ,s
-                    bge       dm5x
-                    std       ,s
-dm5x                puls      d
-                    std       EN.X,x
-                    rts
 
 * ShellHit - his attack box (bx0, bx1, bh0, pixels) meeting the rolling
 *   shell sends it back: 1.3x as fast, the way it came.  X is kept.
