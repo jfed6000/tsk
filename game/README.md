@@ -47,7 +47,8 @@ right side kicks, top tips the hat.
 
 ## URL flags
 
-- `?stage=mainstreet`, `?stage=ghosttown`, `?stage=cattledrive` or `?stage=desert`: start on another stage (the desert is the original test floor)
+- `?stage=mainstreet`, `?stage=ghosttown`, `?stage=cattledrive`, `?stage=train` or `?stage=desert`: start on another stage (the desert is the original test floor)
+- `?noduck` (with `?bot`): the autopilot doesn't duck the train's tunnels (to see the knock)
 - `?nointro`: skip the title screen and the Boot Hill opening (`?stage`, `?bot` and `?god` skip the title too)
 - Music: `music/*.mp3`, rendered from `music/*.mid` (`f256/tools/compose.py`, `render.py`); M mutes it. The title screen
   keeps a high score in localStorage.

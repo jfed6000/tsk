@@ -47,7 +47,8 @@ T.buildPick = function () {
 
 T.runBrawler = function (A) {
   const { HERO, DILLO, BARREL, FX, COYOTE, keys, pressed, sfx, pollPad, params } = A;
-  const VW = 320, VH = 240, FLOOR = 150, ZMAX = 80, MAX_SPRITES = 128;
+  const VW = 320, VH = 240, FLOOR = 150, MAX_SPRITES = 128;
+  let ZMAX = 80;                                 // the walking band's depth (a stage may narrow it: the train's roof)
   const WALK_X = 105, WALK_Z = 62, JUMP_V = 360, GRAV = 1150, LANE = 12;
   const MAX_HP = 16, BOSS_HP = 36;
   const PAL = T.PAL;
@@ -67,6 +68,8 @@ T.runBrawler = function (A) {
   const RATTLER = T.buildRattler(), GILA = T.buildGila(), GPROPS = T.buildGhostProps();
   const RSP = T.buildRanchSprites(), JACK = T.buildJack(), RIDE_V = 120, SADDLE = T.RANCH.SADDLE;
   const PICK = T.buildPick();
+  const TRS = T.buildTrainSprites(), TR = T.TRAIN;   // the Train Heist: the tunnel's mouth; the cars and gaps
+  let tunnel = null, tunnelT = 0, tdark = 0;       // a tunnel coming or going by; the next one's in tunnelT; the dark in it
 
   // ---------------------------------------------------------------- the stages
   // waves: lock the screen at cam and send the gang in. 'skel@' = a skeleton claws up out of the ground on screen.
@@ -118,7 +121,7 @@ T.runBrawler = function (A) {
       signs: [[200, 'BARBER'], [470, 'DENTIST'], [760, 'WHISKEY'], [980, 'GUNS']],   // hanging signs that fall as you pass
     },
     cattledrive: {                               // level 4: on a longhorn along the trail, then Jackrabbit Jack's corral
-      name: 'THE CATTLE DRIVE', sub: 'SUNUP', W: T.RANCH.W, gang: MANGY, next: null,
+      name: 'THE CATTLE DRIVE', sub: 'SUNUP', W: T.RANCH.W, gang: MANGY, next: 'train',
       art: () => T.buildRanch(VW, VH, FLOOR),
       // the ride (d = how far he's ridden): the first TREAD px the camera holds still and the trail runs under him (its
       // first LOOP px, twice: ranch.js), then the camera rolls on to the corral; it ends at camera end: WHOA!
@@ -135,6 +138,21 @@ T.runBrawler = function (A) {
         { cam: 1712, boss: 'jack' },
       ],
       barrels: [[1300, 30, 'beans'], [1420, 64, 'whip'], [1560, 20, 'gun'], [1660, 50, 'beans']],
+    },
+    train: {                                     // level 5: along the roofs of a moving train, caboose to engine
+      name: 'THE TRAIN HEIST', sub: 'MIDDAY', W: TR.W, gang: MANGY, next: null, zmax: TR.ZMAX, train: true,
+      art: () => T.buildTrain(VW, VH, FLOOR),
+      gaps: TR.GAPS,                             // between the cars: jump them (fall in: 3, and back on the car)
+      tunnel: { first: 12, every: 24, warn: 1.8, inside: 3.2 },   // TUNNEL! - duck (hold down) or be knocked flat
+      waves: [
+        { cam: 0, gang: ['coyote', 'coyote', 'rattler'] },
+        { cam: 360, gang: ['coyote', 'skel', 'coyote'] },
+        { cam: 700, gang: ['rattler', 'coyote', 'skel', 'coyote'] },
+        { cam: 1060, gang: ['skel', 'coyote', 'skel', 'rattler'] },
+        { cam: 1400, gang: ['coyote', 'skel', 'coyote', 'rattler', 'coyote'] },
+        { cam: 1712, gang: ['coyote', 'skel', 'coyote', 'skel', 'rattler', 'coyote'] },   // (Sting's spot, for now)
+      ],
+      barrels: [[300, 16, 'beans'], [640, 30, 'whip'], [980, 10, 'beans'], [1300, 36, 'gun'], [1600, 20, 'beans'], [1800, 30, 'beans']],
     },
     desert: {
       name: 'THE DESERT', sub: 'NOON', W: 2400, gang: COYOTE, next: null, art: deserted,
@@ -216,7 +234,9 @@ T.runBrawler = function (A) {
     phase = S.intro && !params.has('nointro') && !keep ? 'intro' : 'play'; phaseT = 0;
     intro.hatOn = false;
     if (phase === 'intro') { player.x = 96; player.z = 34; }
-    music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : name === 'ghosttown' ? 'deadman' : name === 'cattledrive' ? 'stampede' : 'title');
+    music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : name === 'ghosttown' ? 'deadman' : name === 'cattledrive' || name === 'train' ? 'stampede' : 'title');   // (the train: its own song to come)
+    ZMAX = S.zmax || 80;
+    tunnel = null; tunnelT = S.tunnel ? S.tunnel.first : 0; tdark = 0;
     ride = S.ride ? { on: true, spawnI: 0, d: 0 } : null; player.mounted = !!S.ride;
     obstacles = (S.obstacles || []).map(([kind, d, z]) => ({ kind, d, x: d, z: z ?? 40, hit: false }));
     runners = []; stampede = [];
@@ -328,6 +348,20 @@ T.runBrawler = function (A) {
     if (player.held === e) player.held = null;
   }
 
+  // the train: a gap between the cars under x, or null; an outlaw dropped down one (or swept off by a tunnel)
+  const gapAt = x => S.gaps ? S.gaps.find(g => x > g[0] + 3 && x < g[1] - 3) || null : null;
+  function fallOff(e, swept) {
+    if (player.held === e) player.held = null;
+    for (const s of skulls) if (s.owner === e) s.owner = null;
+    e.state = 'ko'; e.t = 0; e.fell = !swept; e.vx = swept ? -260 : 0; e.vh = swept ? 160 : -60;
+    sfx('ko'); shake = Math.max(shake, 3);
+    const y = FLOOR + e.z - eHeight(e);
+    addScore({ coyote: 400, dillo: 200, skel: 450, rattler: 350 }[e.type] || 400, e.x, y);
+    popup(e.x, y, swept ? 'SWEPT OFF!' : 'SEE YA!', '#ffd34a', 2);
+  }
+  // TUNNEL!: the warning's up or the mouth's coming - down is duck now
+  const duckNow = () => !!tunnel && (tunnel.st === 'warn' || (tunnel.st === 'mouth' && tunnel.x > player.x - camX - 24));
+
   function hurtPlayer(from, dmg) {
     const p = player;
     if (p.inv > 0 || phase !== 'play' || death || params.has('god')) return false;
@@ -418,7 +452,8 @@ T.runBrawler = function (A) {
       const back = dx !== 0 && dx !== p.face;              // pressing away from where he faces
       p.vx = dx * WALK_X; p.vz = dz * WALK_Z; if (dx) p.face = dx;
       const it = underfoot();
-      if (pressed.jump) { setS('jump'); p.vh = JUMP_V; p.vz *= 0.5; sfx('jump'); }
+      if (keys.down && duckNow()) { setS('duck'); p.vx = p.vz = 0; }   // TUNNEL!: down is duck
+      else if (pressed.jump) { setS('jump'); p.vh = JUMP_V; p.vz *= 0.5; sfx('jump'); }
       else if (pressed.snap && it) {                                  // X over a weapon picks it up
         items.splice(items.indexOf(it), 1);
         p.weapon = { type: it.type, ammo: it.type === 'gun' ? (it.ammo ?? 6) : (it.ammo ?? 14) };
@@ -514,6 +549,15 @@ T.runBrawler = function (A) {
           setS('idle');
         }
         break;
+      case 'duck': p.vx = p.vz = 0; if (!keys.down || !duckNow()) setS('idle'); break;   // flat on the roof, hat held on
+      case 'fall':                                   // down a gap between the cars
+        p.vx = p.vz = 0; p.vh -= GRAV * dt; p.h += p.vh * dt;
+        if (p.t > 0.6) {                             // back up on the car he came from, sore
+          const g = p.fallGap; p.x = p.fallFrom < 0 ? g[0] - 14 : g[1] + 14; p.h = 0; p.vh = 0; setS('idle'); p.inv = 0;
+          if (!hurtPlayer({ x: p.x - p.fallFrom }, 3) || p.hp > 0) popup(p.x, FLOOR + p.z - 64, 'WATCH YER STEP!', '#ffd34a', 1, 1.2);
+          if (!death) p.inv = Math.max(p.inv, 1.4);
+        }
+        break;
       case 'hurt':                                   // knocked back; hit in the air, he falls (he used to hang there)
         p.vx *= Math.pow(0.02, dt);
         if (p.h > 0 || p.vh) { p.vh -= GRAV * dt; p.h += p.vh * dt; if (p.h <= 0) { p.h = 0; p.vh = 0; } }
@@ -525,7 +569,12 @@ T.runBrawler = function (A) {
     p.z = Math.max(0, Math.min(ZMAX, p.z));
     const lo = (lock ?? camX) + (p.mounted ? 24 : 10), hi = lock !== null ? lock + VW - 10 : p.mounted ? camX + VW - 30 : W - 10;
     p.x = Math.max(lo, Math.min(hi, p.x));
-    if (!['knee', 'grab', 'throw'].includes(p.state)) resolveHeroAttacks();
+    const gp = p.h <= 0 && p.state !== 'fall' && p.state !== 'die' && p.state !== 'dead' ? gapAt(p.x) : null;
+    if (gp) {                                        // over a gap, feet down: he drops
+      p.fallGap = gp; p.fallFrom = p.x - p.vx * dt < (gp[0] + gp[1]) / 2 ? -1 : 1; if (p.held) { p.held.state = 'stagger'; p.held.t = 0; p.held = null; }
+      setS('fall'); p.vh = 0; p.h = 0; sfx('hurt');
+    }
+    if (!['knee', 'grab', 'throw', 'fall'].includes(p.state)) resolveHeroAttacks();
     for (const it of items) if (it.type === 'beans' && it.h <= 0 && Math.abs(it.x - p.x) < 14 && Math.abs(it.z - p.z) < 10) {
       it.gone = true; p.hp = Math.min(MAX_HP, p.hp + 7); sfx('check'); popup(it.x, FLOOR + it.z - 30, 'BEANS!', '#ffd34a', 1);
     }
@@ -596,6 +645,8 @@ T.runBrawler = function (A) {
       case 'whip': at('whip'); break;
       case 'shoot': at('shoot'); break;
       case 'hurt': p.anim = 'hurt'; p.frame = p.t < 0.2 ? 0 : 1; break;
+      case 'fall': p.anim = 'hurt'; p.frame = 1; break;
+      case 'duck': at('duck'); break;
       case 'die': at('die'); break;
       case 'dead': p.anim = 'dead'; p.frame = 0; break;
       case 'reach': at('reach', true); break;
@@ -680,6 +731,7 @@ T.runBrawler = function (A) {
           if (e.thrown) for (const o of allFoes()) if (o !== e && hittable(o) && inLane(o, e, 14) && Math.abs(o.x - e.x) < 22 && o.h < 30) {
             hitE(o, 3, true, Math.sign(e.vx) || 1); spark(o.x, o.z, 20, true);
           }
+          if (e.h <= 0 && gapAt(e.x)) { fallOff(e); break; }
           if (e.h <= 0) {
             e.h = 0; e.vh = 0; e.vx = 0; puff(e.x, e.z, 4); sfx('land');
             if (e.thrown) { e.thrown = false; e.hp -= 3; e.flash = 0.1; if (e.hp <= 0) { koE(e, 1); break; } }
@@ -692,6 +744,12 @@ T.runBrawler = function (A) {
       }
       e.x += e.vx * dt; e.z += e.vz * dt;
       e.z = Math.max(0, Math.min(ZMAX, e.z));
+      if (S.gaps && e.state !== 'ko') {           // the train: they hop the gaps; dropped in one, they're gone
+        if (e.hop) { e.vh -= GRAV * dt; e.h += e.vh * dt; if (e.h <= 0) { e.h = 0; e.vh = 0; e.hop = false; } }
+        const walking = ['enter', 'approach', 'headless', 'leave'].includes(e.state);
+        if (walking && !e.hop && e.h <= 0 && e.vx && gapAt(e.x + Math.sign(e.vx) * 14) && !gapAt(e.x)) { e.hop = true; e.vh = 280; }
+        else if (!e.hop && e.h <= 0 && e.state !== 'air' && gapAt(e.x)) fallOff(e);
+      }
       if (lock !== null && e.state !== 'enter' && e.state !== 'ko' && e.state !== 'leave') e.x = Math.max(lock + 6, Math.min(lock + VW - 6, e.x));   // (riders leaving go)
     }
     enemies = enemies.filter(e => !e.gone && !(e.state === 'ko' && (e.h < -260 || e.type === 'skel')));
@@ -706,6 +764,7 @@ T.runBrawler = function (A) {
         if (s.state === 'kicked') for (const o of allFoes()) if (!s.dead && hittable(o) && o !== s.owner && inLane(o, s, 12) && Math.abs(o.x - s.x) < 14 && o.h < 30) {
           hitE(o, 3, true, Math.sign(s.vx)); s.dead = true;
         }
+        if (s.h <= 0 && gapAt(s.x)) s.dead = true;          // (down between the cars)
         if (s.h <= 0) { s.h = 0; s.vh = s.state === 'kicked' ? 70 : 0; if (s.state === 'fly') { s.state = 'ground'; s.vx = 0; } }
         if (s.x < camX - 20 || s.x > camX + VW + 20) s.dead = true;
       }
@@ -877,6 +936,7 @@ T.runBrawler = function (A) {
     }
     ebullets = ebullets.filter(b => !b.dead);
     for (const it of items) if (it.h > 0 || it.vh > 0) { it.vh -= GRAV * dt; it.h = Math.max(0, it.h + it.vh * dt); if (it.h === 0) it.vh = 0; }
+    if (S.gaps) items = items.filter(it => !(it.h <= 0 && gapAt(it.x)));   // the train: what lands in a gap is gone
   }
 
   function updateParts(dt) {
@@ -891,6 +951,44 @@ T.runBrawler = function (A) {
   }
 
   // waves: walk right to trigger the next gang; clear it to get "GO >>"
+  // the train's tunnels: TUNNEL! (warn), the mouth sweeps across from the right at the scenery's speed (anyone up
+  // when it passes over him is knocked flat - an outlaw clean off the train), the dark inside, then the way out
+  function updateTunnel(dt) {
+    if (!S.tunnel) return;
+    const TN = S.tunnel;
+    if (!tunnel) {
+      if (phase === 'play' && !death && (tunnelT -= dt) <= 0) {
+        tunnel = { st: 'warn', t: 0, x: VW + 8, hit: new Set() }; sfx('whistle');
+        for (const e of enemies) if (e.type === 'coyote' && ['approach', 'recover', 'enter'].includes(e.state) && Math.random() < 0.5) { e.state = 'down'; e.t = -(TN.warn + 1.6); e.vx = e.vz = 0; }   // the old hands hit the deck too
+      }
+      tdark = Math.max(0, tdark - dt * 3);
+      return;
+    }
+    const tn = tunnel; tn.t += dt;
+    if (tn.st === 'warn') { if (tn.t >= TN.warn) { tn.st = 'mouth'; tn.t = 0; } return; }
+    if (tn.st === 'inside') { tdark = Math.min(0.8, tdark + dt * 4); if (tn.t >= TN.inside) { tn.st = 'exit'; tn.t = 0; tn.x = VW + 8; } return; }
+    tn.x -= TR.V * dt;                                // the mouth (or the way out) going by
+    if (tn.st === 'mouth') {
+      tdark = Math.min(0.8, tdark + dt * 0.6);       // in the mountain's shadow
+      const over = a => !tn.hit.has(a) && Math.abs(a.x - camX - (tn.x + 8)) < 10;
+      const p = player;
+      if (over(p)) {
+        tn.hit.add(p);
+        if (p.state !== 'duck' && p.state !== 'fall' && !death && phase === 'play' && hurtPlayer({ x: p.x + 10 }, 3)) {
+          p.vx = -140; shake = Math.max(shake, 5); popup(p.x, FLOOR + p.z - 64, 'MIND YER HEAD!', '#ff6b4a', 1, 1.2);
+        }
+      }
+      for (const e of enemies) if (over(e)) {
+        tn.hit.add(e);
+        if (e.type !== 'rattler' && e.type !== 'dillo' && e.state !== 'ko' && e.state !== 'down' && hittable(e)) fallOff(e, true);
+      }
+      if (tn.x < -70) { tn.st = 'inside'; tn.t = 0; }
+    } else {
+      if (tn.x < VW / 2) tdark = Math.max(0, tdark - dt * 4);
+      if (tn.x < -70) { tunnel = null; tunnelT = TN.every; }
+    }
+  }
+
   function updateWaves(dt) {
     if (lock !== null && !boss && !enemies.some(e => e.state !== 'ko' && e.state !== 'leave')) {
       lock = null; waveI++; goT = 3; sfx('check');
@@ -940,7 +1038,7 @@ T.runBrawler = function (A) {
     if (helpImg) return helpImg;
     const lines = [['ARROWS', 'MOVE (UP/DOWN = DEPTH)'], ['Z', 'JUMP'], ['X X X', 'KICK COMBO'], ['BACK + X', 'SIDE KICK (KNOCKDOWN)'],
       ['Z THEN X', 'FLYING KICK'], ['Z THEN Z', 'STOMP'], ['WALK INTO', 'A STAGGERED OUTLAW: GRAB'], ['  GRABBED', 'X: KNEE  C: THROW'],
-      ['X ON A WEAPON', 'PICK IT UP'], ['', 'KICK BULLETS, KICK SKULLS'], ['H', 'HIDE THIS']];
+      ['X ON A WEAPON', 'PICK IT UP'], ['TUNNEL!', 'HOLD DOWN: DUCK'], ['', 'KICK BULLETS, KICK SKULLS'], ['H', 'HIDE THIS']];
     const w = 236, h = 20 + lines.length * 9, c = T.canvas(w, h), x = c.getContext('2d');
     x.fillStyle = PAL.out; x.fillRect(0, 0, w, h);
     x.fillStyle = PAL.n2; x.fillRect(0, 0, w, 1); x.fillRect(0, h - 1, w, 1); x.fillRect(0, 0, 1, h); x.fillRect(w - 1, 0, 1, h);
@@ -1378,10 +1476,13 @@ T.runBrawler = function (A) {
       if (!intro.hatOn) put(HAT, wx(intro.hx), intro.hy, T.HAT.OX, T.HAT.OY, depth(p.z) - 0.01);
     } else {
       if (p.mounted) put(p.h > 0 ? RSP.steerJump : RSP.steer[(time * 10 | 0) % 4], wx(p.x), sy(p.z, p.h), CB.OX, CB.OY, depth(p.z) - 0.0005, p.face);
-      if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2)) put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h + (p.mounted ? SADDLE : 0)), H.OX, H.OY, depth(p.z) - 0.001, p.face);
+      if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2) && !(p.state === 'fall' && p.h < -14)) put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h + (p.mounted ? SADDLE : 0)), H.OX, H.OY, depth(p.z) - 0.001, p.face);
     }
     if (death && death.hat) put(HAT, wx(death.hat.x), Math.round(death.hat.y), T.HAT.OX, T.HAT.OY, death.caught ? depth(p.z) - 0.002 : 0);
-    if (phase !== 'intro' || phaseT >= IN.rise) put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
+    if ((phase !== 'intro' || phaseT >= IN.rise) && p.state !== 'fall') put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
+    if (tunnel && (tunnel.st === 'mouth' || tunnel.st === 'exit'))   // the tunnel's mouth sweeping over, in front of everything
+      put(TRS.portal, tunnel.x, FLOOR + (ZMAX >> 1) - TR.CLEAR, 0, TRS.portal.oy, 1.5, tunnel.st === 'exit' ? -1 : 1);
+    if (tunnel && tunnel.st === 'warn' && Math.floor(tunnel.t * 4) % 2 === 0) { center(T.textSprite('TUNNEL!', '#ff9d3c', 3), 56); center(T.textSprite('DUCK! HOLD DOWN', '#ffd34a', 1), 82); }
     if (S.intro) {                               // Ringo's headstone, and the grave he came out of
       put(PROPS.headstone, wx(STONE.x), sy(STONE.z, 0), PROPS.headstone.ox, PROPS.headstone.oy, depth(STONE.z));
       put(phase === 'intro' && phaseT < IN.rise ? PROPS.mound : PROPS.hole, wx(96), sy(34, 0), 20, 11, 8.9);
@@ -1398,7 +1499,8 @@ T.runBrawler = function (A) {
       put(JACK.loop, wx(L2.x), sy(L2.z, 26), 8, 6, depth(L2.z) - 0.003);
     }
     for (const e of enemies) {
-      if (e.type === 'skel' && e.state === 'ko') continue;
+      if (e.type === 'skel' && e.state === 'ko' && !e.fell) continue;
+      if (e.fell && e.h < -14) continue;             // gone down between the cars
       if (e.type === 'rider') {                       // a rustler in the saddle
         put(RSP.horse[(time * 12 | 0) % 4], wx(e.x), sy(e.z, e.h), CB.OX, CB.OY, depth(e.z) + 0.0005, e.face, e.flash > 0 ? 'flash' : null);
         const C = S.gang, im = e.state === 'windup' ? C.windup : e.state === 'strike' ? C.swing : e.state === 'stagger' ? C.hurt
@@ -1464,12 +1566,18 @@ T.runBrawler = function (A) {
     const cx = Math.round(camX), lit = flashT > 0;
     // three tile maps: far sky, middle, and the street that scrolls with the floor. Dusk and lightning are CLUT tricks.
     const layer = (img, scroll) => {
-      const src = lit && img.idx ? T.flashOf(img) : S.dusk ? T.shadeOf(img, dark) : img, off = -(Math.floor(scroll) % img.width);
+      const src = lit && img.idx ? T.flashOf(img) : S.dusk ? T.shadeOf(img, dark) : tdark > 0 ? T.shadeOf(img, tdark) : img, off = -(Math.floor(scroll) % img.width);
       for (let x = off; x < VW; x += img.width) ctx.drawImage(src, x + sx, syy);
     };
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
     const bg = ride ? Math.min(ride.d, S.ride.tread) : 0;          // the ride: the sky layers keep going over the treadmill
-    layer(ART.far, (cx + bg) * 0.25); layer(ART.mid, (cx + bg) * 0.5);
+    const run = S.train ? time : 0;                 // the train: the scenery streams by on its own
+    layer(ART.far, (cx + bg) * 0.25 + run * TR.FAR); layer(ART.mid, (cx + bg) * 0.5 + run * TR.V);
+    if (tunnel && tunnel.st !== 'warn') {           // in the tunnel: its rock wall behind the train (right of the mouth coming,
+      const tn = tunnel, x0 = tn.st === 'mouth' ? Math.max(0, Math.round(tn.x) + 16) : 0,   // all of it inside, left of the way out)
+        x1 = tn.st === 'exit' ? Math.min(VW, Math.round(tn.x) - 16) : VW;
+      if (x1 > x0) { ctx.save(); ctx.beginPath(); ctx.rect(x0, 0, x1 - x0, VH); ctx.clip(); layer(ART.rock, cx * 0.5 + run * TR.V); ctx.restore(); }
+    }
     layer(ART.street, ride && ride.d < S.ride.tread ? Math.floor(ride.d) % T.RANCH.LOOP : cx);
     for (let i = DL.length - 1; i >= 0; i--) {
       const d = DL[i]; if (d.dropped) continue;
@@ -1489,6 +1597,7 @@ T.runBrawler = function (A) {
     if (!params.has('bot') || phase !== 'play') return;
     const p = player; botT -= dt;
     keys.left = keys.right = keys.up = keys.down = false;
+    if (duckNow() && !params.has('noduck')) { keys.down = true; return; }   // TUNNEL!: flat on the roof (?noduck: the test of the knock)
     if (p.state === 'grab') { if (botT <= 0) { pressed.snap = true; botT = 0.25; } return; }   // holding one: knee it (the third throws)
     if (boss && boss.type === 'dillon' && boss.state === 'roll') {      // the shell's coming: kick it back, or get out of its lane
       const dx = boss.x - p.x;
@@ -1519,7 +1628,7 @@ T.runBrawler = function (A) {
       keys[p.x > boss.mx ? 'right' : 'left'] = true; keys[p.z > boss.mz ? 'down' : 'up'] = true; return;
     }
     const live = allFoes().filter(e => hittable(e) || e.state === 'enter');
-    const it = items.find(i => i.type !== 'beans' && Math.abs(i.x - p.x) < 120);
+    const it = items.find(i => i.type !== 'beans' && Math.abs(i.x - p.x) < 120 && i.x > camX + 12);   // (not one the camera's left behind)
     if (it && !p.weapon && !live.some(e => Math.abs(e.x - p.x) < 50)) {
       keys[it.x > p.x ? 'right' : 'left'] = Math.abs(it.x - p.x) > 6; keys[it.z > p.z ? 'down' : 'up'] = Math.abs(it.z - p.z) > 4;
       if (Math.abs(it.x - p.x) < 10 && Math.abs(it.z - p.z) < 8 && botT <= 0) { pressed.snap = true; botT = 0.3; }
@@ -1540,8 +1649,15 @@ T.runBrawler = function (A) {
     else if (botT <= 0 && Math.abs(dz) < 8) { p.face = Math.sign(dx) || 1; pressed[Math.random() < 0.3 && !p.weapon ? 'side' : 'snap'] = true; botT = 0.22; }
   }
 
+  function botGaps() {                           // the autopilot hops the gaps between the cars it walks at
+    const p = player;
+    if (!params.has('bot') || phase !== 'play' || !S.gaps || p.h > 0 || !['idle', 'walk', 'land'].includes(p.state)) return;
+    const dir = keys.right ? 1 : keys.left ? -1 : 0;
+    if (dir && !gapAt(p.x) && gapAt(p.x + dir * 26)) pressed.jump = true;
+  }
+
   function simulate(dt) {
-    runBot(dt);
+    runBot(dt); botGaps();
     if (pressed.help) { showHelp = !showHelp; helpAuto = false; }
     flashT -= dt;
     if (S.lightning && phase !== 'intro' && (nextBolt -= dt) <= 0) { bolt(); nextBolt = 7 + Math.random() * 9; }
@@ -1562,11 +1678,11 @@ T.runBrawler = function (A) {
       if (p.state === 'die' && p.t >= HERO.die.dur) setS('dead');
       if (p.state === 'die' || p.state === 'dead') pickAnim(p);
     }
-    updateEnemies(dt); updateBoss(dt); updateSkulls(dt); updateShots(dt); updateClods(dt); updateParts(dt); updateSigns(dt); updateRide(dt);
+    updateEnemies(dt); updateBoss(dt); updateSkulls(dt); updateShots(dt); updateClods(dt); updateParts(dt); updateSigns(dt); updateRide(dt); updateTunnel(dt);
     if (phase === 'play' && !death) updateWaves(dt);
     if (S.dusk) dark += (DARK[Math.min(waveI, DARK.length - 1)] - dark) * Math.min(1, dt * 0.6);
     // ambience: a tumbleweed now and then; on Main Street, dust motes in the low sun
-    if (!S.intro && !tumble && (tumbleT -= dt) <= 0) tumble = { x: camX - 20, z: Math.random() * ZMAX, h: 0, vh: 0, vx: 55 + Math.random() * 40 };
+    if (!S.intro && !S.train && !tumble && (tumbleT -= dt) <= 0) tumble = { x: camX - 20, z: Math.random() * ZMAX, h: 0, vh: 0, vx: 55 + Math.random() * 40 };
     if (tumble) {
       tumble.x += tumble.vx * dt; tumble.vh -= GRAV * 0.5 * dt; tumble.h += tumble.vh * dt;
       if (tumble.h <= 0) { tumble.h = 0; tumble.vh = 90 + Math.random() * 70; }
@@ -1585,6 +1701,10 @@ T.runBrawler = function (A) {
     for (const k in pressed) pressed[k] = false;
   }
 
+  if (params.has('bot')) T.dbgP = () => player;
+  if (params.has('bot')) T.dbg = () => ({ stage: S.name, zmax: ZMAX, phase, camX, waveI, lock, score, time, tunnel: tunnel && { st: tunnel.st, x: tunnel.x }, tdark,
+    p: { x: player.x, z: player.z, h: player.h, hp: player.hp, lives: player.lives, state: player.state },
+    enemies: enemies.map(e => ({ type: e.type, state: e.state, x: Math.round(e.x), h: Math.round(e.h), fell: !!e.fell })) });   // (the test harness reads it)
   loadStage(STAGES[params.get('stage')] ? params.get('stage') : 'boothill');
   if (!params.has('stage') && !params.has('nointro') && !params.has('bot') && !params.has('god')) toTitle();
   const STEP = 1 / 120;

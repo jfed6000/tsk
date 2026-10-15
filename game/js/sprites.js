@@ -664,6 +664,11 @@ function heroAnims() {
     down({ fh: [11, -12], bh: [7, -10], face: 'blink' }),
   ] };
   A.dead = { fps: 1, loop: false, poses: [down({ fh: [11, -12], bh: [7, -10], face: 'blink' })] };
+  // the train's tunnels: hit the deck - a dive, then flat on his back, both hands holding the hat on
+  A.duck = { fps: 14, loop: false, poses: [
+    pose({ tip: -0.7, br: -0.1, fh: [6, -30], bh: [-2, -31], fb: -1, bb: -1, face: 'yell', nl: leg(-0.5, 3), fl: leg(0.2, 0, -2) }),
+    down({ noHat: false, tip: FLAT + 0.04, fh: [3, -30], bh: [-3, -30], fb: -1, bb: -1, face: 'squint', armL: 7 }),
+  ] };
   // flat out, one hand up for the hat (the sky is his front, now): the hand opens and closes
   A.reach = { fps: 4, loop: true, poses: [
     down({ fh: [13, -21], bh: [7, -10], face: 'mad', pupil: [1.2, 0], armL: 6.5 }),
