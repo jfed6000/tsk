@@ -230,11 +230,12 @@ T.buildTrain = function (VW, VH, FLOOR) {
   return L;
 };
 
-// the tunnel's mouth: the edge of the mountain - a ring of dressed stone, its foot CLEAR px over the roof (as it
-// sweeps over the roof it's at standing head height), the dark rock face behind it. 64 wide: two sprite columns.
-// Mirrored, it's the way out.
-T.buildTrainSprites = function () {
-  const H = 136, W = 64, cv = T.canvas(W, H), c = cv.getContext('2d'), r = rng(31);
+// the tunnel's mouth: the edge of the mountain - a ring of dressed stone, its foot CLEAR px over the near edge of the
+// roof (a plane across the track: its foot over every lane, so it's drawn down to the nearest), the dark rock face
+// behind it. 64 wide: two sprite columns. Mirrored, it's the way out. And inside, the pit-props: timber frames whose
+// lintels hang as low as the mouth's, one sprite column.
+T.buildTrainSprites = function (FLOOR) {
+  const H = FLOOR + T.TRAIN.ZMAX - T.TRAIN.CLEAR, W = 64, cv = T.canvas(W, H), c = cv.getContext('2d'), r = rng(31);
   const S0 = '#8a7a6a', S1 = '#6a5a4c', S2 = '#a89a88', MO = '#4a3e36', RK = '#3a302a', RK1 = '#4e423a', RK2 = '#2a221e';
   c.fillStyle = RK; c.fillRect(18, 0, W - 18, H - 22);              // the rock face over the tunnel
   c.fillStyle = RK; c.beginPath(); c.moveTo(18, H - 22); c.lineTo(W, H - 22); c.lineTo(W, H - 40); c.fill();
@@ -250,6 +251,13 @@ T.buildTrainSprites = function () {
   }
   c.fillStyle = S1; c.fillRect(0, H - 7, 24, 7); c.fillStyle = S2; c.fillRect(0, H - 7, 24, 2);   // the springer at its foot
   const o = T.pixelize(cv, { s0: S0, s1: S1, s2: S2, mo: MO, rk: RK, rk1: RK1, rk2: RK2 }, PAL.out, CLUT.spr); o.ox = 0; o.oy = H;
-  return { portal: o };
+  const pv = T.canvas(16, H), q = pv.getContext('2d'), TB0 = '#5a3a1e', TB1 = '#7a5230', TB2 = '#3a2412', IR = '#4a4a54';
+  q.fillStyle = TB2; q.fillRect(2, 0, 12, H);                       // the post, the lintel's end, iron straps
+  q.fillStyle = TB0; q.fillRect(3, 0, 10, H); q.fillStyle = TB1; q.fillRect(4, 0, 3, H);
+  for (let y = 6; y < H; y += 9) { q.fillStyle = TB2; q.fillRect(3, y, 10, 1); }
+  q.fillStyle = TB0; q.fillRect(0, H - 14, 16, 14); q.fillStyle = TB1; q.fillRect(1, H - 13, 14, 3);
+  q.fillStyle = IR; q.fillRect(0, H - 18, 16, 2); q.fillRect(0, 30, 16, 2); q.fillRect(0, 80, 16, 2);
+  const pp = T.pixelize(pv, { a: TB0, b: TB1, c: TB2, d: IR }, PAL.out, CLUT.spr); pp.ox = 8; pp.oy = H;
+  return { portal: o, prop: pp };
 };
 })();

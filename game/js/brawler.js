@@ -68,7 +68,7 @@ T.runBrawler = function (A) {
   const RATTLER = T.buildRattler(), GILA = T.buildGila(), GPROPS = T.buildGhostProps();
   const RSP = T.buildRanchSprites(), JACK = T.buildJack(), RIDE_V = 120, SADDLE = T.RANCH.SADDLE;
   const PICK = T.buildPick();
-  const TRS = T.buildTrainSprites(), TR = T.TRAIN;   // the Train Heist: the tunnel's mouth; the cars and gaps
+  const TRS = T.buildTrainSprites(FLOOR), TR = T.TRAIN;   // the Train Heist: the tunnel's mouth; the cars and gaps
   const STING = T.buildSting();                    // its boss, Sting, and his dynamite
   let sticks = [], booms = [];                     // lit sticks of dynamite (flying, lying, kicked); the bangs
   let tunnel = null, tunnelT = 0, tdark = 0;
@@ -146,7 +146,7 @@ T.runBrawler = function (A) {
       name: 'THE TRAIN HEIST', sub: 'MIDDAY', W: TR.W, gang: MANGY, next: null, zmax: TR.ZMAX, train: true,
       art: () => T.buildTrain(VW, VH, FLOOR),
       gaps: TR.GAPS,                             // between the cars: jump them (fall in: 3, and back on the car)
-      tunnel: { first: 12, every: 24, warn: 2.4, inside: 4.5 },   // TUNNEL! - duck (hold down) or be knocked flat
+      tunnel: { first: 12, every: 24, warn: 2.4, inside: 5, props: [0.6, 2.6] },   // TUNNEL! - duck (hold down) or be knocked flat; then two pit-props in the dark
       waves: [
         { cam: 0, gang: ['coyote', 'coyote', 'rattler'] },
         { cam: 360, gang: ['coyote', 'skel', 'coyote'] },
@@ -372,8 +372,22 @@ T.runBrawler = function (A) {
     addScore({ coyote: 400, dillo: 200, skel: 450, rattler: 350 }[e.type] || 400, e.x, y);
     popup(e.x, y, swept ? 'SWEPT OFF!' : 'SEE YA!', '#ffd34a', 2);
   }
-  // TUNNEL!: the warning's up or the mouth's coming - down is duck now
-  const duckNow = () => !!tunnel && (tunnel.st === 'warn' || (tunnel.st === 'mouth' && tunnel.x > player.x - camX - 24));
+  // TUNNEL!: the warning's up, the mouth's coming, or a pit-prop - down is duck now
+  const duckNow = () => !!tunnel && (tunnel.st === 'warn' || (tunnel.st === 'mouth' && tunnel.x > player.x - camX - 24)
+    || tunnel.props.some(pr => pr.x > player.x - camX - 16 && pr.x < VW + 40));
+  function sweep(x, hit) {                         // the mouth or a prop passing screen x: anyone up there is knocked flat
+    const p = player, over = a => !hit.has(a) && Math.abs(a.x - camX - x) < 10;
+    if (over(p)) {
+      hit.add(p);
+      if (p.state !== 'duck' && p.state !== 'fall' && !death && phase === 'play' && hurtPlayer({ x: p.x + 10 }, 3)) {
+        p.vx = -170; shake = Math.max(shake, 7); hitstop = 0.1; popup(p.x, FLOOR + p.z - 64, 'MIND YER HEAD!', '#ff6b4a', 2, 1.4);
+      }
+    }
+    for (const e of enemies) if (over(e)) {
+      hit.add(e);
+      if (e.type !== 'rattler' && e.type !== 'dillo' && e.state !== 'ko' && e.state !== 'down' && hittable(e)) fallOff(e, true);
+    }
+  }
 
   function hurtPlayer(from, dmg) {
     const p = player;
@@ -994,7 +1008,7 @@ T.runBrawler = function (A) {
     const TN = S.tunnel;
     if (!tunnel) {
       if (phase === 'play' && !death && (tunnelT -= dt) <= 0) {
-        tunnel = { st: 'warn', t: 0, x: VW + 8, hit: new Set() }; sfx('whistle');
+        tunnel = { st: 'warn', t: 0, x: VW + 8, hit: new Set(), props: [], np: 0 }; sfx('whistle');
         for (const e of enemies) if (e.type === 'coyote' && ['approach', 'recover', 'enter'].includes(e.state) && Math.random() < 0.5) { e.state = 'down'; e.t = -(TN.warn + 1.6); e.vx = e.vz = 0; }   // the old hands hit the deck too
       }
       tdark = Math.max(0, tdark - dt * 3);
@@ -1002,23 +1016,22 @@ T.runBrawler = function (A) {
     }
     const tn = tunnel; tn.t += dt;
     if (tn.st === 'warn') { if (tn.t > TN.warn - 0.8) shake = Math.max(shake, 1.2); if (tn.t >= TN.warn) { tn.st = 'mouth'; tn.t = 0; sfx('roar'); } return; }   // the rumble of it coming
-    if (tn.st === 'inside') { tdark = Math.min(0.88, tdark + dt * 4); shake = Math.max(shake, 0.8); if (tn.t >= TN.inside) { tn.st = 'exit'; tn.t = 0; tn.x = VW + 8; } return; }
+    for (const pr of tn.props) { pr.x -= TR.V * dt; sweep(pr.x, pr.hit); }   // the pit-props: duck each one
+    tn.props = tn.props.filter(pr => pr.x > -30);
+    if (tn.st === 'inside') {
+      tdark = Math.min(0.88, tdark + dt * 4); shake = Math.max(shake, 0.8);
+      if (tn.np < TN.props.length && tn.t >= TN.props[tn.np]) {    // a prop coming: the creak, and the coyotes' guess
+        tn.np++; tn.props.push({ x: VW + 12, hit: new Set() }); sfx('creak');
+        for (const e of enemies) if (e.type === 'coyote' && ['approach', 'recover'].includes(e.state) && Math.random() < 0.5) { e.state = 'down'; e.t = -1.0; e.vx = e.vz = 0; }
+      }
+      if (tn.t >= TN.inside) { tn.st = 'exit'; tn.t = 0; tn.x = VW + 8; }
+      return;
+    }
     tn.x -= TR.V * dt;                                // the mouth (or the way out) going by
     if (tn.st === 'mouth') {
+      sweep(tn.x + 8, tn.hit);
       tdark = Math.min(0.88, tdark + dt * 0.8);      // in the mountain's shadow
       shake = Math.max(shake, 2);
-      const over = a => !tn.hit.has(a) && Math.abs(a.x - camX - (tn.x + 8)) < 10;
-      const p = player;
-      if (over(p)) {
-        tn.hit.add(p);
-        if (p.state !== 'duck' && p.state !== 'fall' && !death && phase === 'play' && hurtPlayer({ x: p.x + 10 }, 3)) {
-          p.vx = -170; shake = Math.max(shake, 7); hitstop = 0.1; popup(p.x, FLOOR + p.z - 64, 'MIND YER HEAD!', '#ff6b4a', 2, 1.4);
-        }
-      }
-      for (const e of enemies) if (over(e)) {
-        tn.hit.add(e);
-        if (e.type !== 'rattler' && e.type !== 'dillo' && e.state !== 'ko' && e.state !== 'down' && hittable(e)) fallOff(e, true);
-      }
       if (tn.x < -70) { tn.st = 'inside'; tn.t = 0; }
     } else {
       if (tn.x < VW / 2) tdark = Math.max(0, tdark - dt * 4);
@@ -1362,7 +1375,7 @@ T.runBrawler = function (A) {
         b.vz = Math.abs(dz) > 3 ? Math.sign(dz) * 34 : 0;
         if (b.t > 0.8) {
           b.n++;
-          if (b.n % 3 === 0 || (!close && b.t > 2.4)) { if (Math.abs(dx) < 80) bSet('retreat'); else { bSet('light'); sfx('shell'); } stop(); }   // dynamite: from a safe distance
+          if (b.n % (b.hp < b.max / 2 ? 2 : 3) === 0 || (!close && b.t > 2.4)) { if (Math.abs(dx) < 80) bSet('retreat'); else { bSet('light'); sfx('shell'); } stop(); }   // dynamite: from a safe distance
           else if (close) { bSet(b.n % 2 ? 'windup' : 'pinchw'); stop(); }
           else b.t = 0.5;
         }
@@ -1393,8 +1406,12 @@ T.runBrawler = function (A) {
         break;
       case 'light': stop(); b.face = toward; if (b.t > 0.75) {
         bSet('toss');
-        if (b.salvo) { b.salvo = false; [6, 24, 42].forEach((z, i) => tossStick(b, p.x + (i - 1) * 26, z, 0.7 + i * 0.12)); }   // LIGHT 'EM ALL!
-        else tossStick(b, p.x + (Math.random() - 0.5) * 20, p.z, 0.8);
+        // the fewer his hit points, the more sticks: 1, 2 below three quarters, 3 below half, 4 below a quarter; at half,
+        // LIGHT 'EM ALL!: five, every lane. Around where you stand, a lane or so apart
+        const f = b.hp / b.max, k = b.salvo ? 5 : f > 0.75 ? 1 : f > 0.5 ? 2 : f > 0.25 ? 3 : 4;
+        const spots = [[0, 0], [26, -16], [-26, 16], [-30, -18], [32, 18]];
+        for (let i = 0; i < k; i++) tossStick(b, p.x + spots[i][0] + (Math.random() - 0.5) * 10, p.z + spots[i][1], 0.75 + i * 0.1);
+        b.salvo = false;
       } break;
       case 'toss': stop(); if (b.t > 0.4) bSet('recover'); break;
       case 'recover': stop(); if (b.t > 0.75) bSet('approach'); break;
@@ -1645,7 +1662,9 @@ T.runBrawler = function (A) {
     if (death && death.hat) put(HAT, wx(death.hat.x), Math.round(death.hat.y), T.HAT.OX, T.HAT.OY, death.caught ? depth(p.z) - 0.002 : 0);
     if ((phase !== 'intro' || phaseT >= IN.rise) && p.state !== 'fall') put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
     if (tunnel && (tunnel.st === 'mouth' || tunnel.st === 'exit'))   // the tunnel's mouth sweeping over, in front of everything
-      put(TRS.portal, tunnel.x, FLOOR + (ZMAX >> 1) - TR.CLEAR, 0, TRS.portal.oy, 1.5, tunnel.st === 'exit' ? -1 : 1);
+      put(TRS.portal, tunnel.x, FLOOR + ZMAX - TR.CLEAR, 0, TRS.portal.oy, 1.5, tunnel.st === 'exit' ? -1 : 1);
+    if (tunnel) for (const pr of tunnel.props) put(TRS.prop, pr.x, FLOOR + ZMAX - TR.CLEAR, TRS.prop.ox, TRS.prop.oy, 1.5);   // the pit-props going by
+    if (tunnel && tunnel.props.some(pr => pr.x > player.x - camX && pr.x < VW + 40 && Math.floor(time * 6) % 2)) center(T.textSprite('DUCK!', '#ffd34a', 2), 60);
     if (tunnel && tunnel.st === 'warn' && (tunnel.t < S.tunnel.warn - 0.6 || Math.floor(tunnel.t * 8) % 2 === 0)) {   // (steady, then it blinks: here it comes)
       center(T.textSprite('TUNNEL!', '#ff9d3c', 3), 56); center(T.textSprite('DUCK! HOLD DOWN', '#ffd34a', 1), 82);
     }
