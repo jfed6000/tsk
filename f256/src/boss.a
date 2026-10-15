@@ -111,7 +111,10 @@ wbs2x                stb       EN.St,x
 *   again.  No knockdowns: a hit while he's walking, recovering or
 *   throwing staggers him.  X is kept.
 ********************************************************************
-HitBoss             lda       #SF.HitBig
+HitBoss             lbsr      JackDodge           (Jack hops over a kick at him on his feet)
+                    bcc       hbj0
+                    rts
+hbj0                lda       #SF.HitBig
                     lbsr      Sfx
                     lda       <bst
                     ldb       bkind,u             (dizzy: Two-Bit's BS.Daze, Dillon's DS.Daze)
@@ -249,7 +252,15 @@ whb5                 tst       <bsum               half his health: he raises th
                     inc       <bsum
                     lda       bkind,u
                     lbeq      whs0
-                    cmpa      #2
+                    cmpa      #3
+                    bne       whs3
+                    lda       #70                 Jack: the herd turned loose on you
+                    ldy       #TX.stampede
+                    lbsr      WordE
+                    lbsr      StartStampede
+                    ldx       <bslot
+                    lbra      whb9
+whs3                cmpa      #2
                     bne       whs1
                     lda       #70                 Doc Gila: deals two rattlers in, one each side
                     ldy       #TX.dealin
@@ -275,7 +286,10 @@ whs0                lda       #66
                     lbsr      NewSkel
                     lbsr      NewSkel
                     ldx       <bslot
-whb9                 lbra      GilaReact           (Doc Gila's tricks, ghost.a)
+whb9                 lda       bkind,u             Doc Gila's tricks (ghost.a), Jack's way out (jack.a)
+                    cmpa      #3
+                    lbeq      JackReact
+                    lbra      GilaReact
 
 * GangDown - the next of the gang still standing goes down, knocked away
 *   from him; none left, and it's done (gdown cleared).  Exit: X = him
@@ -315,7 +329,9 @@ BossStep            stx       <bslot
                     tst       EN.Hp,x
                     beq       wbs0
                     lbra      EStop
-wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila
+wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila, 3 Jack
+                    cmpa      #3
+                    lbeq      JackStep
                     cmpa      #2
                     lbeq      GilaStep
                     tsta
@@ -985,6 +1001,8 @@ wch2                 leax      CL.Size,x
 ********************************************************************
 * BossFrame - X = him -> D = his frame (brawler.js bossImg)
 BossFrame           lda       bkind,u
+                    cmpa      #3
+                    lbeq      JackFrame
                     cmpa      #2
                     lbeq      GilaFrame
                     tsta

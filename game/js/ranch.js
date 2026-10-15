@@ -250,7 +250,7 @@ T.buildJack = function () {
   const mk = o => bake(x => drawJack(x, o));
   // the lasso's loop in flight, and a length of its rope
   const loop = (() => { const cv = T.canvas(16, 12), x = cv.getContext('2d'); x.strokeStyle = JP.out; x.lineWidth = 3; ell(x, 8, 6, 6, 4); x.stroke(); x.strokeStyle = JP.rope; x.lineWidth = 1.4; ell(x, 8, 6, 6, 4); x.stroke(); const o = T.pixelize(cv, JP, JP.out, CLUT.spr); o.ox = 8; o.oy = 6; return o; })();
-  const rope = (() => { const cv = T.canvas(16, 4), x = cv.getContext('2d'); x.fillStyle = JP.out; x.fillRect(0, 0, 16, 3); x.fillStyle = JP.rope; x.fillRect(0, 1, 16, 1); const o = T.pixelize(cv, JP, null, CLUT.spr); o.ox = 0; o.oy = 1; return o; })();
+  const rope = (() => { const cv = T.canvas(24, 4), x = cv.getContext('2d'); x.fillStyle = JP.out; x.fillRect(0, 0, 24, 3); x.fillStyle = JP.rope; x.fillRect(0, 1, 24, 1); const o = T.pixelize(cv, JP, null, CLUT.spr); o.ox = 0; o.oy = 1; return o; })();
   return {
     idle: [mk({}), mk({ by: 0.8, ears: 0.3 })],
     talk: [mk({ mouth: 1, ears: 0.2 }), mk({ mouth: 0.3, by: 0.5 })],

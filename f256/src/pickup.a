@@ -84,6 +84,14 @@ BarBH               fdb       300
                     fdb       1560
                     fcb       50,IT.Beans
 * Ghost Town: barrels on the street, card tables in the saloon (the item's top bit: a table)
+BarCD               fdb       1300                the Cattle Drive's corral
+                    fcb       30,IT.Beans
+                    fdb       1420
+                    fcb       64,WP.Whip
+                    fdb       1560
+                    fcb       20,WP.Gun
+                    fdb       1660
+                    fcb       50,IT.Beans
 BarGT               fdb       240
                     fcb       20,IT.Beans
                     fdb       520

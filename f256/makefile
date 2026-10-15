@@ -11,6 +11,7 @@
 #   make mamedillon              Big Shell Dillon (tsk mkbg) in MAME
 #   make mamedeath               the death scene (tsk mkf: frail, any hit kills) in MAME
 #   make mamegila                Doc Gila (tsk hkg: Ghost Town, straight to him, unhurtable) in MAME
+#   make mamecattle              the Cattle Drive (tsk cbg) in MAME
 #   make mametitle               the title screen and its music in MAME: the MIDI the 6809 sends, as mame/midi.mid
 #   make mameview                the same for tskview
 #   make host                    the demo on the host 6809 (tools/hostrun.py): the hero's state, pass by pass
@@ -24,8 +25,8 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --pragma=nosymbolcase,condundefzero,dollarnotlocal \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
-ASSETFILES  = fri.bin frr.bin frr_bh.bin frr_ms.bin frr_gt.bin sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin clut_dusk.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin mus_deadman.bin mus_stampede.bin spr_gt.bin tiles_gt.bin maps_gt.bin
-TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/dillon.a src/death.a src/grab.a src/ghost.a src/snd.a src/title.a src/amb.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
+ASSETFILES  = fri.bin frr.bin frr_bh.bin frr_ms.bin frr_gt.bin sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin clut_dusk.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin mus_deadman.bin mus_stampede.bin spr_gt.bin tiles_gt.bin maps_gt.bin spr_cd.bin tiles_cd.bin maps_cd.bin frr_cd.bin
+TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/dillon.a src/death.a src/grab.a src/ghost.a src/ride.a src/jack.a src/snd.a src/title.a src/amb.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
 # The module budget. The data area is one 8K block (the frame records and CLUTs live in graphics blocks: draw.a,
 # platform.a ClutK), so of the process's eight: data 1, the music window 1 (the top block or wherever's highest:
 # snd.a MusMap), one service window, and the module the other 5 = 40,960 bytes. The data area must stay in its
@@ -81,6 +82,9 @@ mamedeath: tsk tskview
 mamegila: tsk tskview
 	LUA=tools/tskgila.lua tools/mame.sh
 
+mamecattle: tsk tskview
+	LUA=tools/tskcattle.lua tools/mame.sh
+
 mametitle: tsk tskview
 	TSKMIDILOG=$(CURDIR)/mame/midi.log LUA=tools/tskmidi.lua tools/mame.sh
 	python3 tools/midicap.py --log mame/midi.log --out mame/midi.mid
@@ -94,4 +98,4 @@ host: tsk
 clean:
 	rm -f tsk tsk.list tsk.map tskview tskview.list tskview.map
 
-.PHONY: all music assets install mame mamebot mameboss mametitle mamems mamedillon mamedeath mamegila mameview host clean
+.PHONY: all music assets install mame mamebot mameboss mametitle mamems mamedillon mamedeath mamegila mamecattle mameview host clean

@@ -17,7 +17,11 @@ ThrowVH             equ       56                  210 px/s
 
 * GrabTarget - hdx = the way he's walking: X = an outlaw he can grab, or
 *   carry set if none
-GrabTarget          leax      en,u
+GrabTarget          tst       hmount,u            (not from the saddle)
+                    beq       gt0
+                    comb
+                    rts
+gt0                 leax      en,u
                     lda       #NEn
                     sta       <aloop
 gt1                 lda       EN.St,x

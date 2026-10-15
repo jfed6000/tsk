@@ -19,7 +19,7 @@ def os9(self,fn):
         for i in range(n):
             e=base+i*10; ctl=m[e]; frm=m[e+1]<<8|m[e+2]
             if not ctl: continue
-            if (i > 0 and frm < HRN) or frm >= NFR:
+            if (i > (1 if m[S['hmount']] else 0) and frm < HRN) or frm >= NFR:   # (in the saddle: the steer's entry 0, his 1)
                 k=(i,frm,m[S['phase']],m[S['hst']]); bad[(frm,)]+=1
                 first.setdefault(frm,(self.npass,i,m[S['phase']],m[S['stgn']]))
     return o0(self,fn)

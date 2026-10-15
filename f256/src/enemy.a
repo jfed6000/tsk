@@ -30,6 +30,7 @@ ES.Boss             equ       16                  Two-Bit, hittable (boss.a: bst
 ES.BossX            equ       17                  Two-Bit, not hittable (talking, underground, KO'd)
 ES.Held             equ       18                  held by the collar (grab.a)
 ES.Thrown           equ       19                  thrown: flying into its friends
+ES.Leave            equ       20                  a rider making off at the ride's end (ride.a)
 
 * a skull's states
 SL.Fly              equ       1
@@ -436,12 +437,16 @@ es0c                clr       <eleft
                     sta       <eloop
 es1                 tst       EN.St,x
                     beq       es2
+                    lbsr      RideCarry           (the ride: carried, or left behind)
+                    bcs       es2
                     stx       <ecur
                     bsr       Enemy
                     ldx       <ecur
                     lda       EN.St,x             still in the fight: the wave's not over
                     beq       es2
                     cmpa      #ES.Ko
+                    beq       es2
+                    cmpa      #ES.Leave
                     beq       es2
                     inc       <eleft
 es2                 leax      EN.Size,x
@@ -486,6 +491,7 @@ EnTab               fdb       EnMove-EnTab
                     fdb       BossStep-EnTab
                     fdb       EHeld-EnTab
                     fdb       EThrown-EnTab
+                    fdb       ELeave-EnTab
 
 ERise               lbsr      EStop
                     lda       EN.T,x
@@ -542,7 +548,10 @@ ea2                 subd      EN.X,x
                     lbsr      EStop
                     lbra      EnMove
 
-EAim                lbsr      EStop
+EAim                lda       EN.Ty,x             (a gunslinger's own: ride.a)
+                    cmpa      #TY.Ride
+                    lbeq      RAim
+                    lbsr      EStop
                     lbsr      FaceHero
                     lda       EN.T,x
                     cmpa      #AimT
@@ -563,8 +572,11 @@ fi1                 tst       EB.St,y
                     leay      EB.Size,y
                     decb
                     bne       fi1
+                    orcc      #1                  (no room: carry set)
                     rts
 fi2                 inc       EB.St,y
+                    ldd       #BulH*16            (Y = it, carry clear)
+                    std       EB.H,y
                     ldd       EN.Z,x
                     std       EB.Z,y
                     ldd       #22*16
@@ -574,9 +586,13 @@ fi2                 inc       EB.St,y
                     ldd       #BulV
                     lbsr      ByFace
                     std       EB.VX,y
+                    andcc     #$FE
                     rts
 
-EShoot              lda       EN.T,x
+EShoot              lda       EN.Ty,x
+                    cmpa      #TY.Ride
+                    lbeq      RShoot
+                    lda       EN.T,x
                     cmpa      #ShootT
                     lbls      EnMove
                     tst       EN.Am,x
@@ -748,7 +764,10 @@ ee1                 std       EN.VX,x
                     lbsr      SetE
                     lbra      EnMove
 
-DAppr               ldy       #28*16              its spot: 28 px beside him (a coyote 36, a rattler 70; 80 while two
+DAppr               lda       EN.Ty,x             (a rider's own: ride.a)
+                    cmpa      #TY.Ride
+                    lbeq      RAppr
+                    ldy       #28*16              its spot: 28 px beside him (a coyote 36, a rattler 70; 80 while two
                     lda       EN.Ty,x
                     cmpa      #TY.Coy
                     bne       da00
@@ -825,9 +844,11 @@ da01a               sty       <tcap
 EWind               lbsr      EStop
                     lda       EN.T,x
                     ldb       EN.Ty,x             (a coyote's wind-up is longer)
+                    cmpb      #TY.Ride            (a rider's swing is a coyote's)
+                    beq       ew00
                     cmpb      #TY.Coy
                     bne       ew0
-                    cmpa      #CyWindT
+ew00                cmpa      #CyWindT
                     lbls      EnMove
                     bra       ew1
 ew0                 cmpb      #TY.Rat
@@ -848,6 +869,8 @@ EStrike             lda       EN.Ty,x
                     lbeq      CStrike
                     cmpa      #TY.Rat
                     lbeq      RStrike
+                    cmpa      #TY.Ride
+                    lbeq      RLasso
                     ldd       #DlRoll             rolling at him
                     lbsr      ByFace
                     std       EN.VX,x
@@ -967,7 +990,7 @@ Hitbl               pshs      a,x
                     lda       a,x
                     cmpa      #1
                     puls      a,x,pc
-HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,0,0,0
+HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0
 
 * ETall - X = an enemy, tmp = its height off the floor (px):
 *   D = tmp + how tall it is
@@ -980,6 +1003,9 @@ ETall               ldb       #SkTall
                     ldb       #22                 a rattler
                     cmpa      #TY.Rat
                     beq       et1
+                    ldb       #66                 a rider: the horse and him
+                    cmpa      #TY.Ride
+                    beq       et1
                     ldb       #BossTall           (a coyote's the same: 44)
 et1                 clra
                     addd      <tmp
@@ -989,6 +1015,8 @@ et1                 clra
 *   while there are enemies about: brawler.js lock + 6 .. lock + 314)
 EnMove              lda       EN.St,x
                     cmpa      #ES.Enter
+                    beq       em5
+                    cmpa      #ES.Leave           (a rider making off: free to go)
                     beq       em5
                     cmpa      #ES.Ko
                     beq       em5
@@ -1112,7 +1140,11 @@ hie1                lbsr      Sfx
                     sta       <hitstop
                     lda       #6
                     lbra      Shk
-hi2                 lda       #ES.Air             knocked flying
+hi2                 lda       EN.Ty,x             (a rider: out of the saddle first)
+                    cmpa      #TY.Ride
+                    bne       hi2a
+                    lbsr      Unhorse
+hi2a                lda       #ES.Air             knocked flying
                     lbsr      SetE
                     ldd       #30
                     lbsr      ScoreAt
@@ -1173,7 +1205,11 @@ nk2                 lda       #SL.Fly
 *   skull if it still has one fly off; any loose skull of its own is
 *   nobody's now; the slot is free.  X is kept.
 ********************************************************************
-KO                  lda       #SF.Ko
+KO                  lda       EN.Ty,x             (a rider: out of the saddle first)
+                    cmpa      #TY.Ride
+                    bne       ko000
+                    lbsr      Unhorse
+ko000               lda       #SF.Ko
                     lbsr      Sfx
                     lda       #5
                     sta       <hitstop
@@ -1459,7 +1495,10 @@ ha1b                ldd       <hx                 the box in pixels: x0..x1 alon
                     std       <hxp
                     ldd       <hh
                     lbsr      Asr4
-                    std       <hhpx
+                    tst       hmount,u            (in the saddle: higher)
+                    beq       ha1c
+                    addd      #Saddle
+ha1c                std       <hhpx
                     ldb       ,y                  x0 = x + dx, or x - dx - w facing left
                     sex
                     tst       <hface
@@ -1612,11 +1651,14 @@ ha13                tst       EB.St,x
                     lbsr      AbsD
                     cmpd      #Lane*16
                     bhs       ha15
-                    ldd       <bh0                h0 < BulH < h1
-                    cmpd      #BulH
+                    ldd       EB.H,x              h0 < its height < h1
+                    lbsr      Asr4
+                    std       <tmp
+                    ldd       <bh0
+                    cmpd      <tmp
                     bge       ha15
                     ldd       <bh1
-                    cmpd      #BulH
+                    cmpd      <tmp
                     ble       ha15
                     ldd       EB.X,x              x0 - 4 < bx < x1 + 4
                     lbsr      Asr4
@@ -1635,7 +1677,7 @@ ha13                tst       EB.St,x
                     std       <sx
                     ldd       EB.Z,x
                     std       <sz
-                    ldd       #BulH*16
+                    ldd       EB.H,x
                     std       <sh
                     pshs      x
                     clra
@@ -1812,7 +1854,12 @@ eu1                 tst       EB.St,x
                     beq       eu9
                     ldd       EB.X,x
                     addd      EB.VX,x
-                    std       EB.X,x
+                    tst       riding,u            (fired from the gallop: they keep its pace)
+                    beq       eu1a
+                    tst       rtread,u
+                    bne       eu1a
+                    addd      #RideV
+eu1a                std       EB.X,x
                     subd      <hx                 |x| < 9, in his lane (8), between his feet
                     lbsr      AbsD                and 40 px above them
                     cmpd      #9*16
@@ -1822,10 +1869,16 @@ eu1                 tst       EB.St,x
                     lbsr      AbsD
                     cmpd      #8*16
                     bhs       eu5
+                    ldd       EB.H,x              his body: 40 px up from his feet (or the saddle)
+                    tst       hmount,u
+                    beq       eu2a
+                    subd      #Saddle*16
+eu2a                std       <tmp
                     ldd       <hh
-                    cmpd      #BulH*16
+                    cmpd      <tmp
                     bge       eu5
-                    cmpd      #(BulH-40)*16
+                    addd      #40*16
+                    cmpd      <tmp
                     ble       eu5
                     ldd       EB.X,x
                     std       <sx
@@ -2006,7 +2059,11 @@ DrawEn              leax      en,u
 de1                 tst       EN.St,x
                     beq       de9
                     lda       EN.Ty,x             Two-Bit under the street: the mound
-                    cmpa      #TY.Boss
+                    cmpa      #TY.Ride            (a rider: the horse and him, ride.a)
+                    bne       de0r
+                    lbsr      DrawRider
+                    bra       de9
+de0r                cmpa      #TY.Boss
                     bne       de1a
                     lbsr      DrawBoss
                     bcc       de9
@@ -2093,6 +2150,7 @@ EfTab               fdb       EfIdle-EfTab
                     fdb       EfIdle-EfTab
                     fdb       EfHurt-EfTab        held
                     fdb       EfHurt-EfTab        thrown
+                    fdb       EfIdle-EfTab        (leaving: a rider's)
 EfAppr              ldd       EN.VX,x             moving: walk; else stand
                     lbsr      AbsD
                     pshs      d
@@ -2321,7 +2379,7 @@ db2                 std       <efrm
                     std       <ex
                     ldd       EB.Z,x
                     std       <ez
-                    ldd       #BulH*16
+                    ldd       EB.H,x
                     std       <eh
                     lbsr      Ent
                     puls      x
@@ -2653,7 +2711,10 @@ bt9                 rts
 
 * BotMound - the autopilot keeps off Two-Bit's mound.  Exit: carry clear
 *   and B = the input if it's running from it
-BotMound            lbsr      BotShell            Dillon's shell first
+BotMound            lbsr      BotJack             the ride, and Jack's rope (jack.a)
+                    bcs       bm0j
+                    rts
+bm0j                lbsr      BotShell            Dillon's shell first
                     bcs       bm0a
                     rts
 bm0a                lbsr      BotGila             Doc Gila's table

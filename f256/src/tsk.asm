@@ -54,6 +54,8 @@ name                fcs       /tsk/
                     use       death.a
                     use       grab.a
                     use       ghost.a
+                    use       ride.a
+                    use       jack.a
                     use       snd.a
                     use       title.a
                     use       amb.a

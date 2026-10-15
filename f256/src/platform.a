@@ -41,8 +41,11 @@ st0f                cmpa      #'f                 f = frail: any hit kills (the 
                     bne       st0h
                     orb       #32
 st0h                cmpa      #'h                 h = start in Ghost Town (haunted)
-                    bne       st0
+                    bne       st0cd
                     orb       #64
+st0cd               cmpa      #'c                 c = start on the Cattle Drive
+                    bne       st0
+                    orb       #128
                     bra       st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
@@ -74,8 +77,12 @@ st1e                lsrb
                     bcc       st1g
                     inc       frail,u
 st1g                lsrb
-                    bcc       st2
+                    bcc       st1h
                     lda       #2                  (tsk h: Ghost Town)
+                    sta       stgarg,u
+st1h                lsrb
+                    bcc       st2
+                    lda       #3                  (tsk c: the Cattle Drive)
                     sta       stgarg,u
 st2                 lda       #$FF                no stage's art loaded yet
                     sta       ldstg,u

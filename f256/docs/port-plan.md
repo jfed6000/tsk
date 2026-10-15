@@ -239,7 +239,30 @@ One program module, **`tsk`**, assembled from:
       through a text queue five letters a pass (`hud.a TextQ`, after a pass that only clears the strip), and
       `Text` stamps a column unrolled, through a colour table.
     - `hostrun.py` now has the data area at 0, windows at $2000 and $4000, and the module from $6000 (40K).
-11. The pad harness, co-op, the next stages.
+11. ✓ **The Cattle Drive** *(2026-10-15: `tsk` 32.7K of 40,960, data 4.9K of 7,936)*: stage 3 (`SG.Ride`), after
+    Ghost Town; `tsk c` starts there, `tsk ck` at Jack, `make mamecattle` runs `tsk cbg`.
+    - **The ride** (`ride.a`): `rd` is the distance ridden, 2 px a pass (120 px/s). The first `Tread` (1,280 px)
+      the camera holds still and the trail runs under him (`rtread`: the far and mid maps carry an extra
+      `2*LOOP` of columns, `export.js extra`); then the camera rolls on to `RideEnd` (1,100), WHOA!, on foot.
+      Spawns from `RSpTab` (21, three riders at most), fences and rocks from `ObTab` (20, in trail order:
+      `ObFirst` skips the ones behind him, the loops stop at the first one off the right). The hero in the
+      saddle: `hmount`, 26 px up, the steer drawn under him (`DrawSteer`), a death mid-ride puts him back on.
+    - **Riders** are `TY.Ride` enemies (`EB.H` their height): approach, lasso (`RLasso`), and a third are
+      gunslingers (`RAim`, `RShoot`: six shots, then the lasso). Knocked down, a rider's a coyote on foot and
+      the horse bolts (`Unhorse`, `NewRunner`: four runners). At the corral they ride off (`ES.Leave`).
+    - **Jackrabbit Jack** (`jack.a`, `bkind` 3, `JS` states 0-13): hops, dodges a kick ("TOO SLOW!",
+      `JackDodge` at the start of `HitBoss`), escapes a corner or a second stagger ("NOT TODAY!", `JackEscape`),
+      mule kick, the lasso (`LassoStep`; caught, the hero's `ST.Roped` 19), STAMPEDE! at half (three steers,
+      `stmp`).
+    - **Past 2,047 px**: x is 12.4 in 16 bits, so it wraps there; the corral's camera stops at 1,712, and the
+      stampede starts at 2,092. `Ent` now subtracts the camera (`camsx`, 12.4, set once a pass) before the shift,
+      so a wrapped x still lands on the screen right; the stampede's other tests are differences.
+    - **The rattler** in the corral's wave: a group can sit in two banks (`export.js`, `bank = ['GT', 'CD']`) when
+      it's first in both, so its cells and frame records are at the same place in each; `spr_cd.bin` is 239
+      cells (`SPR.Ovl`).
+    - **Cost:** the worst pass in the ride is about 86K cycles (three riders, fence planks, a new name in the HUD),
+      98K with a death mid-ride; Ghost Town → the Cattle Drive → Jack runs clean (`dlcheck.py` on every stage).
+12. The pad harness, co-op, the next stages.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

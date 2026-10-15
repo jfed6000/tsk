@@ -93,6 +93,7 @@ gi1a                sta       EN.Id,x
                     lbsr      CamInit
                     lbsr      PickInit
                     lbsr      SignInit            (Ghost Town's signs, ghost.a)
+                    lbsr      RideInit            (the Cattle Drive's ride, ride.a)
                     ldd       #0
                     std       <phaset
                     std       <titlet
@@ -120,7 +121,10 @@ gi1a                sta       EN.Id,x
                     bita      #SG.Intro
                     beq       gi3
                     lbra      IntroInit           Boot Hill begins in the grave
-gi4                 lda       nwaves,u            the last wave: the boss's
+gi4                 clr       riding,u            (and no ride: on foot at the corral)
+                    clr       hmount,u
+                    clr       rtread,u
+                    lda       nwaves,u            the last wave: the boss's
                     deca
                     sta       <wavei
                     lda       #1
@@ -211,6 +215,7 @@ SR.Size             equ       31
 SG.Intro            equ       1                   the opening, the big title
 SG.Light            equ       2                   lightning
 SG.Dusk             equ       4                   night falls, wave by wave
+SG.Ride             equ       8                   the ride: in the saddle, the trail scrolling (ride.a)
 NOvlBlk             equ       (SPR.Ovl+7)/8
 MaxW                equ       2032                (x 16 = 32512: under 32767, so signed compares work)
 
@@ -238,6 +243,14 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BarGT-StgTab
                     fdb       TX.ghostt,TX.moonrise,TX.gtclear
                     fdb       FileGT-StgTab
+                    fdb       CD.W                the Cattle Drive at sunup: the ride, then Jack's corral
+                    fdb       CD.MAP0.W,CD.MAP0.Of,CD.MAP1.W,CD.MAP1.Of,CD.MAP2.W,CD.MAP2.Of
+                    fcb       CD.TIL.Sets,SG.Ride,MU.stampede,2
+                    fdb       WaveCD-StgTab
+                    fcb       4
+                    fdb       BarCD-StgTab
+                    fdb       TX.cattle,TX.sunup,TX.cdclear
+                    fdb       FileCD-StgTab
 
 FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
@@ -246,6 +259,14 @@ FileBH              fcc       /tiles_bh.bin/
                     fcc       /spr_bh.bin/
                     fcb       $0D
                     fcc       /frr_bh.bin/
+                    fcb       $0D
+FileCD              fcc       /tiles_cd.bin/
+                    fcb       $0D
+                    fcc       /maps_cd.bin/
+                    fcb       $0D
+                    fcc       /spr_cd.bin/
+                    fcb       $0D
+                    fcc       /frr_cd.bin/
                     fcb       $0D
 FileGT              fcc       /tiles_gt.bin/
                     fcb       $0D
@@ -288,6 +309,7 @@ sg1                 lda       <phase
                     bne       sg2
                     lbsr      Hero
                     lbsr      Signs               Ghost Town's hanging signs (ghost.a)
+                    lbsr      RideStep            the Cattle Drive's ride (ride.a)
                     tst       dying,u             (no wave while he's down)
                     bne       sgx
                     lbra      Waves
@@ -298,8 +320,8 @@ sg2                 cmpa      #PH.Clear
                     cmpd      #ClearT
                     blo       sgx
                     lda       stgn,u             a stage won: on to the next (health back up 6,
-                    cmpa      #2                  lives and score kept, the weapon left behind);
-                    bhs       sg3                 Ghost Town's the last for now
+                    cmpa      #3                  lives and score kept, the weapon left behind);
+                    bhs       sg3                 the Cattle Drive's the last for now
                     lda       <hhp
                     adda      #6
                     cmpa      #MaxHp
@@ -383,7 +405,9 @@ StartWave           ldd       ,x++
                     lbeq      StartBoss
                     decb
                     lbeq      StartDillon
-                    lbra      StartGila
+                    decb
+                    lbeq      StartGila
+                    lbra      StartJack
 swb9                equ       *
                     sta       <tmpn
                     clr       <tmpi               i
@@ -465,6 +489,10 @@ WaveGT              fdb       0                   Ghost Town: the street, then t
                     fcb       6,TY.Rat,TY.SkelW,TY.Coy,TY.Rat,TY.Coy,TY.SkelW
                     fdb       1712
                     fcb       $FF,2               Doc Gila
+WaveCD              fdb       1150                the Cattle Drive: on foot at the corral gate
+                    fcb       4,TY.Coy,TY.Rat,TY.Coy,TY.SkelW
+                    fdb       1712
+                    fcb       $FF,3               Jackrabbit Jack
 
 ********************************************************************
 * StageClear - the stage is won: he taunts

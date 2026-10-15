@@ -156,7 +156,7 @@ class Host(CPU6809):
             w = lambda o: ((b[o] << 8 | b[o + 1]) ^ 0x8000) - 0x8000
             st = ['-', 'rise', 'appr', 'aim', 'shoot', 'reload', 'stag', 'headl', 'air', 'down', 'getup',
                   'wind', 'strike', 'recov', 'enter', 'ko', 'boss', 'bossx'][b[0]]
-            ty = 'SDBC'[b[23]] if size > 23 else 'S'
+            ty = 'SDBCWRr'[b[23]] if size > 23 and b[23] < 7 else ('S' if size <= 23 else '?')
             if ty == 'B':
                 st += '/' + ['intro', 'appr', 'wind', 'swing', 'recov', 'stag', 'thrw', 'throw', 'dig', 'under',
                              'rumble', 'pop', 'daze', 'ko'][self.mem[self.sym['bst']]]

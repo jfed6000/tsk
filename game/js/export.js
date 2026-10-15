@@ -23,6 +23,7 @@ T.runExport = function (A) {
   // Each stage has its own tile sets and maps, loaded into the same blocks when the stage starts. One tile CLUT
   // serves both (CLUT.bg holds every stage's colours).
   const night = T.buildNightLayers(VW, VH, FLOOR), MS = T.buildMainStreet(VW, VH, FLOOR), GT = T.buildGhostTown(VW, VH, FLOOR);
+  const CD = T.buildRanch(VW, VH, FLOOR);
   const STAGES = [
     { key: 'BH', file: 'bh', W: 1920, layers: [
       { name: 'FAR', img: night.far, rate: 0.25 }, { name: 'MID', img: night.mid, rate: 0.5 },
@@ -31,6 +32,9 @@ T.runExport = function (A) {
       { name: 'FAR', img: MS.far, rate: 0.25 }, { name: 'MID', img: MS.mid, rate: 0.5 }, { name: 'STR', img: MS.street, rate: 1 }] },
     { key: 'GT', file: 'gt', W: T.GHOST.W, layers: [
       { name: 'FAR', img: GT.far, rate: 0.25 }, { name: 'MID', img: GT.mid, rate: 0.5 }, { name: 'STR', img: GT.street, rate: 1 }] },
+    // the Cattle Drive: its sky layers keep scrolling over the ride's treadmill (2 loops of the trail), so they're longer
+    { key: 'CD', file: 'cd', W: T.RANCH.W, extra: 2 * T.RANCH.LOOP, layers: [
+      { name: 'FAR', img: CD.far, rate: 0.25 }, { name: 'MID', img: CD.mid, rate: 0.5 }, { name: 'STR', img: CD.street, rate: 1, noExtra: true }] },
   ];
   const SKEL = T.buildSkeleton();
 
@@ -41,7 +45,7 @@ T.runExport = function (A) {
     const maps = [];
     for (const L of st.layers) {
       const img = L.img, pw = img.width / TS;
-      const need = Math.ceil(((st.W - VW) * L.rate + VW) / TS) + 1;      // enough map to scroll the whole level
+      const need = Math.ceil(((st.W - VW + (L.noExtra ? 0 : st.extra || 0)) * L.rate + VW) / TS) + 1;   // enough map to scroll the whole level
       const cells = new Uint8Array(need * MAP_H * 2);
       for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < need; tx++) {
         const sx = (tx % pw) * TS, sy = ty * TS, t = new Uint8Array(256);
@@ -79,10 +83,14 @@ T.runExport = function (A) {
     let n = cellKeys.get(key);
     if (n !== undefined) return n;
     if (!bank) { n = cellData.length; cellKeys.set(key, n); cellData.push(bytes); return n; }
-    const B = banks[bank] || (banks[bank] = { cells: [], keys: new Map() });
-    n = B.keys.get(key);
-    if (n === undefined) { n = OVL_BASE + B.cells.length; B.keys.set(key, n); B.cells.push(bytes); }
-    return n;
+    const ns = [].concat(bank).map(k => {        // (a group in two banks: its cells at the same place in each)
+      const B = banks[k] || (banks[k] = { cells: [], keys: new Map() });
+      let m = B.keys.get(key);
+      if (m === undefined) { m = OVL_BASE + B.cells.length; B.keys.set(key, m); B.cells.push(bytes); }
+      return m;
+    });
+    if (ns.some(m => m !== ns[0])) throw new Error('a two-bank group not first in both banks');
+    return ns[0];
   }
   function addFrame(cv, ox, oy, mirrored) {
     const W = cv.width, H = cv.height, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : cv.idx[y * W + (mirrored ? W - 1 - x : x)];
@@ -162,6 +170,10 @@ T.runExport = function (A) {
     ['weep', "READ 'EM AND WEEP, BOOTS!", '#fff3c4', 1], ['dealin', "DEAL 'EM IN!", '#ff9d3c', 1], ['anteup', 'ANTE UP!', '#ffd34a', 1],
     ['busted', 'BUSTED!', '#ffd34a', 1], ['chomp', 'CHOMP!', '#ff6b4a', 1], ['timber', 'TIMBER!', '#ffd34a', 1],
     ['pickcard', 'PICK A CARD!', '#ffd34a', 1], ['squashed', 'SQUASHED!', '#ff6b4a', 1],
+    ['cattle', 'THE CATTLE DRIVE', '#ffd34a', 3], ['sunup', 'SUNUP', '#e8a070', 1], ['cdclear', 'CATTLE DRIVE CLEAR!', '#ffd34a', 3],
+    ['whoa', 'WHOA!', '#ffd34a', 2], ['oof', 'OOF!', '#ff6b4a', 1], ['trampled', 'TRAMPLED!', '#ff6b4a', 1], ['roped', 'ROPED!', '#ff6b4a', 1],
+    ['hogtied', 'HOG-TIED!', '#ff6b4a', 1], ['finders', 'FINDERS KEEPERS, BOOTS!', '#fff3c4', 1], ['tooslow', 'TOO SLOW!', '#ffd34a', 1],
+    ['nottoday', 'NOT TODAY!', '#ffd34a', 1], ['stampede', 'STAMPEDE!', '#ff9d3c', 1],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
 
@@ -170,7 +182,7 @@ T.runExport = function (A) {
   const MANGY = T.buildCoyote('mangy'), TUMBLE = T.buildTumbleweed();
   addGroup('CY', [['idle', MANGY.idle, 3, true], ['walk', MANGY.walk, 8, true], ['windup', [MANGY.windup], 1, false],
     ['swing', [MANGY.swing], 1, false], ['hurt', [MANGY.hurt], 1, false], ['down', [MANGY.down], 1, false],
-    ['daze', MANGY.daze, 8, true], ['ko', [MANGY.ko], 1, false]], B.OX, B.OY);
+    ['daze', MANGY.daze, 8, true], ['ko', [MANGY.ko], 1, false], ['aim', [MANGY.aim], 1, false], ['shoot', [MANGY.shoot], 1, false]], B.OX, B.OY);
   addGroup('TW', [['roll', TUMBLE, 10, true]], 12, 22);
   OVL_BASE = Math.ceil(cellData.length / 8) * 8;
   bank = 'BH';
@@ -183,10 +195,11 @@ T.runExport = function (A) {
   addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
     ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
     ['ball', DLN.ball, 20, true], ['hurt', [DLN.hurt], 1, false], ['daze', DLN.daze, 8, true], ['ko', [DLN.ko], 1, false]], B.OX, B.OY);
-  bank = 'GT';                                     // Ghost Town: the rattler, Doc Gila and his cards, the signs and tables
+  bank = ['GT', 'CD'];                             // the rattler: Ghost Town's, and one at the Cattle Drive's corral
   const RAT = T.buildRattler(), GIL = T.buildGila(), GPR = T.buildGhostProps();
   addGroup('RT', [['walk', RAT.walk, 8, true], ['coil', RAT.coil, 14, true], ['lunge', [RAT.lunge], 1, false],
     ['recover', [RAT.recover], 1, false], ['hurt', [RAT.hurt], 1, false], ['down', [RAT.down], 1, false], ['ko', [RAT.ko], 1, false]], B.OX, B.OY);
+  bank = 'GT';                                     // Ghost Town: Doc Gila and his cards, the signs and tables
   addGroup('GL', [['idle', GIL.idle, 3, true], ['walk', GIL.walk, 7, true], ['talk', GIL.talk, 6, true], ['deal', [GIL.deal], 1, false],
     ['flick', [GIL.flick], 1, false], ['jaws', [GIL.jaws], 1, false], ['bite', [GIL.bite], 1, false], ['duck', [GIL.duck], 1, false],
     ['hurt', [GIL.hurt], 1, false], ['daze', GIL.daze, 8, true], ['ko', [GIL.ko], 1, false],
@@ -195,6 +208,14 @@ T.runExport = function (A) {
   addGroup('GP', [...SIGNS.flatMap((g, i) => [['sign' + i, [g.up], 1, false, g.up.ox, 0], ['signd' + i, [g.down], 1, false, g.down.ox, 24]]),
     ['table', [GPR.table], 1, false, GPR.table.ox, GPR.table.oy], ['flipped', [GPR.flipped], 1, false, GPR.flipped.ox, GPR.flipped.oy],
     ['plank', [GPR.plank], 1, false, GPR.plank.ox, GPR.plank.oy]], 16, 16, false);
+  bank = 'CD';                                     // the Cattle Drive: the longhorn, the horses, fences and rocks, Jackrabbit Jack
+  const RS = T.buildRanchSprites(), JK = T.buildJack();
+  addGroup('RD', [['steer', RS.steer, 10, true], ['steerj', [RS.steerJump], 1, false], ['horse', RS.horse, 12, true]], B.OX, B.OY);
+  addGroup('RO', [['fence', [RS.fence], 1, false, RS.fence.ox, RS.fence.oy], ['rock', [RS.rock], 1, false, RS.rock.ox, RS.rock.oy]], 16, 16, false);
+  addGroup('JK', [['idle', JK.idle, 3, true], ['talk', JK.talk, 6, true], ['crouch', [JK.crouch], 1, false], ['hop', [JK.hop], 1, false],
+    ['spin', JK.spin, 10, true], ['throw', [JK.throw], 1, false], ['kick', [JK.kick], 1, false], ['hurt', [JK.hurt], 1, false],
+    ['daze', JK.daze, 8, true], ['ko', [JK.ko], 1, false],
+    ['loop', [JK.loop], 1, false, JK.loop.ox, JK.loop.oy], ['rope', [JK.rope], 1, false, JK.rope.ox, JK.rope.oy]], B.OX, B.OY);
   bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
@@ -225,9 +246,13 @@ T.runExport = function (A) {
   frameRecs.forEach((rec, i) => { const k = bankOf[i]; if (k !== null) return; const b = recBytes(rec); frOff[i] = frLen.null; frParts.null.push(b); frLen.null += b.length; });
   const FRR_SH = frLen.null;
   frameRecs.forEach((rec, i) => {
-    const k = bankOf[i]; if (k === null) return;
-    frParts[k] = frParts[k] || []; frLen[k] = frLen[k] || 0;
-    const b = recBytes(rec); frOff[i] = FRR_SH + frLen[k]; frParts[k].push(b); frLen[k] += b.length;
+    if (bankOf[i] === null) return;
+    const b = recBytes(rec), offs = [].concat(bankOf[i]).map(k => {
+      frParts[k] = frParts[k] || []; frLen[k] = frLen[k] || 0;
+      const o4 = FRR_SH + frLen[k]; frParts[k].push(b); frLen[k] += b.length; return o4;
+    });
+    if (offs.some(o4 => o4 !== offs[0])) throw new Error('a two-bank group not first in both banks');
+    frOff[i] = offs[0];
   });
   const cat = parts => { const n = parts.reduce((a, b) => a + b.length, 0), o2 = new Uint8Array(n); let q = 0; for (const b of parts) { o2.set(b, q); q += b.length; } return o2; };
   const FRR_MAX = Math.max(...Object.keys(frLen).filter(k => k !== 'null').map(k => frLen[k]));
@@ -249,12 +274,13 @@ T.runExport = function (A) {
   const F = T.rgb('#e4e0ff');
   const files = {
     'sprites.bin': sprites,
-    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT,
+    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT, 'spr_cd.bin': ovl.CD,
     'tiles_bh.bin': STAGES[0].tiles, 'maps_bh.bin': STAGES[0].mapBytes,
     'tiles_ms.bin': STAGES[1].tiles, 'maps_ms.bin': STAGES[1].mapBytes,
     'tiles_gt.bin': STAGES[2].tiles, 'maps_gt.bin': STAGES[2].mapBytes,
+    'tiles_cd.bin': STAGES[3].tiles, 'maps_cd.bin': STAGES[3].mapBytes,
     'frames.bin': frames,
-    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT),
+    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD),
     'clut_spr.bin': clut(T.CLUT.spr.colors),
     'clut_tile.bin': clut(T.CLUT.bg.colors),
     'clut_flash.bin': clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning

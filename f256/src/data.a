@@ -52,6 +52,23 @@ TY.Boss             equ       2
 TY.Coy              equ       3                   the mangy coyote (Main Street)
 TY.SkelW            equ       4                   (a wave's code only: a skeleton that walks in, not rises)
 TY.Rat              equ       5                   the rattler henchman (Ghost Town)
+TY.Ride             equ       6                   a rustler on horseback (the Cattle Drive: ride.a)
+NOb                 equ       20                  the ride's fences and rocks
+NRun                equ       4                   horses and steers running loose
+NStamp              equ       3                   Jack's stampede
+* a runner (ride.a): a horse or steer running loose
+RN.On               equ       0
+RN.K                equ       1                   0 the steer, 1 a horse
+RN.X                equ       2
+RN.Z                equ       4
+RN.VX               equ       6
+RN.Size             equ       8
+* a steer in Jack's stampede
+SM.On               equ       0
+SM.Hit              equ       1                   it's trampled him
+SM.X                equ       2
+SM.Z                equ       4
+SM.Size             equ       6
 
 * a hanging sign (ghost.a): hanging, creaking, falling, down
 SN.St               equ       0
@@ -82,7 +99,8 @@ EB.St               equ       0                   1 = flying
 EB.X                equ       1
 EB.Z                equ       3
 EB.VX               equ       5
-EB.Size             equ       7
+EB.H                equ       7                   its height (12.4): a skeleton's, or a rider's from the saddle
+EB.Size             equ       9
 
 * a particle
 PT.L                equ       0                   passes to live, 0 = free
@@ -302,6 +320,7 @@ dpend               equ       .
 tmrec               rmb       12                  SS.TmSet record (reached by leax tmrec,u only)
 * the stage (stage.a): reached as name,u (the direct page is full)
 stgn                rmb       1                   0 Boot Hill, 1 Main Street
+camsx               rmb       2                   the camera in 1/16 px, this draw pass (Ent)
 stgp                rmb       2                   its record in StgTab
 levw                rmb       2                   its width, px
 cammax              rmb       2                   the camera's right-hand stop (12.4)
@@ -338,6 +357,27 @@ gthit               rmb       1                   the hero's attack that last ki
 gtx                 rmb       2                   the table: x, z (12.4)
 gtz                 rmb       2
 gtvx                rmb       2                   sliding (side-kicked), 0 = standing
+riding              rmb       1                   1 = the Cattle Drive's ride is on (ride.a)
+hmount              rmb       1                   1 = he's in the saddle
+hremount            rmb       1                   (the death scene: back in the saddle after)
+rtread              rmb       1                   1 = the treadmill: the camera still, the trail running under him
+rd                  rmb       2                   how far he's ridden (px)
+rbg                 rmb       2                   the sky layers' extra scroll (the treadmill's distance)
+rspi                rmb       1                   the next rider on the schedule
+rsloop              rmb       1
+obhit               rmb       NOb                 1 = that fence or rock's been hit
+obfst               rmb       1                   the first not yet behind him (ObFirst)
+runr                rmb       NRun*RN.Size        (runr then stmp: cleared together)
+stmp                rmb       NStamp*SM.Size
+lon                 rmb       1                   Jack's lasso flying (jack.a)
+lx                  rmb       2
+lz                  rmb       2
+lvx                 rmb       2
+ld                  rmb       2                   how far it's gone
+jstagn               rmb       1                   staggers running
+jnext               rmb       1                   what he does when he lands (0: he's open)
+jdodge              rmb       1                   1 = this hop is a dodge
+jover               rmb       1                   1 = over your head
 gtrick              rmb       1                   Doc Gila's tricks so far: odd the card trick, even the leap
 frblk               rmb       1                   the frame records' block: frr.bin, then the stage's frr_<s>.bin
 clublk              rmb       1                   the CLUTs' block: sprites, tiles, tiles lightning-lit, all white

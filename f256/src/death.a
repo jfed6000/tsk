@@ -22,6 +22,12 @@ HopT                equ       10                  then onto his head
 * Die - his health's gone (HurtHero): the hat crumbles, he topples.
 *   Exit: carry set if that was the last life (game over)
 Die                 lbsr      Release             (whoever he held goes free)
+                    tst       hmount,u            off the steer (back on after)
+                    beq       ddm0
+                    clr       hmount,u
+                    lda       #1
+                    sta       hremount,u
+ddm0                equ       *
                     lda       #ST.Die
                     lbsr      SetS
                     clr       <hhp
@@ -311,7 +317,12 @@ hdHop               inc       dht,u               half the way to his head a pas
                     cmpa      #HopT
                     lblo      PickAnim
 * he's up
-                    clr       dying,u
+                    tst       hremount,u          (back in the saddle, if the ride's still on)
+                    beq       xup0
+                    clr       hremount,u
+                    lda       riding,u
+                    sta       hmount,u
+xup0                clr       dying,u
                     clr       dhat,u
                     lda       #ST.Idle
                     lbsr      SetS

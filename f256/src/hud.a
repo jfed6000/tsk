@@ -698,6 +698,9 @@ EName               lda       EN.Ty,x
                     decb
                     beq       enm00
                     leay      SGila,pcr
+                    decb
+                    beq       enm00
+                    leay      SJack,pcr
 enm00               cmpa      #TY.Boss
                     beq       enm0
                     cmpa      #TY.Rat
@@ -733,6 +736,9 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     ldb       #RtHp
                     cmpa      #TY.Rat
                     beq       ex1
+                    ldb       #RdHp
+                    cmpa      #TY.Ride
+                    beq       ex1
                     ldb       #BossHp
                     lda       bkind,u
                     beq       ex1
@@ -740,6 +746,9 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     deca
                     beq       ex1
                     ldb       #GilaHp
+                    deca
+                    beq       ex1
+                    ldb       #JackHp
 ex1                 puls      a,pc
 
 SName               fcn       "SHITKICKERS"
@@ -750,6 +759,7 @@ SDillo              fcn       "DILLO"
 STwoBit             fcn       "TWO-BIT"
 SDillon             fcn       "BIG SHELL DILLON"
 SGila               fcn       "DOC GILA"
+SJack               fcn       "JACKRABBIT JACK"
 SnakeNames          fcn       "SIDEWINDER"
                     fcn       "SLIM"
                     fcn       "FANGS"
@@ -1237,6 +1247,9 @@ EHgt                ldb       EN.Ty,x
                     beq       eg9
                     lda       #22                 a rattler
                     cmpb      #TY.Rat
+                    beq       eg9
+                    lda       #66                 a rider
+                    cmpb      #TY.Ride
                     beq       eg9
                     lda       #BossTall
 eg9                 rts

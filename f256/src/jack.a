@@ -1,0 +1,824 @@
+********************************************************************
+* jack.a - Jackrabbit Jack, the rustler: the Cattle Drive's boss
+*   (brawler.js updateJack, jackEscape).  He hops from spot to spot (open
+*   as he lands); up close he turns and mule-kicks; every third move he
+*   spins his lasso and throws it down his lane - caught, you're yanked
+*   to him and kicked (ST.Roped).  A kick at him on his feet he hops clean
+*   over (TOO SLOW!); cornered, or staggered twice running, he hops over
+*   your head to the open side (NOT TODAY!).  STAMPEDE! at half health.
+*   bkind 3; his state numbers line up with Dillon's where boss.a's
+*   shared code tests them (1 approach, 4 recover, 5 stagger, 8 dizzy,
+*   9 KO).
+********************************************************************
+
+JS.Intro            equ       0                   over the fence: "FINDERS KEEPERS, BOOTS!"
+JS.Appr             equ       1
+JS.Crouch           equ       2                   about to hop
+JS.Hop              equ       3                   in the air (not hittable)
+JS.Recov            equ       4
+JS.Stag             equ       5
+JS.Land             equ       6                   landed: open
+JS.Turn             equ       7                   turning his back: the mule kick coming
+JS.Daze             equ       8
+JS.Ko               equ       9
+JS.Kick             equ       10
+JS.Spin             equ       11                  the lasso round his head
+JS.Throw            equ       12
+JS.Reel             equ       13                  you on the end of his rope
+JackHp              equ       46
+HopVH               equ       88                  330 px/s up, 0.8 g down: 0.73 s
+LassoV              equ       75                  280 px/s
+
+StartJack           lbsr      NewSlot
+                    bcs       ksj9
+                    stx       <bslot
+                    lda       #3
+                    sta       bkind,u
+                    lda       #TY.Boss
+                    sta       EN.Ty,x
+                    lda       #ES.BossX
+                    sta       EN.St,x
+                    lda       #JackHp
+                    sta       EN.Hp,x
+                    lda       #1
+                    sta       EN.Fc,x
+                    ldd       <cam
+                    addd      #250
+                    lbsr      To124
+                    std       EN.X,x
+                    ldd       #40*16
+                    std       EN.Z,x
+                    ldd       #60*16              in over the corral fence
+                    std       EN.H,x
+                    ldd       #-27
+                    std       EN.VH,x
+                    clr       <bst
+                    clr       <bn
+                    clr       <bsaid
+                    clr       <bsum
+                    clr       lon,u
+                    clr       jstagn,u
+                    clr       jnext,u
+                    clr       jdodge,u
+                    clr       jover,u
+ksj9                 rts
+
+* JSet - A = his state: its clock from 0; not hittable in the air, talking,
+*   KO'd
+JSet                ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.BossX
+                    cmpa      #JS.Intro
+                    beq       kjst1
+                    cmpa      #JS.Hop
+                    beq       kjst1
+                    cmpa      #JS.Ko
+                    beq       kjst1
+                    ldb       #ES.Boss
+kjst1                stb       EN.St,x
+                    rts
+
+* JackDodge - the start of HitBoss: on his feet (walking, talking), more
+*   often than not he hops clean over the kick.  Exit: carry set if he did
+*   (no damage)
+JackDodge           lda       bkind,u
+                    cmpa      #3
+                    bne       kjd8
+                    lda       <bst
+                    cmpa      #JS.Appr
+                    bne       kjd8
+                    lbsr      Rand
+                    cmpa      #166                65%
+                    bhs       kjd8
+                    lda       #1
+                    sta       jdodge,u
+                    lda       #JS.Crouch
+                    lbsr      JSet
+                    lbsr      EStop
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #66
+                    ldy       #TX.tooslow
+                    lbsr      WordE
+                    orcc      #1
+                    rts
+kjd8                 andcc     #$FE
+                    rts
+
+* JackReact - the end of HitBoss: landing or spinning, he staggers (the
+*   shared code has staggered him from recovering already) - unless he's
+*   cornered or been staggered twice running: then over your head and away
+JackReact           lda       bkind,u
+                    cmpa      #3
+                    bne       kjr9
+                    ldx       <bslot
+                    tst       EN.Hp,x
+                    ble       kjr9
+                    lda       <bst
+                    cmpa      #JS.Land
+                    beq       kjr1
+                    cmpa      #JS.Spin
+                    beq       kjr1
+                    cmpa      #JS.Stag            (just now, from recovering)
+                    bne       kjr9
+kjr1                 lda       jstagn,u             staggered twice running?
+                    cmpa      #2
+                    bhs       JackEscape
+                    ldd       <cam                cornered: within 70 px of an edge
+                    addd      #70
+                    lbsr      To124
+                    cmpd      EN.X,x
+                    bgt       JackEscape
+                    ldd       <cam
+                    addd      #250
+                    lbsr      To124
+                    cmpd      EN.X,x
+                    blt       JackEscape
+                    inc       jstagn,u
+                    clr       lon,u
+                    lda       <bst
+                    cmpa      #JS.Stag
+                    beq       kjr9
+                    lda       #JS.Stag
+                    lbsr      JSet
+                    ldd       #19
+                    lbsr      ByDir
+                    std       EN.VX,x
+kjr9                 rts
+
+* JackEscape - a quick hop clean over your head to the open side; he
+*   lands in his next move
+JackEscape          lda       #1
+                    sta       jover,u
+                    clr       jstagn,u
+                    clr       lon,u
+                    lda       #JS.Crouch
+                    lbsr      JSet
+                    lda       #6
+                    sta       EN.T,x
+                    lbsr      EStop
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #66
+                    ldy       #TX.nottoday
+                    lbra      WordE
+
+********************************************************************
+* JackStep - X = him: one pass
+********************************************************************
+JackStep            stx       <bslot
+                    lbsr      LassoStep
+                    ldx       <bslot
+                    lda       <bst
+                    leay      JsTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+JsTab               fdb       JIntro-JsTab
+                    fdb       JAppr-JsTab
+                    fdb       JCrouch-JsTab
+                    fdb       JHop-JsTab
+                    fdb       JRecov-JsTab
+                    fdb       JStag-JsTab
+                    fdb       JLand-JsTab
+                    fdb       JTurn-JsTab
+                    fdb       JDaze-JsTab
+                    fdb       JKo-JsTab
+                    fdb       JKick-JsTab
+                    fdb       JSpin-JsTab
+                    fdb       JThrow-JsTab
+                    fdb       JReel-JsTab
+
+JIntro              ldd       EN.H,x              in over the fence
+                    beq       kjin2
+                    ldd       EN.VH,x
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    bgt       kjin9
+                    ldd       #0
+                    std       EN.H,x
+                    std       EN.VH,x
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #5
+                    lbsr      Puff
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    ldx       <bslot
+                    clr       EN.T,x
+kjin9                lbra      DMove
+kjin2                lbsr      FaceHero
+                    lbsr      EStop
+                    tst       <bsaid
+                    bne       kjin3
+                    lda       EN.T,x
+                    cmpa      #36
+                    blo       kjin3
+                    inc       <bsaid
+                    lda       #66
+                    ldy       #TX.finders
+                    lbsr      WordE
+                    ldx       <bslot
+kjin3                lda       EN.T,x
+                    cmpa      #156
+                    lbls      DMove
+                    lda       #JS.Appr
+                    lbsr      JSet
+                    lbra      DMove
+
+* the next move: every third the lasso (from a distance: up close he hops
+*   off first), up close the mule kick, else a hop somewhere new
+JAppr               lbsr      FaceHero
+                    lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #42
+                    lbls      DMove
+                    inc       <bn
+                    clr       jstagn,u
+                    clr       <tmpf               close?
+                    ldd       <hx
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #46*16
+                    bhs       kja1
+                    ldd       <hz
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       kja1
+                    inc       <tmpf
+kja1                 lda       <bn
+                    ldb       #3
+                    lbsr      Div
+                    ldb       #3
+                    mul
+                    cmpb      <bn
+                    bne       kja4
+                    tst       <tmpf               the lasso
+                    beq       kja2
+                    lda       #1                  (close: hop off first)
+                    sta       jdodge,u
+                    lda       #JS.Spin
+                    sta       jnext,u
+                    lda       #JS.Crouch
+                    bra       kja5
+kja2                 lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #JS.Spin
+                    bra       kja5
+kja4                 lda       #JS.Turn
+                    tst       <tmpf
+                    bne       kja5
+                    lda       #JS.Crouch
+kja5                 lbsr      JSet
+                    lbra      DMove
+
+* crouched: off he hops - away (a dodge), over your head (an escape, or a
+*   dodge with a wall behind him), or to a spot beside you
+JCrouch             lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #11
+                    lbls      DMove
+                    ldd       #70*16              toward you: his dodge goes against it
+                    tst       EN.Fc,x
+                    beq       kjc1
+                    lbsr      NegD
+kjc1                 std       <tdx
+                    tst       jdodge,u
+                    beq       kjc3
+                    ldd       EN.X,x              a dodge: back 70 - into a wall?
+                    subd      <tdx
+                    lbsr      OnScreen
+                    bcc       kjc2
+                    inc       jover,u
+                    bra       kjc3
+kjc2                 std       <tmp                (where the dodge lands)
+                    ldd       EN.Z,x
+                    std       <tdz
+                    bra       kjc6
+kjc3                 tst       jover,u
+                    beq       kjc4
+                    ldd       <hx                 over your head: 70 past you
+                    addd      <tdx
+                    bra       kjc5
+kjc4                 ldd       #60*16              a spot beside you, either side
+                    std       <tdx
+                    lbsr      Rand
+                    anda      #31
+                    ldb       #16
+                    mul
+                    addd      <tdx
+                    std       <tdx
+                    lbsr      Rand
+                    tsta
+                    bpl       kjc4a
+                    ldd       <tdx
+                    lbsr      NegD
+                    std       <tdx
+kjc4a                ldd       <hx
+                    addd      <tdx
+kjc5                 std       <tmp
+                    lbsr      Rand                his lane: yours, give or take 20
+                    anda      #31
+                    suba      #16
+                    tfr       a,b
+                    sex
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    addd      <hz
+                    bpl       kjc5a
+                    ldd       #0
+kjc5a                cmpd      #ZMax*16
+                    ble       kjc5b
+                    ldd       #ZMax*16
+kjc5b                std       <tdz
+kjc6                 ldd       <tmp                kept on the screen
+                    lbsr      OnScreen
+                    bcc       kjc7
+                    ldd       <cam
+                    addd      #160
+                    lbsr      To124
+                    cmpd      <tmp
+                    blt       kjc6a
+                    ldd       <cam
+                    addd      #30
+                    bra       kjc6b
+kjc6a                ldd       <cam
+                    addd      #290
+kjc6b                lbsr      To124
+                    std       <tmp
+kjc7                 ldd       <tmp                the speed: 36 passes there
+                    subd      EN.X,x
+                    lbsr      Div36
+                    std       EN.VX,x
+                    ldd       <tdz
+                    subd      EN.Z,x
+                    lbsr      Div36
+                    std       EN.VZ,x
+                    ldd       #HopVH
+                    std       EN.VH,x
+                    tst       jover,u             (over your head: straight into a move after)
+                    beq       kjc8
+                    lda       #JS.Appr
+                    sta       jnext,u
+kjc8                 clr       jdodge,u
+                    clr       jover,u
+                    lda       #SF.Jump
+                    lbsr      Sfx
+                    lda       #JS.Hop
+                    lbsr      JSet
+                    lbra      DMove
+
+* Div36 - D (signed) / 36 -> D
+Div36               pshs      a
+                    tsta
+                    bpl       kd36a
+                    lbsr      NegD
+kd36a                pshs      x
+                    ldx       #0
+kd36b                cmpd      #36
+                    blo       kd36c
+                    subd      #36
+                    leax      1,x
+                    bra       kd36b
+kd36c                tfr       x,d
+                    puls      x
+                    tst       ,s+
+                    bpl       kd36d
+                    lbsr      NegD
+kd36d                rts
+
+JHop                ldd       EN.VH,x             0.8 g
+                    subd      #4
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    lda       EN.VX,x             facing where he's going
+                    clrb
+                    tsta
+                    bpl       kjh0
+                    incb
+kjh0                 stb       EN.Fc,x
+                    ldd       EN.H,x
+                    lbgt      DMove
+                    ldd       #0                  down
+                    std       EN.H,x
+                    std       EN.VH,x
+                    lbsr      EStop
+                    lbsr      FaceHero
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #3
+                    lbsr      Puff
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    ldx       <bslot
+                    lda       jnext,u
+                    beq       kjh2
+                    clr       jnext,u
+                    cmpa      #JS.Appr
+                    bne       kjh1
+                    lbsr      JSet                from an escape: straight into a move
+                    lda       #33
+                    sta       EN.T,x
+                    lbra      DMove
+kjh1                 lbsr      JSet
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lbra      DMove
+kjh2                 lda       #JS.Land
+                    lbsr      JSet
+                    lbra      DMove
+
+JLand               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #27
+                    lbls      DMove
+                    lda       #JS.Appr
+                    lbsr      JSet
+                    lbra      DMove
+
+JTurn               lbsr      EStop               his back to you
+                    lbsr      FaceHero
+                    lda       EN.Fc,x
+                    eora      #1
+                    sta       EN.Fc,x
+                    lda       EN.T,x
+                    cmpa      #18
+                    lbls      DMove
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #JS.Kick
+                    lbsr      JSet
+                    clr       <bhit
+                    lbra      DMove
+
+* the mule kick: 3 if you're behind him, close, in his lane
+JKick               lbsr      EStop
+                    tst       <bhit
+                    bne       kjk8
+                    lda       EN.T,x
+                    cmpa      #9
+                    bhs       kjk8
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       kjk8
+                    ldd       <hh
+                    cmpd      #26*16
+                    bge       kjk8
+                    ldd       <hx                 behind him: against the way he faces
+                    subd      EN.X,x
+                    tst       EN.Fc,x
+                    bne       kjk1
+                    lbsr      NegD
+kjk1                 cmpd      #0
+                    ble       kjk8
+                    cmpd      #44*16
+                    bhs       kjk8
+                    inc       <bhit
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+kjk8                 lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #JS.Recov
+                    lbsr      JSet
+                    lbra      DMove
+
+JSpin               lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #36
+                    lbls      DMove
+                    lda       #1                  the lasso flies, down his lane
+                    sta       lon,u
+                    ldd       #16*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       lx,u
+                    ldd       EN.Z,x
+                    std       lz,u
+                    ldd       #LassoV
+                    lbsr      ByFace
+                    std       lvx,u
+                    ldd       #0
+                    std       ld,u
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #JS.Throw
+                    lbsr      JSet
+                    lbra      DMove
+
+JThrow              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #33
+                    lbls      DMove
+                    tst       lon,u
+                    lbne      DMove
+                    lda       #JS.Recov
+                    lbsr      JSet
+                    lbra      DMove
+
+* you, on the end of his rope: pulled in, and kicked
+JReel               lbsr      EStop
+                    lbsr      FaceHero
+                    lda       <hst
+                    cmpa      #ST.Roped
+                    bne       kjre8
+                    ldd       <hx
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #30*16
+                    lbhs      DMove
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    ldx       <bslot
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    tsta
+                    beq       kjre8
+                    ldx       #TX.hogtied
+                    lda       #62
+                    lbsr      WordH
+kjre8                lda       #JS.Recov
+                    lbsr      JSet
+                    lbra      DMove
+
+JRecov              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #42
+                    lbls      DMove
+                    lda       #JS.Appr
+                    lbsr      JSet
+                    lbra      DMove
+
+JStag               ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #18
+                    lbls      DMove
+                    lda       #JS.Appr
+                    lbsr      JSet
+                    lbra      DMove
+
+JDaze               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #120
+                    lbls      DMove
+                    lda       #JS.Appr
+                    lbsr      JSet
+                    lbra      DMove
+
+JKo                 lbra      BKo
+
+* LassoStep - the rope flying down his lane: it catches him (not in the
+*   air, not untouchable, not in the saddle) - ROPED! - or falls at 150 px
+LassoStep           tst       lon,u
+                    lbeq      kls9x
+                    ldd       lvx,u
+                    addd      lx,u
+                    std       lx,u
+                    ldd       ld,u
+                    addd      #LassoV
+                    std       ld,u
+                    lda       <hst
+                    cmpa      #ST.Roped
+                    beq       kls8x
+                    tst       dying,u
+                    bne       kls8x
+                    tst       <hinv
+                    bne       kls8x
+                    tst       hmount,u
+                    bne       kls8x
+                    ldd       <hx
+                    subd      lx,u
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       kls8x
+                    ldd       <hz
+                    subd      lz,u
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       kls8x
+                    ldd       <hh
+                    cmpd      #20*16
+                    bge       kls8x
+                    clr       lon,u               caught
+                    lda       #ST.Roped
+                    lbsr      SetS
+                    ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    ldx       #TX.roped
+                    lda       #62
+                    lbsr      WordH
+                    lda       #JS.Reel
+                    lbra      JSet
+kls8x                ldd       ld,u
+                    cmpd      #150*16
+                    blo       kls9x
+                    clr       lon,u
+kls9x                rts
+
+* JackFrame - X = him -> D = his frame
+JackFrame           lda       <bst
+                    leay      JfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+JfTab               fdb       JfIntro-JfTab
+                    fdb       JfIdle-JfTab
+                    fdb       JfCrouch-JfTab
+                    fdb       JfHop-JfTab
+                    fdb       JfIdle0-JfTab
+                    fdb       JfHurt-JfTab
+                    fdb       JfCrouch-JfTab
+                    fdb       JfCrouch-JfTab
+                    fdb       JfDaze-JfTab
+                    fdb       JfKo-JfTab
+                    fdb       JfKick-JfTab
+                    fdb       JfSpin-JfTab
+                    fdb       JfThrow-JfTab
+                    fdb       JfThrow-JfTab
+JfIntro             ldd       EN.H,x
+                    bne       JfHop
+                    lda       EN.T,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #JK.talk-JK.First
+                    bra       kjfx
+JfIdle              lda       EN.An,x
+                    ldb       #20
+                    lbsr      Div
+                    anda      #1
+                    adda      #JK.idle-JK.First
+                    bra       kjfx
+JfIdle0             lda       #JK.idle-JK.First
+                    bra       kjfx
+JfCrouch            lda       #JK.crouch-JK.First
+                    bra       kjfx
+JfHop               lda       #JK.hop-JK.First
+                    bra       kjfx
+JfHurt              lda       #JK.hurt-JK.First
+                    bra       kjfx
+JfKick              lda       #JK.kick-JK.First
+                    bra       kjfx
+JfThrow             lda       #JK.throw-JK.First
+                    bra       kjfx
+JfSpin              lda       EN.An,x
+                    lsra
+                    lsra
+                    lsra
+                    anda      #1
+                    adda      #JK.spin-JK.First
+                    bra       kjfx
+JfDaze              lda       EN.T,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #JK.daze-JK.First
+                    bra       kjfx
+JfKo                lda       #JK.ko-JK.First
+kjfx                 tst       EN.Fc,x
+                    beq       kjfx1
+                    adda      #JK.Mir
+kjfx1                tfr       a,b
+                    clra
+                    addd      #JK.First
+                    rts
+
+* DrawLasso - the rope out along his lane to its loop: a 24 px length of
+*   rope every 24 px, and the loop
+DrawLasso           tst       lon,u
+                    beq       kdl9x
+                    ldx       <bslot
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       lz,u
+                    std       <ez
+                    ldd       #26*16
+                    std       <eh
+                    ldd       #JK.loop
+                    std       <efrm
+                    ldd       lx,u
+                    std       <ex
+                    lbsr      Ent
+                    ldx       <bslot              the rope: from his hand, toward the loop
+                    ldd       #12*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <tmp
+                    ldd       #28*16
+                    std       <eh
+                    ldd       #JK.rope
+                    std       <efrm
+                    ldd       #24*16
+                    lbsr      ByFace
+                    std       <tdx
+                    lda       #6
+                    sta       <tmpn
+kdl1x                ldd       lx,u                (stop short of the loop)
+                    subd      <tmp
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    blo       kdl9x
+                    ldd       <tmp
+                    tst       <tdx                (facing left: the length ends at x)
+                    bpl       kdl2x
+                    subd      #24*16
+kdl2x                std       <ex
+                    lbsr      Ent
+                    ldd       <tmp
+                    addd      <tdx
+                    std       <tmp
+                    dec       <tmpn
+                    bne       kdl1x
+kdl9x                rts
+
+* BotJack - the autopilot: out of the rope's lane; at the ride, jumping
+*   what's ahead.  Exit: carry clear and B = the input if it's acting
+BotJack             tst       hmount,u            the trail: jump fences, and rocks in the lane
+                    beq       kbj5
+                    tst       riding,u
+                    beq       kbj5
+                    ldd       <hh
+                    bne       kbj9
+                    tst       <bott
+                    bne       kbj9
+                    clr       <tmpi
+kbj1                 ldb       <tmpi
+                    leay      obhit,u
+                    tst       b,y
+                    bne       kbj3
+                    lbsr      ObXZ
+                    sta       <tmpf
+                    ldd       <hx
+                    lbsr      Asr4
+                    std       <tmp
+                    ldd       <tdx                ahead of him, within 46
+                    subd      <tmp
+                    ble       kbj3
+                    cmpd      #46
+                    bhs       kbj3
+                    tst       <tmpf
+                    bne       kbj2
+                    ldd       <hz
+                    subd      <tdz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       kbj3
+kbj2                 lda       #18
+                    sta       <bott
+                    ldb       #IN.Jump
+                    andcc     #$FE
+                    rts
+kbj3                 inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #NOb
+                    blo       kbj1
+                    bra       kbj9
+kbj5                 tst       lon,u               the rope coming: out of its lane
+                    beq       kbj9
+                    ldd       <hz
+                    subd      lz,u
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       kbj9
+                    ldb       #IN.Down
+                    tst       <tdz
+                    bpl       kbj6
+                    ldb       #IN.Up
+kbj6                 andcc     #$FE
+                    rts
+kbj9                 comb
+                    rts

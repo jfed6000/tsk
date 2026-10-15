@@ -26,6 +26,7 @@ ST.GetUp            equ       15                  up again, the hat held high
 ST.Grab             equ       16                  holding an outlaw by the collar (grab.a)
 ST.Knee             equ       17                  X while holding: the knee
 ST.Throw            equ       18                  C or jump while holding: the throw
+ST.Roped            equ       19                  on the end of Jack's lasso: yanked to him (jack.a)
 
 * speeds, 12.4 per pass (browser: px/s at 60 passes)
 WalkX               equ       28                  105 px/s
@@ -229,6 +230,8 @@ hp6                 cmpa      <hst
 
 * what each state does this pass
 hsw                 lda       <hst
+                    cmpa      #ST.Roped
+                    lbeq      sRoped
                     cmpa      #ST.Grab
                     lbeq      sGrab
                     cmpa      #ST.Knee
@@ -356,6 +359,42 @@ sLand               ldd       <hvx                he skids to a stop
                     std       <hvx
                     lbra      hmove
 
+* roped: on the end of Jack's lasso, yanked to him (220 px/s), no say in it
+sRoped              ldx       <bslot
+                    beq       sro9
+                    lda       <bst
+                    cmpa      #JS.Reel
+                    bne       sro9
+                    ldd       #59
+                    pshs      d
+                    ldd       EN.X,x
+                    cmpd      <hx
+                    bge       sro1
+                    ldd       #-59
+                    std       ,s
+sro1                puls      d
+                    std       <hvx
+                    clr       <hface
+                    tsta
+                    bpl       sro2
+                    inc       <hface
+sro2                ldd       EN.Z,x
+                    subd      <hz
+                    std       <tdz
+                    lbsr      AbsD
+                    ldx       #0
+                    cmpd      #2*16
+                    bls       sro3
+                    ldx       #21
+                    tst       <tdz
+                    bpl       sro3
+                    ldx       #-21
+sro3                stx       <hvz
+                    lbra      hmove
+sro9                lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
 * hurt: knocked back, sliding to a stop; if he was in the air he falls
 sHurt               ldd       <hvx
                     lbsr      Decay
@@ -450,8 +489,19 @@ hm1                 cmpd      #ZMax*16
                     ble       hm2
                     ldd       #ZMax*16
 hm2                 std       <hz
-                    ldd       <cam
+                    tst       hmount,u            in the saddle, the camera moving: carried along
+                    beq       hm2a
+                    tst       rtread,u
+                    bne       hm2a
+                    ldd       <hx
+                    addd      #RideV
+                    std       <hx
+hm2a                ldd       <cam
                     addd      #10
+                    tst       hmount,u            (the saddle: 24 px in from the edges)
+                    beq       hm2b
+                    addd      #14
+hm2b
                     lslb
                     rola
                     lslb
@@ -467,7 +517,12 @@ hm2                 std       <hz
                     ldd       <tmp
 hm3                 std       <hx                 and to the level's end, or the screen's
                     ldd       hxmax,u             (the stage's end) while it's locked
-                    tst       <lock
+                    tst       hmount,u
+                    beq       hm3b
+                    ldd       <tmp
+                    addd      #(290-24)*16
+                    bra       hm3a
+hm3b                tst       <lock
                     beq       hm3a
                     ldd       <tmp
                     addd      #(320-20)*16
@@ -503,7 +558,14 @@ hv2                 lbra      PickAnim
 *   first frame (2), count, passes a frame, 1 = loops.  A new descriptor
 *   starts at frame 0; the same one plays on.
 ********************************************************************
-PickAnim            lda       <hst
+PickAnim            tst       hmount,u            in the saddle, standing or walking: the seat
+                    beq       pa00
+                    lda       <hst
+                    cmpa      #ST.Walk
+                    bhi       pa00
+                    leax      AnRide,pcr
+                    lbra      paset
+pa00                lda       <hst
                     cmpa      #ST.Idle
                     bne       pa1
                     leax      AnTurn,pcr          stopping: the 3/4 turn, then idle
@@ -564,7 +626,7 @@ hfr1                rts
 * a state's sound as it starts ($FF = none): idle, walk, jump, flying
 *   kick, stomp, land, snap, side, taunt, hurt, whip, shoot
 SetSfx              fcb       $FF,$FF,SF.Jump,SF.Whoosh,SF.Whoosh,SF.Land,SF.Whoosh,SF.Whoosh,SF.Tip,$FF
-                    fcb       SF.Whoosh,$FF,$FF,$FF,$FF,$FF,$FF,SF.Whoosh,$FF
+                    fcb       SF.Whoosh,$FF,$FF,$FF,$FF,$FF,$FF,SF.Whoosh,$FF,$FF
 
 AnTab               fdb       AnIdle-AnTab
                     fdb       AnRun-AnTab
@@ -585,7 +647,10 @@ AnTab               fdb       AnIdle-AnTab
                     fdb       AnGrab-AnTab
                     fdb       AnSnap-AnTab        (the knee is the snap kick)
                     fdb       AnThrow-AnTab
+                    fdb       AnHurt-AnTab        roped
 
+AnRide              fdb       HR.jump+1           (the jump's tuck: sitting the steer)
+                    fcb       1,255,0
 AnGrab              fdb       HR.grab
                     fcb       1,255,0
 AnThrow             fdb       HR.throw

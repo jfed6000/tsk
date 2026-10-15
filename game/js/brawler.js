@@ -1393,8 +1393,8 @@ T.runBrawler = function (A) {
     for (const r of runners) put(r.img === 'steer' ? RSP.steer[(time * 12 | 0) % 4] : RSP.horse[(time * 12 | 0) % 4], wx(r.x), sy(r.z, 0), CB.OX, CB.OY, depth(r.z), r.face);
     for (const c of stampede) { put(RSP.steer[(time * 12 | 0) % 4], wx(c.x), sy(c.z, 0), CB.OX, CB.OY, depth(c.z), -1); put(PICK.shadow, wx(c.x), sy(c.z, 0), 16, 4, 9); }
     if (boss && boss.lasso) {                         // Jack's rope, out along the lane to its loop
-      const L2 = boss.lasso, hx = boss.x + boss.face * 12, n = Math.floor(Math.abs(L2.x - hx) / 14);
-      for (let i = 0; i < n; i++) put(JACK.rope, wx(hx + boss.face * (i * 14 + (boss.face < 0 ? 14 : 0))), sy(L2.z, 28), 0, 1, depth(L2.z) - 0.003);
+      const L2 = boss.lasso, hx = boss.x + boss.face * 12, n = Math.floor(Math.abs(L2.x - hx) / 24);   // (24-px lengths of rope: few sprites)
+      for (let i = 0; i < n; i++) put(JACK.rope, wx(hx + boss.face * (i * 24 + (boss.face < 0 ? 24 : 0))), sy(L2.z, 28), 0, 1, depth(L2.z) - 0.003);
       put(JACK.loop, wx(L2.x), sy(L2.z, 26), 8, 6, depth(L2.z) - 0.003);
     }
     for (const e of enemies) {

@@ -39,7 +39,7 @@ Files are per stage where they differ: `tiles_bh.bin`/`tiles_ms.bin`, `maps_*`, 
 ## tsk: the game
 
 ```
-make                 # tsk (28.0K of the 40,960-byte budget; data area 4.6K of 7,936) and tskview
+make                 # tsk (32.7K of the 40,960-byte budget; data area 4.9K of 7,936) and tskview
 make install DSK=/absolute/path/to/image.dsk
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
@@ -50,6 +50,7 @@ make mamems          # Main Street (tsk mbg) in MAME
 make mamedillon      # straight to Big Shell Dillon (tsk mkbg) in MAME
 make mamedeath       # the death scene: Dillon against a frail hero (tsk mkf), four deaths and game over
 make mamegila        # straight to Doc Gila (tsk hkg) in MAME
+make mamecattle      # the Cattle Drive: the ride, the corral, Jackrabbit Jack (tsk cbg) in MAME
 make music           # compose, convert and render the music (game/music/*.mid, *.mp3)
 python3 tools/hostrun.py --args bg --passes 5000 --every 100 --watch phase,wavei,score --enemies --slow 80000
 ```
@@ -62,9 +63,10 @@ SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other lett
 | `d` | The scripted demo |
 | `b` | The autopilot plays |
 | `g` | Nothing hurts him |
-| `k` | Start at the stage's boss (Two-Bit; with `m` Big Shell Dillon, with `h` Doc Gila), skipping the opening and the waves |
+| `k` | Start at the stage's boss (Two-Bit; with `m` Big Shell Dillon, with `h` Doc Gila, with `c` Jackrabbit Jack), skipping the opening and the waves |
 | `m` | Start on Main Street |
 | `h` | Start in Ghost Town (haunted) |
+| `c` | Start on the Cattle Drive |
 | `f` | Frail: any hit kills (to see the death scene) |
 
 | Key | Does |

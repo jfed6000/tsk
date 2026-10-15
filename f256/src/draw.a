@@ -21,7 +21,10 @@ CamInit             ldd       #0
 *   easing in by 1/8 of the gap a pass; then the three maps' scroll:
 *   street 1x, hill 1/2, sky 1/4.
 ********************************************************************
-Camera              tst       <lock               locked: it holds
+Camera              tst       riding,u            (the ride sets it: ride.a)
+                    beq       cmr0
+                    rts
+cmr0                tst       <lock               locked: it holds
                     beq       cm0
                     rts
 cm0                 ldd       <hx
@@ -72,6 +75,8 @@ dwm9                rts
 
 DrawIn              lbsr      ShakeXY
                     clr       <dln
+                    lbsr      Cam16               (for Ent)
+                    std       camsx,u
                     lda       <phase
 * the hero: on alternate beats while he's untouchable only his shadow
                     cmpa      #PH.Intro           the opening: rising from the grave
@@ -81,7 +86,10 @@ DrawIn              lbsr      ShakeXY
                     std       <efrm
                     lda       #CTL.Spr
                     bra       dw0
-dwh                 lbsr      HeroFrame
+dwh                 tst       hmount,u            in the saddle: the steer under him (ride.a)
+                    beq       dwh0
+                    lbsr      DrawSteer
+dwh0                lbsr      HeroFrame
                     std       <efrm
                     lda       #CTL.Spr
                     ldb       <hinv
@@ -97,7 +105,11 @@ dw0                 sta       <ectl
                     ldd       <hz
                     std       <ez
                     ldd       <hh
-                    std       <eh
+                    tst       hmount,u            (sitting the saddle: higher, its shadow the steer's)
+                    beq       dwh1
+                    addd      #Saddle*16
+                    clr       <eshk
+dwh1                std       <eh
                     lbsr      Ent
                     lbsr      DrawDHat            the death scene's hat (death.a)
 * the posse, loose skulls, bullets, particles (enemy.a)
@@ -109,6 +121,8 @@ dw0a
                     lbsr      DrawPick
                     lbsr      DrawSigns           Ghost Town's signs and Doc Gila's table (ghost.a)
                     lbsr      DrawTable
+                    lbsr      DrawRide            the Cattle Drive's fences, rocks, runners (ride.a)
+                    lbsr      DrawLasso           Jack's rope (jack.a)
                     lda       sflags,u            Boot Hill: Ringo's grave; Main Street: a tumbleweed
                     bita      #SG.Intro
                     beq       dwg1
@@ -211,9 +225,16 @@ dwx                 rts
 Ent                 lda       <dln
                     cmpa      #NDL
                     bhs       entx
-                    ldd       <ex
-                    lbsr      Asr4
-                    subd      <cam
+                    ldd       <ex                 (the camera first, then to pixels: x past
+                    subd      camsx,u             2047 px wraps; Jack's stampede starts there)
+                    asra                          (Asr4, inline)
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
                     addd      <shx
                     cmpd      #-48
                     blt       entx
@@ -322,12 +343,19 @@ shk9                rts
 
 * MapScrl - the three maps follow the camera, shaken with the sprites.
 *   Exit: carry = error in B
-MapScrl             ldd       <cam
-                    bsr       msh
+MapScrl             ldd       <cam            the street (on the ride's treadmill: its loop, wrapping)
+                    tst       rtread,u
+                    beq       msa
+                    ldd       rd,u
+                    cmpd      #Loop
+                    blo       msa
+                    subd      #Loop
+msa                 bsr       msh
                     ldy       #2
                     lbsr      Scrl
                     bcs       msx
-                    ldd       <cam
+                    ldd       <cam                the hill and sky: plus the ride's treadmill
+                    addd      rbg,u
                     lsra
                     rorb
                     bsr       msh

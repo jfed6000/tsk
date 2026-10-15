@@ -1,0 +1,1019 @@
+********************************************************************
+* ride.a - the Cattle Drive's ride (brawler.js updateRide, the riders).
+*   He rides a longhorn down the trail while the screen scrolls itself, 2
+*   px a pass (120 px/s).  rd is how far he's ridden: the first Tread px the
+*   camera holds still and the street map's first Loop px run under him
+*   (its scroll wraps: ranch.js copies the trail at Loop), then the camera
+*   rolls on to the corral; at RideEnd: WHOA!, and he's on foot.
+*   Rustlers on horseback (TY.Ride) join on a schedule, three at most;
+*   a third carry six-shooters (EN.Am rounds: they hang back and shoot at
+*   saddle height, then ride in with the lasso).  Fences across the trail
+*   and rocks in a lane to jump.  Horses and steers running loose; Jack's
+*   stampede.
+********************************************************************
+
+RideV               equ       32                  2 px a pass
+Tread               equ       1280                the treadmill: the trail's first Loop, twice
+RideEnd             equ       1100                the camera's spot at the gate: WHOA!
+Loop                equ       640
+Saddle              equ       26                  how high he sits on the steer
+RdHp                equ       6
+RdSpd               equ       19                  70 px/s
+
+* RideInit - from StageInit: a ride stage starts him in the saddle
+RideInit            clr       riding,u
+                    clr       hmount,u
+                    clr       hremount,u
+                    clr       rtread,u
+                    clr       lon,u
+                    ldd       #0
+                    std       rd,u
+                    std       rbg,u
+                    leax      runr,u              (and nothing running loose)
+                    ldb       #NRun*RN.Size+NStamp*SM.Size
+qrii1                clr       ,x+
+                    decb
+                    bne       qrii1
+                    ldx       stgp,u
+                    lda       SR.Flags,x
+                    bita      #SG.Ride
+                    beq       qrii9
+                    inc       riding,u
+                    inc       hmount,u
+                    inc       rtread,u
+                    clr       rspi,u
+                    clr       obfst,u
+                    leax      obhit,u
+                    ldb       #NOb
+qrii2                clr       ,x+
+                    decb
+                    bne       qrii2
+qrii9                rts
+
+* RideStep - one pass (from Stage, in play)
+RideStep            tst       riding,u
+                    lbeq      qrs50
+                    tst       dying,u             (the death scene holds the ride)
+                    bne       qrs1
+                    ldd       rd,u
+                    addd      #2
+                    std       rd,u
+qrs1                 ldd       rd,u                the camera: still on the treadmill, then on
+                    clr       rtread,u
+                    cmpd      #Tread
+                    bhs       qrs2
+                    inc       rtread,u
+                    std       rbg,u
+                    ldd       #0
+                    bra       qrs3
+qrs2                 ldd       #Tread
+                    std       rbg,u
+                    ldd       rd,u
+                    subd      #Tread
+                    cmpd      #RideEnd
+                    bls       qrs3
+                    ldd       #RideEnd
+qrs3                 std       <cam
+                    lbsr      To124
+                    std       <camf
+* the riders, on the schedule: three in the saddle at most, one a pass
+                    lda       rspi,u
+                    cmpa      #NRSp
+                    bhs       qrs10
+                    ldb       #4
+                    mul
+                    leay      RSpTab,pcr
+                    leay      d,y
+                    ldd       ,y
+                    cmpd      rd,u
+                    bhi       qrs10
+                    lbsr      CountRiders
+                    cmpa      #3
+                    bhs       qrs10
+                    inc       rspi,u
+                    lda       2,y                 1 = a gunslinger
+                    sta       <tmpf
+                    ldb       3,y                 0 from the right, 1 from the left
+                    lbsr      NewRider
+* the fences and rocks: into them on the ground, mounted, costs 2
+qrs10                lbsr      ObFirst             (the ones behind him: done with)
+                    tst       hmount,u
+                    lbeq      qrs30
+                    tst       dying,u
+                    lbne      qrs30
+                    ldd       <hh
+                    cmpd      #14*16
+                    lbge      qrs30
+                    lda       obfst,u
+                    sta       <tmpi
+                    cmpa      #NOb
+                    lbhs      qrs30
+qrs11                ldb       <tmpi
+                    leay      obhit,u
+                    tst       b,y
+                    bne       qrs19
+                    lbsr      ObXZ                tdx = its x (px), tdz = its z (12.4), A = kind
+                    sta       <tmpf
+                    ldd       <tdx                (past the screen: so are the rest)
+                    subd      <cam
+                    cmpd      #350
+                    lbgt      qrs30
+                    ldd       <hx
+                    lbsr      Asr4
+                    subd      <tdx
+                    lbsr      AbsD
+                    cmpd      #14
+                    bhs       qrs19
+                    tst       <tmpf               a fence: every lane
+                    bne       qrs12
+                    ldd       <hz
+                    subd      <tdz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       qrs19
+qrs12                ldb       <tmpi
+                    leay      obhit,u
+                    inc       b,y
+                    ldd       <tdx
+                    lbsr      To124
+                    std       <sx
+                    tst       <tmpf
+                    beq       qrs13
+                    lda       #SF.Break           the fence in planks
+                    lbsr      Sfx
+                    ldd       <hz
+                    std       <sz
+                    lda       #6
+                    lbsr      Planks
+qrs13                lda       #2
+                    lbsr      HurtHero
+                    tsta
+                    beq       qrs19
+                    ldx       #TX.oof
+                    lda       #70
+                    lbsr      WordH
+qrs19                inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #NOb
+                    lblo      qrs11
+* the corral: WHOA!, and off he gets
+qrs30                ldd       <cam
+                    cmpd      #RideEnd
+                    blo       qrs50
+                    tst       dying,u
+                    bne       qrs50
+                    clr       riding,u
+                    clr       rtread,u
+                    clr       hmount,u
+                    ldd       #0
+                    std       <hh
+                    std       <hvh
+                    lda       #ST.Land
+                    lbsr      SetS
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    ldd       <hx
+                    std       <sx
+                    ldd       <hz
+                    std       <sz
+                    lda       #4
+                    lbsr      Puff
+                    ldx       #TX.whoa
+                    lda       #66
+                    lbsr      WordH
+                    clra                          the steer runs on
+                    ldy       #53                 200 px/s
+                    lbsr      NewRunner
+                    leax      en,u                and the riders make off
+                    lda       #NEn
+                    sta       <tmpn
+qrs31                lda       EN.Ty,x
+                    cmpa      #TY.Ride
+                    bne       qrs32
+                    lda       EN.St,x
+                    beq       qrs32
+                    cmpa      #ES.Ko
+                    beq       qrs32
+                    lda       #ES.Leave
+                    lbsr      SetE
+qrs32                leax      EN.Size,x
+                    dec       <tmpn
+                    bne       qrs31
+* horses and steers running loose; the stampede
+qrs50                leax      runr,u
+                    lda       #NRun
+                    sta       <tmpn
+qrs51                tst       RN.On,x
+                    beq       qrs53
+                    ldd       RN.X,x
+                    addd      RN.VX,x
+                    tst       rtread,u            (on the treadmill the ground goes back)
+                    beq       qrs52
+                    subd      #RideV
+qrs52                std       RN.X,x
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #-80
+                    blt       qrs52a
+                    cmpd      #400
+                    ble       qrs53
+qrs52a               clr       RN.On,x
+qrs53                leax      RN.Size,x
+                    dec       <tmpn
+                    bne       qrs51
+                    leax      stmp,u
+                    lda       #NStamp
+                    sta       rsloop,u
+qrs60                tst       SM.On,x
+                    lbeq      qrs69
+                    ldd       SM.X,x
+                    subd      #69                 260 px/s at you
+                    std       SM.X,x
+                    tst       SM.Hit,x            into him: once
+                    bne       qrs63
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #20*16
+                    bhs       qrs63
+                    ldd       SM.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       qrs63
+                    ldd       <hh
+                    cmpd      #16*16
+                    bge       qrs63
+                    ldd       SM.X,x
+                    std       <sx
+                    pshs      x
+                    lda       #2
+                    lbsr      HurtHero
+                    puls      x
+                    tsta
+                    beq       qrs63
+                    inc       SM.Hit,x
+                    pshs      x
+                    ldx       #TX.trampled
+                    lda       #62
+                    lbsr      WordH
+                    puls      x
+qrs63                pshs      x                   into anyone else
+                    tfr       x,y
+                    leax      en,u
+                    lda       #NEn
+                    sta       <aloop
+qrs64                lda       EN.St,x
+                    lbsr      Hitbl
+                    bcs       qrs65
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    beq       qrs65
+                    ldd       EN.Z,x
+                    subd      SM.Z,y
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       qrs65
+                    ldd       EN.X,x
+                    subd      SM.X,y
+                    lbsr      AbsD
+                    cmpd      #20*16
+                    bhs       qrs65
+                    lda       #1
+                    sta       <hdir
+                    pshs      y
+                    lda       #3
+                    ldb       #1
+                    lbsr      HitE
+                    puls      y
+qrs65                leax      EN.Size,x
+                    dec       <aloop
+                    bne       qrs64
+                    puls      x
+                    lbsr      Cam16               gone off the left
+                    pshs      d
+                    ldd       SM.X,x
+                    subd      ,s++
+                    cmpd      #-80*16
+                    bge       qrs69
+                    clr       SM.On,x
+qrs69                leax      SM.Size,x
+                    dec       rsloop,u
+                    lbne      qrs60
+                    rts
+
+* CountRiders - A = riders in the saddle
+CountRiders         clra
+                    leax      en,u
+                    ldb       #NEn
+qcr1                 pshs      a
+                    lda       EN.Ty,x
+                    cmpa      #TY.Ride
+                    puls      a
+                    bne       qcr2
+                    tst       EN.St,x
+                    beq       qcr2
+                    inca
+qcr2                 leax      EN.Size,x
+                    decb
+                    bne       qcr1
+                    rts
+
+* ObXZ - B = an obstacle: tdx = its x on the trail now (px), tdz = its z
+*   (12.4), A = its kind (0 a rock, 1 a fence)
+ObXZ                pshs      y
+                    lda       #4
+                    mul
+                    leay      ObTab,pcr
+                    leay      d,y
+                    ldd       rd,u                x = d - (rd - cam)
+                    subd      <cam
+                    pshs      d
+                    ldd       1,y
+                    subd      ,s++
+                    std       <tdx
+                    lda       3,y
+                    ldb       #16
+                    mul
+                    std       <tdz
+                    lda       ,y
+                    puls      y,pc
+
+* ObFirst - past the obstacles gone off the left (40 px): ObTab's in trail order
+ObFirst             ldb       obfst,u
+                    cmpb      #NOb
+                    bhs       qobf9
+                    lbsr      ObXZ
+                    ldd       <tdx
+                    subd      <cam
+                    cmpd      #-40
+                    bge       qobf9
+                    inc       obfst,u
+                    bra       ObFirst
+qobf9                rts
+
+* NewRider - B = 0 from the right, 1 from the left; tmpf = 1 a gunslinger
+NewRider            lda       #TY.Ride
+                    sta       <tmpk
+                    lda       <tmpf
+                    pshs      a
+                    lda       #RdHp
+                    sta       <tmpf
+                    lbsr      NewWalk
+                    puls      a
+                    bcs       qnrd9
+                    clr       EN.Am,x             six rounds, or none (the lasso)
+                    tsta
+                    beq       qnrd1
+                    lda       #6
+                    sta       EN.Am,x
+qnrd1                lda       #8                  one of the gang's names
+                    lbsr      RandN
+                    sta       EN.Nm,x
+qnrd9                rts
+
+* NewRunner - A = 0 the steer, 1 a horse; Y = its speed (12.4): running
+*   loose from where he (the steer) or X (a horse's rider) is
+NewRunner           pshs      x
+                    leax      runr,u
+                    ldb       #NRun
+qnru1                tst       RN.On,x
+                    beq       qnru2
+                    leax      RN.Size,x
+                    decb
+                    bne       qnru1
+                    puls      x,pc
+qnru2                sta       RN.K,x
+                    inc       RN.On,x
+                    sty       RN.VX,x
+                    ldd       <sx
+                    std       RN.X,x
+                    ldd       <sz
+                    std       RN.Z,x
+                    puls      x,pc
+
+* Unhorse - X = a rider knocked down or out: on foot now (a coyote), and
+*   the horse bolts
+Unhorse             lda       #TY.Coy
+                    sta       EN.Ty,x
+                    ldd       EN.H,x
+                    cmpd      #24*16
+                    bge       quh1
+                    ldd       #24*16
+                    std       EN.H,x
+quh1                 ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #1
+                    ldy       #RideV+45
+                    bra       NewRunner
+
+* StartStampede - Jack's half health: three steers across the corral
+StartStampede       leax      stmp,u
+                    lda       #NStamp
+                    sta       <tmpn
+                    lbsr      Cam16               (380 px on: past 2047 px, so it wraps;
+                    addd      #380*16             only differences and Ent see it)
+                    std       <tmp
+                    ldd       #10*16
+                    std       <tdz
+qsst1                inc       SM.On,x
+                    clr       SM.Hit,x
+                    ldd       <tmp
+                    std       SM.X,x
+                    addd      #90*16
+                    std       <tmp
+                    ldd       <tdz
+                    std       SM.Z,x
+                    addd      #30*16
+                    std       <tdz
+                    leax      SM.Size,x
+                    dec       <tmpn
+                    bne       qsst1
+                    lda       #12
+                    lbra      Shk
+
+* Cam16 - D = the camera in 1/16 px
+Cam16               ldd       <cam
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    rts
+
+* Planks - A = how many: wood flying from sx, sz
+Planks              sta       <kcnt
+qpk1                 lda       #14
+                    lbsr      RandN
+                    adda      #8
+                    ldb       #16
+                    mul
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       qpk2
+                    lda       #FX.chunk.N
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #FX.chunk
+                    std       PT.F,y
+                    lda       #60
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #40
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #36
+                    lbsr      RandN
+                    adda      #27
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+qpk2                 dec       <kcnt
+                    bne       qpk1
+                    rts
+
+* RideCarry - X = an enemy, from Enemies: riders keep up at the gallop when
+*   the camera moves; on foot on the treadmill, the trail carries them
+*   back; left behind off the left, gone.  Exit: carry set if it's gone
+RideCarry           tst       riding,u
+                    beq       qrc8
+                    tst       dying,u
+                    bne       qrc8
+                    lda       EN.St,x
+                    cmpa      #ES.Ko
+                    beq       qrc8
+                    lda       EN.Ty,x
+                    cmpa      #TY.Ride
+                    bne       qrc2
+                    tst       rtread,u
+                    bne       qrc5
+                    ldd       EN.X,x
+                    addd      #RideV
+                    std       EN.X,x
+                    bra       qrc5
+qrc2                 tst       rtread,u
+                    beq       qrc5
+                    ldd       EN.X,x
+                    subd      #RideV
+                    std       EN.X,x
+qrc5                 ldd       EN.X,x              left behind?
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #-70
+                    bge       qrc8
+                    clr       EN.St,x
+                    orcc      #1
+                    rts
+qrc8                 andcc     #$FE
+                    rts
+
+* ---------------------------------------------------------------- a rider
+* RAppr - X = a rider: to its spot beside you (44 px; a gunslinger with
+*   rounds 130 px off, and it shoots); then the lasso, or the gun
+RAppr               ldy       #44*16
+                    tst       EN.Am,x
+                    beq       qra0
+                    ldy       #130*16
+qra0                 tfr       y,d
+                    pshs      d
+                    ldd       EN.X,x
+                    cmpd      <hx
+                    bgt       qra2
+                    blt       qra1
+                    tst       EN.Sd,x
+                    bpl       qra2
+qra1                 puls      d
+                    lbsr      NegD
+                    bra       qra3
+qra2                 puls      d
+qra3                 addd      <hx
+                    subd      EN.X,x
+                    std       <tdx
+                    ldd       #RdSpd
+                    std       <tcap
+                    ldd       <tdx
+                    lbsr      Toward
+                    std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #SkSpdZ
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+                    lbsr      FaceHero
+                    tst       <phase
+                    lbne      EnMove
+                    tst       dying,u
+                    lbne      EnMove
+                    tst       EN.Cd,x
+                    lbne      EnMove
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #5*16
+                    lbhs      EnMove
+                    ldd       <tdx
+                    lbsr      AbsD
+                    tst       EN.Am,x             the gun: within 40 of its spot
+                    beq       qra5
+                    cmpd      #40*16
+                    lbhs      EnMove
+                    lda       #SF.Shell           the hammer's cocked
+                    lbsr      Sfx
+                    lda       #ES.Aim
+                    lbsr      SetE
+                    lbsr      EStop
+                    lbra      EnMove
+qra5                 cmpd      #8*16               the lasso: at its spot, two at most at you
+                    lbhs      EnMove
+                    lda       <attackers
+                    cmpa      #2
+                    lbhs      EnMove
+                    clr       EN.Sk,x             (its swing not landed yet)
+                    lda       #ES.Wind
+                    lbsr      SetE
+                    lbsr      EStop
+                    lbra      EnMove
+
+* RLasso - X = a rider swinging: 2 to him if he's in front, within 58 px,
+*   in its lane and low enough (in the saddle too)
+RLasso              lbsr      EStop
+                    tst       EN.Sk,x
+                    bne       qrl9
+                    lda       EN.T,x
+                    cmpa      #CyHitT
+                    bhs       qrl9
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       qrl9
+                    ldd       <hh
+                    cmpd      #34*16
+                    bge       qrl9
+                    ldd       <hx
+                    subd      EN.X,x
+                    tst       EN.Fc,x
+                    beq       qrl1
+                    lbsr      NegD
+qrl1                 cmpd      #0
+                    ble       qrl9
+                    cmpd      #58*16
+                    bhs       qrl9
+                    inc       EN.Sk,x
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #2
+                    pshs      x
+                    lbsr      HurtHero
+                    puls      x
+qrl9                 lda       EN.T,x
+                    cmpa      #CyStrikeT
+                    lbls      EnMove
+                    lda       #ES.Recov
+                    lbsr      SetE
+                    lbra      EnMove
+
+* RAim - X = a gunslinger aiming: the glint, then the shot from the saddle
+RAim                lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #15
+                    bne       qrai1
+                    ldd       #20*16              the glint at the muzzle
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       #56*16
+                    std       <sh
+                    pshs      x
+                    clra
+                    lbsr      Spark
+                    puls      x
+qrai1                lda       EN.T,x
+                    cmpa      #AimT
+                    lbls      EnMove
+                    lda       #ES.Shoot
+                    lbsr      SetE
+                    dec       EN.Am,x
+                    lbsr      Fire
+                    bcs       qrai2
+                    ldd       #54*16              (from the saddle)
+                    std       EB.H,y
+qrai2                lbra      EnMove
+
+* RShoot - X = a gunslinger after a shot: out of rounds, in with the lasso
+RShoot              lda       EN.T,x
+                    cmpa      #ShootT
+                    lbls      EnMove
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #60
+                    lbsr      RandN
+                    adda      #48
+                    sta       EN.Cd,x
+                    lbra      EnMove
+
+* ELeave - X = a rider making off at the ride's end: off the right, gone
+ELeave              ldd       #64                 240 px/s
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    ldd       EN.X,x
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #400
+                    lblt      EnMove
+                    clr       EN.St,x
+                    rts
+
+* ---------------------------------------------------------------- drawing
+* DrawRider - X = a rider: its horse, and the outlaw in the saddle
+DrawRider           pshs      x
+                    lda       EN.An,x             the horse at the gallop
+                    lsra
+                    lsra
+                    lsra
+                    anda      #3
+                    adda      #RD.horse-RD.First
+                    tst       EN.Fc,x
+                    beq       qdr1
+                    adda      #RD.Mir
+qdr1                 tfr       a,b
+                    clra
+                    addd      #RD.First
+                    std       <efrm
+                    lda       #CTL.Spr
+                    tst       EN.Fl,x
+                    beq       qdr2
+                    lda       #CTL.Fls
+qdr2                 sta       <ectl
+                    sta       <tmpk
+                    lda       #1
+                    sta       <eshk
+                    sta       <ekey
+                    ldd       EN.X,x
+                    std       <ex
+                    ldd       EN.Z,x
+                    std       <ez
+                    ldd       EN.H,x
+                    std       <eh
+                    lbsr      Ent
+                    ldx       ,s                  the outlaw: by what he's doing
+                    ldb       #CY.idle-CY.First
+                    lda       EN.St,x
+                    cmpa      #ES.Wind
+                    bne       qdr3
+                    ldb       #CY.windup-CY.First
+qdr3                 cmpa      #ES.Strike
+                    bne       qdr4
+                    ldb       #CY.swing-CY.First
+qdr4                 cmpa      #ES.Stag
+                    bne       qdr5
+                    ldb       #CY.hurt-CY.First
+qdr5                 cmpa      #ES.Aim
+                    bne       qdr6
+                    ldb       #CY.aim-CY.First
+qdr6                 cmpa      #ES.Shoot
+                    bne       qdr7
+                    ldb       #CY.aim-CY.First
+                    lda       EN.T,x
+                    cmpa      #6
+                    bhs       qdr7
+                    ldb       #CY.shoot-CY.First
+qdr7                 tst       EN.Fc,x
+                    beq       qdr8
+                    addb      #CY.Mir
+qdr8                 clra
+                    addd      #CY.First
+                    std       <efrm
+                    lda       <tmpk
+                    sta       <ectl
+                    clr       <eshk
+                    ldd       EN.X,x
+                    std       <ex
+                    ldd       EN.Z,x
+                    std       <ez
+                    ldd       EN.H,x
+                    addd      #24*16
+                    std       <eh
+                    lbsr      Ent
+                    puls      x,pc
+
+* DrawRide - the fences and rocks, the runners, the stampede
+DrawRide            lda       stgn,u
+                    cmpa      #3
+                    lbne      qdd9
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       obfst,u             (ObTab's in trail order)
+                    sta       <tmpi
+                    cmpa      #NOb
+                    lbhs      qdd9a
+qdd1                 ldb       <tmpi
+                    lbsr      ObXZ                tdx, tdz, A = kind
+                    sta       <tmpf
+                    ldd       <tdx                on the screen?
+                    subd      <cam
+                    cmpd      #-30
+                    lblt      qdd8
+                    cmpd      #350
+                    lbgt      qdd9a               (and so are the rest)
+                    tst       <tmpf
+                    bne       qdd3
+                    ldd       #RO.rock            a rock in its lane
+                    std       <efrm
+                    lda       #1
+                    sta       <ekey
+                    clr       <eshk
+                    ldd       <tdx
+                    lbsr      To124
+                    std       <ex
+                    ldd       <tdz
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    lbra      qdd8
+qdd3                 ldb       <tmpi               a fence across the trail (until it's broken)
+                    leay      obhit,u
+                    tst       b,y
+                    lbne      qdd8
+                    ldd       #RO.fence
+                    std       <efrm
+                    lda       #1
+                    sta       <ekey
+                    clr       <eshk
+                    ldd       #6*16
+                    std       <tdz
+qdd4                 ldd       <tdz                four posts down the trail, leaning with the depth:
+                    std       <ez                 x + (z - 40) / 4
+                    lbsr      Asr4
+                    subd      #40
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    addd      <tdx
+                    lbsr      To124
+                    std       <ex
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    ldd       <tdz
+                    addd      #24*16
+                    std       <tdz
+                    cmpd      #80*16
+                    blo       qdd4
+qdd8                 inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #NOb
+                    lblo      qdd1
+* the runners: a steer or a horse at the gallop
+qdd9a                leax      runr,u
+                    lda       #NRun
+                    sta       <tmpn
+qdd10                tst       RN.On,x
+                    beq       qdd12
+                    pshs      x
+                    lda       <phaset+1
+                    lsra
+                    lsra
+                    anda      #3
+                    ldb       RN.K,x
+                    beq       qdd11
+                    adda      #RD.horse-RD.steer
+qdd11                tfr       a,b
+                    clra
+                    addd      #RD.steer
+                    std       <efrm
+                    lda       #1
+                    sta       <eshk
+                    sta       <ekey
+                    ldd       RN.X,x
+                    std       <ex
+                    ldd       RN.Z,x
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+qdd12                leax      RN.Size,x
+                    dec       <tmpn
+                    bne       qdd10
+* the stampede: steers charging at you (mirrored: facing left)
+                    leax      stmp,u
+                    lda       #NStamp
+                    sta       <tmpn
+qdd20                tst       SM.On,x
+                    beq       qdd22
+                    pshs      x
+                    lda       <phaset+1
+                    lsra
+                    lsra
+                    anda      #3
+                    adda      #RD.steer-RD.First+RD.Mir
+                    tfr       a,b
+                    clra
+                    addd      #RD.First
+                    std       <efrm
+                    lda       #1
+                    sta       <eshk
+                    sta       <ekey
+                    ldd       SM.X,x
+                    std       <ex
+                    ldd       SM.Z,x
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+qdd22                leax      SM.Size,x
+                    dec       <tmpn
+                    bne       qdd20
+qdd9                 rts
+
+* DrawSteer - he's in the saddle: the steer under him (from Draw, before him)
+DrawSteer           ldd       #RD.steerj          in the air: the leap
+                    ldx       <hh
+                    bne       qdst1
+                    lda       <phaset+1           else the gallop
+                    lsra
+                    lsra
+                    anda      #3
+                    tfr       a,b
+                    clra
+                    addd      #RD.steer
+qdst1                tst       <hface
+                    beq       qdst2
+                    addd      #RD.Mir
+qdst2                std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #1
+                    sta       <eshk
+                    sta       <ekey
+                    ldd       <hx
+                    std       <ex
+                    ldd       <hz
+                    std       <ez
+                    ldd       <hh
+                    std       <eh
+                    lbra      Ent
+
+* the riders' schedule: ride distance (px), 1 = a gunslinger, 1 = from
+*   the left (brawler.js STAGES.cattledrive.ride.spawns)
+RSpTab              fdb       40
+                    fcb       0,1
+                    fdb       150
+                    fcb       0,0
+                    fdb       300
+                    fcb       1,1
+                    fdb       380
+                    fcb       0,0
+                    fdb       520
+                    fcb       0,1
+                    fdb       600
+                    fcb       1,0
+                    fdb       690
+                    fcb       0,1
+                    fdb       800
+                    fcb       1,1
+                    fdb       900
+                    fcb       0,0
+                    fdb       1020
+                    fcb       0,1
+                    fdb       1150
+                    fcb       1,1
+                    fdb       1260
+                    fcb       0,0
+                    fdb       1400
+                    fcb       1,1
+                    fdb       1480
+                    fcb       0,0
+                    fdb       1600
+                    fcb       0,1
+                    fdb       1700
+                    fcb       1,0
+                    fdb       1820
+                    fcb       0,1
+                    fdb       1900
+                    fcb       1,1
+                    fdb       2000
+                    fcb       0,0
+                    fdb       2120
+                    fcb       1,1
+                    fdb       2200
+                    fcb       0,0
+NRSp                equ       21
+
+* the fences and rocks: kind (0 a rock, 1 a fence), ride distance (px), z
+*   (brawler.js STAGES.cattledrive.obstacles)
+ObTab               fcb       0
+                    fdb       380
+                    fcb       20
+                    fcb       0
+                    fdb       470
+                    fcb       62
+                    fcb       1
+                    fdb       560
+                    fcb       40
+                    fcb       0
+                    fdb       700
+                    fcb       40
+                    fcb       0
+                    fdb       790
+                    fcb       14
+                    fcb       1
+                    fdb       900
+                    fcb       40
+                    fcb       0
+                    fdb       1000
+                    fcb       70
+                    fcb       0
+                    fdb       1100
+                    fcb       30
+                    fcb       1
+                    fdb       1230
+                    fcb       40
+                    fcb       0
+                    fdb       1340
+                    fcb       50
+                    fcb       0
+                    fdb       1420
+                    fcb       12
+                    fcb       0
+                    fdb       1520
+                    fcb       66
+                    fcb       1
+                    fdb       1650
+                    fcb       40
+                    fcb       0
+                    fdb       1760
+                    fcb       36
+                    fcb       0
+                    fdb       1840
+                    fcb       70
+                    fcb       1
+                    fdb       1960
+                    fcb       40
+                    fcb       0
+                    fdb       2080
+                    fcb       24
+                    fcb       0
+                    fdb       2180
+                    fcb       58
+                    fcb       1
+                    fdb       2280
+                    fcb       40
+                    fcb       0
+                    fdb       2340
+                    fcb       40

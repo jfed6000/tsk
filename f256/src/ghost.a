@@ -1007,6 +1007,8 @@ gfl5x                lda       #2                  (2: a card, not a bullet)
                     ldd       #CardV
                     lbsr      ByFace
                     std       EB.VX,y
+                    ldd       #BulH*16
+                    std       EB.H,y
 gfl6x                ldd       <tdz
                     addd      #16*16
                     std       <tdz
