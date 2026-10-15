@@ -262,7 +262,7 @@ One program module, **`tsk`**, assembled from:
       cells (`SPR.Ovl`).
     - **Cost:** the worst pass in the ride is about 86K cycles (three riders, fence planks, a new name in the HUD),
       98K with a death mid-ride; Ghost Town → the Cattle Drive → Jack runs clean (`dlcheck.py` on every stage).
-12. ✓ **Stage modules** *(2026-10-15, branch `stage-modules`: `tsk` 25.1K of 32,768; `tskms` 1.4K, `tskgt` 3.0K,
+12. ✓ **Stage modules** *(2026-10-15, on the K2 and merged: `tsk` 25.1K of 32,768; `tskms` 1.4K, `tskgt` 3.0K,
     `tskcd` 4.2K, each of 8,192)*: a stage's own code is a module of its own, so the core holds one stage's at a time
     and every new stage gets a whole 8K.
     - **The slots:** of the process's eight 8K blocks, data 1, the music window 1, the service window 1, the stage
