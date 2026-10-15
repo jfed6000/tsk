@@ -1067,7 +1067,7 @@ hie1                lbsr      Sfx
                     bsr       NewSkull
                     ldd       #60
                     lbsr      ScoreAt
-                    lda       #58
+                    lda       #70                 above its points (head + 12)
                     ldy       #TX.headsup
                     lbsr      WordE
                     lda       #4

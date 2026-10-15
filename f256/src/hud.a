@@ -1083,9 +1083,8 @@ ScoreAt             pshs      d,x
 
 * KoWord - X = an enemy KO'd: a word over it (a bone word for a
 *   skeleton).  X is kept.
-KoWord              pshs      x
-                    lbsr      EHgt
-                    adda      #16
+KoWord              pshs      x                   at head height: its points sit just above it
+                    lbsr      EHgt                (ScoreAt: head + 12), clear of it
                     lbsr      PopPlace
                     ldx       ,s
                     tst       EN.Ty,x

@@ -245,7 +245,7 @@ T.runBrawler = function (A) {
       e.skull = false; e.state = 'headless'; e.t = 0; e.vx = dir * 40;
       skulls.push({ x: e.x, z: e.z, h: 44, vx: dir * 110, vh: 200, state: 'fly', owner: e, anim: 0 });
       sfx('hit'); hitstop = 0.07; shake = Math.max(shake, 3);
-      popup(e.x, FLOOR + e.z - 58, 'HEADS UP!', '#ffd34a', 1);
+      popup(e.x, FLOOR + e.z - 70, 'HEADS UP!', '#ffd34a', 1);
       addScore(60, e.x, FLOOR + e.z - 46);
       return;
     }
@@ -264,10 +264,10 @@ T.runBrawler = function (A) {
     const y = FLOOR + e.z - eHeight(e);
     addScore({ coyote: 300, dillo: 150, skel: 350 }[e.type], e.x, y);
     if (e.type === 'skel') {
-      shatter(e); popup(e.x, y - 16, BONE_WORDS[(Math.random() * BONE_WORDS.length) | 0]);
+      shatter(e); popup(e.x, y, BONE_WORDS[(Math.random() * BONE_WORDS.length) | 0]);
       if (Math.random() < 0.35) items.push({ type: 'gun', x: e.x, z: e.z, h: 20, vh: 140, ammo: 2 + ((Math.random() * 5) | 0) });
       for (const s of skulls) if (s.owner === e) s.owner = null;
-    } else popup(e.x, y - 16, KO_WORDS[(Math.random() * KO_WORDS.length) | 0]);
+    } else popup(e.x, y, KO_WORDS[(Math.random() * KO_WORDS.length) | 0]);
     if (player.held === e) player.held = null;
   }
 
