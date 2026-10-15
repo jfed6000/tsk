@@ -12,6 +12,8 @@ Channels 13-15 are left free for the sound effects (snd.a), and the drum channel
 
 Songs:
     title     "Shitkicker Shuffle": a fast, dirty Texas boogie in E for the title screen (loops)
+    boogie    "Graveyard Boogie": a candidate: Bo Diddley toms into a one-chord E boogie with a slide (after
+              Thorogood and ZZ Top, the user's steer) (loops)
     boothill  "Boot Hill": a slow minor blues at midnight, tremolo guitar and a lonely whistle (loops)
     clear     a stage-clear tag (once)
     over      game over: a dying blues turnaround (once)
@@ -53,7 +55,7 @@ class Song:
         whole, frac = divmod(beat, 1.0)
         if abs(frac - 0.5) < 1e-6 and self.swing:
             frac = 0.5 + self.swing * (1 / 6)          # swing 1.0 = triplet feel (2/3 : 1/3)
-        return int(round((whole + frac) * TPB))
+        return max(0, int(round((whole + frac) * TPB)))     # (a bend just before beat 0 lands on 0)
 
     def note(self, ch, beat, pitch, length, vel=96):
         if isinstance(pitch, str):
@@ -74,6 +76,25 @@ class Song:
 
     def cc(self, ch, beat, ctl, val):
         self.ev.append((self.t(beat), 2, bytes([0xB0 | ch, ctl, val])))
+
+    def bend_range(self, ch, semis, beat=0):
+        """RPN 0: the pitch-bend range, so a bend can slide a whole interval"""
+        for ctl, val in ((101, 0), (100, 0), (6, semis), (38, 0), (101, 127), (100, 127)):
+            self.cc(ch, beat, ctl, val)
+
+    def bend(self, ch, beat, value):
+        """value -1.0 .. 1.0 of the bend range"""
+        v = max(0, min(16383, int(8192 + value * 8191)))
+        self.ev.append((self.t(beat), 2, bytes([0xE0 | ch, v & 0x7F, v >> 7])))
+
+    def slide(self, ch, beat, frm, to, length, vel, span=12, steps=4, slide_len=0.25):
+        """A bottleneck slide: the note sounds at frm and bends to to over slide_len beats (span = the bend range)"""
+        f, t_ = (n(frm) if isinstance(frm, str) else frm), (n(to) if isinstance(to, str) else to)
+        self.bend(ch, beat - 0.01, 0)
+        self.note(ch, beat, f, length, vel)
+        for k in range(1, steps + 1):
+            self.bend(ch, beat + slide_len * k / steps, (t_ - f) * k / steps / span)
+        self.bend(ch, beat + length, 0)
 
     def drum(self, beat, note, vel=100):
         self.note(9, beat, note, 0.25, vel)
@@ -113,7 +134,7 @@ def vlq(v):
 
 # ---------------------------------------------------------------------------------------------- the title
 def title():
-    """Shitkicker Shuffle: E boogie, 168 bpm, hard swing. Intro hits, then the 12-bar twice: the riff,
+    """Shitkicker Shuffle (the title theme): E boogie, 168 bpm, hard swing. Intro hits, then the 12-bar twice: the riff,
     then the harmonica wails over it. Loops to the 12-bar."""
     s = Song(168, swing=1.0)
     s.prog(0, OVERDRIVE, vol=92, pan=40)          # the boogie riff
@@ -216,6 +237,109 @@ def title():
     return s, 2 * 4, 26 * 4                       # loop from bar 2 (after the intro), end after bar 25
 
 
+# ---------------------------------------------------------------------------------------------- the title
+def boogie():
+    """Graveyard Boogie (a candidate title theme): the title theme, after the user's "George Thorogood ... Who Do You Love, One Bourbon One
+    Scotch One Beer ... a little ZZ Top and blues". An original in that style: a Bo Diddley beat on the toms to
+    open, then a crunchy one-chord boogie in E with a bottleneck slide over it, a break up to A, and back.
+    150 bpm, straight eighths with a push."""
+    s = Song(150, swing=0.35)
+    s.prog(0, OVERDRIVE, vol=100, pan=44)          # the slide
+    s.prog(1, DISTORTION, vol=84, pan=84)          # the boogie chug
+    s.prog(2, FINGER_BASS, vol=112)
+    s.cc(9, 0, 7, 112)
+    s.bend_range(0, 12)
+
+    bd = [0, 0.75, 1.5, 2.5, 3]                    # the Bo Diddley beat: shave-and-a-haircut, over a bar
+
+    # intro, 4 bars: the toms and maracas carry the beat; the slide answers it
+    for bar in range(4):
+        base = bar * 4
+        for i, b in enumerate(bd):
+            s.drum(base + b, TOM_LO if i % 2 == 0 else TOM_MID, 112 if i == 0 else 96)
+        for i in range(8):
+            s.drum(base + i * 0.5, 70, 80 if i % 2 == 0 else 56)          # maracas
+        s.drum(base, KICK, 110)
+        if bar % 2 == 0:
+            s.slide(0, base, 'D3', 'E3', 1.2, 118)
+            s.chord(1, base + 0.75, ['E2', 'B2', 'E3'], 0.4, 100)
+            s.chord(1, base + 1.5, ['E2', 'B2', 'E3'], 0.4, 104)
+        else:
+            s.slide(0, base + 1.5, 'A3', 'B3', 0.8, 112)
+            s.note(0, base + 2.5, 'G3', 0.4, 104)
+            s.note(0, base + 3, 'E3', 0.9, 110)
+    s.drum(15, SNARE, 100); s.drum(15.5, SNARE, 110)
+
+    def chug(bar0, root, n_bars, accents=True):
+        """The one-chord boogie: palm-muted root and fifth on the eighths, the open octave pushed on the and of 2"""
+        r = n(root)
+        for k in range(n_bars):
+            base = (bar0 + k) * 4
+            for i in range(8):
+                hit = [r, r + 7] if i not in (3,) else [r + 12, r + 7]
+                s.chord(1, base + i * 0.5, hit, 0.32, (110 if i % 2 == 0 else 86) if accents else 80)
+            s.note(2, base, r - 12, 0.9, 116)
+            s.note(2, base + 1, r - 12, 0.4, 100)
+            s.note(2, base + 1.5, r - 9, 0.4, 96)     # the walk up: root, b3, 3
+            s.note(2, base + 2, r - 8, 0.9, 108)
+            s.note(2, base + 3, r - 12, 0.9, 104)
+
+    def beat(bar0, n_bars, crash=True):
+        for k in range(n_bars):
+            base = (bar0 + k) * 4
+            for i in range(8):
+                s.drum(base + i * 0.5, HAT_C if i % 2 else HAT_O if i == 7 else HAT_C, 90 if i % 2 == 0 else 70)
+            s.drum(base, KICK, 120); s.drum(base + 1.5, KICK, 96); s.drum(base + 2, KICK, 116)
+            s.drum(base + 1, SNARE, 118); s.drum(base + 3, SNARE, 122)
+        if crash:
+            s.drum(bar0 * 4, CRASH, 116)
+
+    # A: 8 bars of E, the slide talking over it
+    chug(4, 'E2', 8)
+    beat(4, 8)
+    licks = [  # (beat from bar 4, from, to, length, velocity): slides; plain notes have from == to
+        (0, 'B3', 'D4', 1, 118), (1.5, 'E4', 'E4', 0.5, 110), (2, 'D4', 'E4', 1.5, 120),
+        (8, 'G4', 'A4', 0.75, 116), (9, 'G4', 'G4', 0.5, 108), (9.5, 'E4', 'E4', 0.5, 104), (10, 'D4', 'E4', 2, 120),
+        (16, 'B3', 'D4', 1, 118), (17.5, 'E4', 'E4', 0.5, 110), (18, 'G4', 'G4', 0.5, 112), (18.5, 'A4', 'B4', 1.5, 124),
+        (24, 'E4', 'E4', 0.5, 108), (24.5, 'D4', 'D4', 0.5, 104), (25, 'B3', 'B3', 0.5, 100), (25.5, 'A3', 'B3', 0.5, 104),
+        (26, 'G3', 'G3', 0.5, 100), (26.5, 'E3', 'E3', 1.5, 116),
+    ]
+    for b, f, t_, ln, v in licks:
+        if f == t_:
+            s.note(0, 16 + b, f, ln * 0.9, v)
+        else:
+            s.slide(0, 16 + b, f, t_, ln, v)
+    # B: the break - up to A for 4, back to E, the B7 turnaround
+    chug(12, 'A2', 2)
+    chug(14, 'E2', 2)
+    chug(16, 'B2', 1)
+    chug(17, 'A2', 1)
+    chug(18, 'E2', 2)
+    beat(12, 8, crash=True)
+    s.drum(64, CRASH, 110); s.drum(72, CRASH, 116)
+    for b, f, t_, ln, v in [(0, 'A4', 'A4', 0.5, 110), (0.5, 'C5', 'C#5', 1.5, 122), (2, 'A4', 'A4', 1, 110),
+                            (4, 'E5', 'E5', 0.5, 116), (4.5, 'D5', 'E5', 3, 124),
+                            (8, 'B4', 'B4', 0.5, 108), (8.5, 'G4', 'A4', 1.5, 116), (10, 'E4', 'E4', 2, 110),
+                            (16, 'D#4', 'F#4', 2, 120), (20, 'C#4', 'E4', 2, 118),
+                            (24, 'B3', 'B3', 0.5, 104), (24.5, 'D4', 'E4', 3.5, 124)]:
+        if f == t_:
+            s.note(0, 48 + b, f, ln * 0.9, v)
+        else:
+            s.slide(0, 48 + b, f, t_, ln, v)
+    # breakdown: 4 bars of just the Bo Diddley beat on the toms, the chug answering - then back to A
+    for bar in range(20, 24):
+        base = bar * 4
+        for i, b in enumerate(bd):
+            s.drum(base + b, TOM_LO if i % 2 == 0 else TOM_HI, 116 if i == 0 else 100)
+            s.chord(1, base + b, ['E2', 'B2'], 0.3, 104)
+        s.drum(base, KICK, 116)
+        for i in range(8):
+            s.drum(base + i * 0.5, 70, 70)
+    s.slide(0, 22 * 4 + 2, 'G3', 'B3', 1.5, 120)
+    s.drum(95, SNARE, 100); s.drum(95.25, SNARE, 106); s.drum(95.5, SNARE, 112); s.drum(95.75, SNARE, 120)
+    return s, 4 * 4, 24 * 4                       # loop from bar 4 (after the intro), end after bar 23
+
+
 # ---------------------------------------------------------------------------------------------- Boot Hill
 def boothill():
     """Boot Hill at midnight: E minor, 76 bpm. Tremolo guitar picking the chords, a whistle that could be the
@@ -299,7 +423,7 @@ def over():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over)):
+    for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie)):
         song, loop, end = fn()
         k = song.save(OUT / f'{name}.mid', loop, end)
         secs = end * 60 / song.bpm

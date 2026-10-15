@@ -5,5 +5,6 @@ MU.title      equ       0
 MU.boothill   equ       1
 MU.clear      equ       2
 MU.over       equ       3
+MU.boogie     equ       4
 
-MU.N       equ       4
+MU.N       equ       5

@@ -850,7 +850,9 @@ MusFiles            fcc       /mus_title.bin/
                     fcb       $0D
                     fcc       /mus_over.bin/
                     fcb       $0D
-                    ifne      MU.N-4
+                    fcc       /mus_boogie.bin/
+                    fcb       $0D
+                    ifne      MU.N-5
                     error     "the song list here doesn't match tskmusic.d"
                     endc
 MsgLoad             fcc       /Texas Shitkickers - saddling up.../

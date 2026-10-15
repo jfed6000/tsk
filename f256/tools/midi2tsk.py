@@ -25,7 +25,7 @@ MUSIC = ROOT / 'game' / 'music'
 ASSETS = ROOT / 'f256' / 'assets'
 SRC = ROOT / 'f256' / 'src'
 FPS = 60
-ORDER = ['title', 'boothill', 'clear', 'over']     # the song numbers (MU.*); others follow alphabetically
+ORDER = ['title', 'boothill', 'clear', 'over', 'boogie']     # the song numbers (MU.*); others follow alphabetically
 
 
 def read_vlq(d, i):

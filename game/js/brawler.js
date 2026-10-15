@@ -121,7 +121,7 @@ T.runBrawler = function (A) {
 
   // ---------------------------------------------------------------- music: the songs rendered from game/music/*.mid
   // (f256/tools/compose.py -> render.py), the same notes the F256 sends its SAM2695. M mutes.
-  const SONGS = { title: true, boothill: true, clear: false, over: false };     // name: loops
+  const SONGS = { title: true, boothill: true, clear: false, over: false, boogie: true };     // name: loops
   let song = null, songName = null, musicOff = false;
   function music(name) {
     if (name === songName) return;
