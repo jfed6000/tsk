@@ -761,7 +761,10 @@ T.runBrawler = function (A) {
       return;
     }
     // staggered; Big Shell Dillon's armour shrugs off hits while he walks: only a whiff leaves him open
-    if ((b.type === 'dillon' ? ['recover'] : b.type === 'gila' ? ['recover', 'deal'] : b.type === 'jack' ? ['land', 'recover', 'spin'] : ['approach', 'recover', 'throw']).includes(b.state)) { bSet('stagger'); b.vx = dir * 70; b.lasso = null; }
+    if ((b.type === 'dillon' ? ['recover'] : b.type === 'gila' ? ['recover', 'deal'] : b.type === 'jack' ? ['land', 'recover', 'spin'] : ['approach', 'recover', 'throw']).includes(b.state)) {
+      if (b.type === 'jack' && ((b.stagN || 0) >= 2 || b.x < lock + 70 || b.x > lock + VW - 70)) jackEscape();   // no pinning him down
+      else { bSet('stagger'); b.vx = dir * 70; b.lasso = null; b.stagN = (b.stagN || 0) + 1; }
+    }
     if (!b.summoned && b.hp < b.max / 2) {                           // half health: he calls in his own
       b.summoned = true;
       if (b.type === 'dillon') { popup(b.x, FLOOR + b.z - 70, 'ROLL OUT, BOYS!', '#ff9d3c', 1, 1.6); spawn('dillo', 1, 0); spawn('dillo', -1, 0); }
@@ -1117,6 +1120,12 @@ T.runBrawler = function (A) {
   // Jackrabbit Jack: hop from spot to spot (open as he lands) | up close, turn and mule-kick | every third, spin the
   // lasso and throw it down his lane: caught, you're yanked to him and kicked. A kick at him on his feet he hops clean
   // over (TOO SLOW!) - hit him as he lands. STAMPEDE! at half health.
+  // Jack's way out, cornered or pinned: a quick hop clean over your head to the open side; he lands in his next move
+  function jackEscape() {
+    const b = boss;
+    b.over = true; b.stagN = 0; b.lasso = null; bSet('crouch'); b.t = 0.1; b.vx = b.vz = 0;
+    popup(b.x, FLOOR + b.z - 66, 'NOT TODAY!', '#ffd34a', 1); sfx('whoosh');
+  }
   function updateJack(dt) {
     const b = boss, p = player;
     b.t += dt; b.flash -= dt; b.anim += dt;
@@ -1139,7 +1148,7 @@ T.runBrawler = function (A) {
       case 'approach': {
         b.face = toward; stop();
         if (b.t > 0.7) {
-          b.n++;
+          b.n++; b.stagN = 0;
           const close = Math.abs(dx) < 46 && Math.abs(dz) < 10;
           if (b.n % 3 === 0) {                                                       // the lasso: from a distance
             if (close) { b.dodge = true; b.next = 'spin'; bSet('crouch'); } else { bSet('spin'); sfx('whoosh'); }
@@ -1150,13 +1159,19 @@ T.runBrawler = function (A) {
       }
       case 'crouch': stop(); if (b.t > 0.18) {
         const side = b.dodge ? -toward : (Math.random() < 0.5 ? -1 : 1);
-        b.tx = Math.max(L0, Math.min(L1, b.dodge ? b.x - toward * 70 : p.x + side * (60 + Math.random() * 40)));
+        if (b.dodge && (b.x - toward * 70 < L0 + 20 || b.x - toward * 70 > L1 - 20)) b.over = true;   // a wall behind: over you instead
+        b.tx = Math.max(L0, Math.min(L1, b.over ? p.x + toward * 70 : b.dodge ? b.x - toward * 70 : p.x + side * (60 + Math.random() * 40)));
+        if (b.over) { b.next = 'approach'; b.over = false; }
         b.tz = Math.max(0, Math.min(ZMAX, b.dodge ? b.z : p.z + (Math.random() - 0.5) * 40));
         b.vx = (b.tx - b.x) / 0.6; b.vz = (b.tz - b.z) / 0.6; b.vh = 330; b.dodge = false; bSet('hopping'); sfx('jump');
       } break;
       case 'hopping':
         b.vh -= GRAV * 0.8 * dt; b.h += b.vh * dt; b.face = Math.sign(b.vx) || b.face;
-        if (b.h <= 0) { b.h = 0; b.vh = 0; stop(); puff(b.x, b.z, 3); sfx('land'); b.face = toward; if (b.next) { bSet(b.next); b.next = null; sfx('whoosh'); } else bSet('land'); }
+        if (b.h <= 0) {
+          b.h = 0; b.vh = 0; stop(); puff(b.x, b.z, 3); sfx('land'); b.face = toward;
+          if (b.next === 'approach') { bSet('approach'); b.t = 0.55; b.next = null; }       // from an escape: straight into a move
+          else if (b.next) { bSet(b.next); b.next = null; sfx('whoosh'); } else bSet('land');
+        }
         break;
       case 'land': stop(); if (b.t > 0.45) bSet('approach'); break;               // open: hit him now
       case 'turn': stop(); b.face = -toward; if (b.t > 0.3) { bSet('kick'); sfx('whoosh'); b.hitDone = false; } break;
