@@ -50,15 +50,15 @@ MAP2.W  equ 121
 MAP2.Of equ $0DB6
 
 * sprites.bin: the shared 1K cells, padded to SPR.Base; spr_<s>.bin: a stage's own, loaded at cell SPR.Base
-SPR.N    equ 840         shared cells
-SPR.Base equ 840         the first stage cell (a block boundary)
+SPR.N    equ 841         shared cells
+SPR.Base equ 848         the first stage cell (a block boundary)
 SPR.Ovl  equ 238         the most stage cells
-SPR.Size equ $10D800    bytes of sprite RAM in all
-SPR.ShSize equ $0D2000  sprites.bin
+SPR.Size equ $10F800    bytes of sprite RAM in all
+SPR.ShSize equ $0D4000  sprites.bin
 
 * frames.bin
-FRM.N    equ 542         frames
-FRM.Size equ $1CA8
+FRM.N    equ 543         frames
+FRM.Size equ $1CAF
 
 * animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)
 * the mirrored (facing left) copy of frame f is f + <group>.Mir
@@ -319,175 +319,178 @@ TX.dagnab.T    equ 60
 TX.kickin      equ 391
 TX.kickin.N    equ 1
 TX.kickin.T    equ 60
-TX.ouch        equ 392
+TX.yeehaw      equ 392
+TX.yeehaw.N    equ 1
+TX.yeehaw.T    equ 60
+TX.ouch        equ 393
 TX.ouch.N      equ 1
 TX.ouch.T      equ 60
-TX.sixsh       equ 393
+TX.sixsh       equ 394
 TX.sixsh.N     equ 1
 TX.sixsh.T     equ 60
-TX.bwhip       equ 394
+TX.bwhip       equ 395
 TX.bwhip.N     equ 1
 TX.bwhip.T     equ 60
-TX.wbroke      equ 395
+TX.wbroke      equ 396
 TX.wbroke.N    equ 1
 TX.wbroke.T    equ 60
-TX.click       equ 396
+TX.click       equ 397
 TX.click.N     equ 1
 TX.click.T     equ 60
-TX.beans       equ 397
+TX.beans       equ 398
 TX.beans.N     equ 1
 TX.beans.T     equ 60
-TX.fore        equ 398
+TX.fore        equ 399
 TX.fore.N      equ 1
 TX.fore.T      equ 60
-TX.stomp       equ 399
+TX.stomp       equ 400
 TX.stomp.N     equ 1
 TX.stomp.T     equ 60
-TX.bossko      equ 400
+TX.bossko      equ 401
 TX.bossko.N    equ 1
 TX.bossko.T    equ 60
-TX.rise        equ 401
+TX.rise        equ 402
 TX.rise.N      equ 1
 TX.rise.T      equ 60
-TX.buried      equ 402
+TX.buried      equ 403
 TX.buried.N    equ 1
 TX.buried.T    equ 60
-TX.dizzy       equ 403
+TX.dizzy       equ 404
 TX.dizzy.N     equ 1
 TX.dizzy.T     equ 60
-TX.x           equ 404
+TX.x           equ 405
 TX.x.N         equ 1
 TX.x.T         equ 60
-TX.press       equ 405
+TX.press       equ 406
 TX.press.N     equ 1
 TX.press.T     equ 60
-TX.tagline     equ 406
+TX.tagline     equ 407
 TX.tagline.N   equ 1
 TX.tagline.T   equ 60
-TX.tagline2    equ 407
+TX.tagline2    equ 408
 TX.tagline2.N  equ 1
 TX.tagline2.T  equ 60
-TX.mainst      equ 408
+TX.mainst      equ 409
 TX.mainst.N    equ 1
 TX.mainst.T    equ 60
-TX.dusk        equ 409
+TX.dusk        equ 410
 TX.dusk.N      equ 1
 TX.dusk.T      equ 60
-TX.msclear     equ 410
+TX.msclear     equ 411
 TX.msclear.N   equ 1
 TX.msclear.T   equ 60
-TX.mytown      equ 411
+TX.mytown      equ 412
 TX.mytown.N    equ 1
 TX.mytown.T    equ 60
-TX.rollout     equ 412
+TX.rollout     equ 413
 TX.rollout.N   equ 1
 TX.rollout.T   equ 60
-TX.backatya    equ 413
+TX.backatya    equ 414
 TX.backatya.N  equ 1
 TX.backatya.T  equ 60
 
-TB.First equ 414
+TB.First equ 415
 TB.Mir equ 20
-TB.idle        equ 414
+TB.idle        equ 415
 TB.idle.N      equ 2
 TB.idle.T      equ 20
-TB.walk        equ 416
+TB.walk        equ 417
 TB.walk.N      equ 4
 TB.walk.T      equ 8
-TB.talk        equ 420
+TB.talk        equ 421
 TB.talk.N      equ 2
 TB.talk.T      equ 10
-TB.windup      equ 422
+TB.windup      equ 423
 TB.windup.N    equ 1
 TB.windup.T    equ 60
-TB.swing       equ 423
+TB.swing       equ 424
 TB.swing.N     equ 1
 TB.swing.T     equ 60
-TB.throw       equ 424
+TB.throw       equ 425
 TB.throw.N     equ 1
 TB.throw.T     equ 60
-TB.dig         equ 425
+TB.dig         equ 426
 TB.dig.N       equ 1
 TB.dig.T       equ 60
-TB.pop         equ 426
+TB.pop         equ 427
 TB.pop.N       equ 1
 TB.pop.T       equ 60
-TB.daze        equ 427
+TB.daze        equ 428
 TB.daze.N      equ 4
 TB.daze.T      equ 8
-TB.hurt        equ 431
+TB.hurt        equ 432
 TB.hurt.N      equ 1
 TB.hurt.T      equ 60
-TB.ko          equ 432
+TB.ko          equ 433
 TB.ko.N        equ 1
 TB.ko.T        equ 60
-TB.down        equ 433
+TB.down        equ 434
 TB.down.N      equ 1
 TB.down.T      equ 60
 
-CY.First equ 454
+CY.First equ 455
 CY.Mir equ 15
-CY.idle        equ 454
+CY.idle        equ 455
 CY.idle.N      equ 2
 CY.idle.T      equ 20
-CY.walk        equ 456
+CY.walk        equ 457
 CY.walk.N      equ 4
 CY.walk.T      equ 8
-CY.windup      equ 460
+CY.windup      equ 461
 CY.windup.N    equ 1
 CY.windup.T    equ 60
-CY.swing       equ 461
+CY.swing       equ 462
 CY.swing.N     equ 1
 CY.swing.T     equ 60
-CY.hurt        equ 462
+CY.hurt        equ 463
 CY.hurt.N      equ 1
 CY.hurt.T      equ 60
-CY.down        equ 463
+CY.down        equ 464
 CY.down.N      equ 1
 CY.down.T      equ 60
-CY.daze        equ 464
+CY.daze        equ 465
 CY.daze.N      equ 4
 CY.daze.T      equ 8
-CY.ko          equ 468
+CY.ko          equ 469
 CY.ko.N        equ 1
 CY.ko.T        equ 60
 
-TW.First equ 484
+TW.First equ 485
 TW.Mir equ 4
-TW.roll        equ 484
+TW.roll        equ 485
 TW.roll.N      equ 4
 TW.roll.T      equ 6
 
-BD.First equ 492
+BD.First equ 493
 BD.Mir equ 25
-BD.idle        equ 492
+BD.idle        equ 493
 BD.idle.N      equ 2
 BD.idle.T      equ 20
-BD.walk        equ 494
+BD.walk        equ 495
 BD.walk.N      equ 4
 BD.walk.T      equ 9
-BD.talk        equ 498
+BD.talk        equ 499
 BD.talk.N      equ 2
 BD.talk.T      equ 10
-BD.windup      equ 500
+BD.windup      equ 501
 BD.windup.N    equ 1
 BD.windup.T    equ 60
-BD.swipe       equ 501
+BD.swipe       equ 502
 BD.swipe.N     equ 1
 BD.swipe.T     equ 60
-BD.curl        equ 502
+BD.curl        equ 503
 BD.curl.N      equ 1
 BD.curl.T      equ 60
-BD.ball        equ 503
+BD.ball        equ 504
 BD.ball.N      equ 8
 BD.ball.T      equ 3
-BD.hurt        equ 511
+BD.hurt        equ 512
 BD.hurt.N      equ 1
 BD.hurt.T      equ 60
-BD.daze        equ 512
+BD.daze        equ 513
 BD.daze.N      equ 4
 BD.daze.T      equ 8
-BD.ko          equ 516
+BD.ko          equ 517
 BD.ko.N        equ 1
 BD.ko.T        equ 60
 

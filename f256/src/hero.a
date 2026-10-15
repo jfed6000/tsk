@@ -23,6 +23,9 @@ ST.Die              equ       12                  the death scene (death.a): top
 ST.Dead             equ       13                  flat out
 ST.Reach            equ       14                  reaching up for the hat
 ST.GetUp            equ       15                  up again, the hat held high
+ST.Grab             equ       16                  holding an outlaw by the collar (grab.a)
+ST.Knee             equ       17                  X while holding: the knee
+ST.Throw            equ       18                  C or jump while holding: the throw
 
 * speeds, 12.4 per pass (browser: px/s at 60 passes)
 WalkX               equ       28                  105 px/s
@@ -56,6 +59,8 @@ HeroInit            ldd       #70*16
                     sta       <ht
                     clr       dying,u
                     clr       dhat,u
+                    clr       hheld,u
+                    clr       hheld+1,u
                     rts
 
 * SetS - A = the new state.  Its time starts at 0, its animation from frame 0,
@@ -206,7 +211,13 @@ hp3                 bita      #IN.Taunt
                     lda       #ST.Taunt
                     lbsr      SetS
                     bra       hsw
-hp4                 lda       <hdx                nothing pressed: walk or stand
+hp4                 lda       <hdx                walking into an outlaw that's open: the grab
+                    beq       hp4a
+                    lbsr      GrabTarget
+                    bcs       hp4a
+                    lbsr      Grab
+                    bra       hsw
+hp4a                lda       <hdx                nothing pressed: walk or stand
                     ora       <hdz
                     beq       hp5
                     lda       #ST.Walk
@@ -218,6 +229,12 @@ hp6                 cmpa      <hst
 
 * what each state does this pass
 hsw                 lda       <hst
+                    cmpa      #ST.Grab
+                    lbeq      sGrab
+                    cmpa      #ST.Knee
+                    lbeq      sKnee
+                    cmpa      #ST.Throw
+                    lbeq      sThrow
                     cmpa      #ST.Snap
                     beq       sSnap
                     cmpa      #ST.Side
@@ -468,6 +485,8 @@ HeroPassive         lda       <ht
 hv1                 lda       <hst
                     cmpa      #ST.Die             (the game's over: he topples and lies there)
                     blo       hv1a
+                    cmpa      #ST.GetUp
+                    bhi       hv1a
                     lbsr      DeathFall
                     lbra      PickAnim
 hv1a                cmpa      #ST.Taunt
@@ -545,7 +564,7 @@ hfr1                rts
 * a state's sound as it starts ($FF = none): idle, walk, jump, flying
 *   kick, stomp, land, snap, side, taunt, hurt, whip, shoot
 SetSfx              fcb       $FF,$FF,SF.Jump,SF.Whoosh,SF.Whoosh,SF.Land,SF.Whoosh,SF.Whoosh,SF.Tip,$FF
-                    fcb       SF.Whoosh,$FF,$FF,$FF,$FF,$FF
+                    fcb       SF.Whoosh,$FF,$FF,$FF,$FF,$FF,$FF,SF.Whoosh,$FF
 
 AnTab               fdb       AnIdle-AnTab
                     fdb       AnRun-AnTab
@@ -563,6 +582,14 @@ AnTab               fdb       AnIdle-AnTab
                     fdb       AnDead-AnTab
                     fdb       AnReach-AnTab
                     fdb       AnGetUp-AnTab
+                    fdb       AnGrab-AnTab
+                    fdb       AnSnap-AnTab        (the knee is the snap kick)
+                    fdb       AnThrow-AnTab
+
+AnGrab              fdb       HR.grab
+                    fcb       1,255,0
+AnThrow             fdb       HR.throw
+                    fcb       HR.throw.N,HR.throw.T,0
 
 AnDie               fdb       HR.die
                     fcb       HR.die.N,HR.die.T,0

@@ -64,7 +64,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
   on the SAM2695, verified in MAME by capturing the MIDI. The user hears it on the K2 when testing (confirmed 2026-10-15).
 - On the F256, `tsk` plays the whole game (Boot Hill, then Main Street) in MAME and on the host 6809 (P4 sprint 5).
   Main Street's music is "Graveyard Boogie" in the browser and on the F256. Sprint 2 ran on the K2
-  ("game looks awesome", 2026-10-14); sprint 3 hasn't yet. Not yet ported: the grab and throw, sound, Main Street.
+  ("game looks awesome", 2026-10-14); everything in the browser is now on the F256 too (2026-10-15).
 - **Skeletons stack:** every skeleton heads for the same spot (100 px from you, in your lane), so two or three left
   alone merge into one figure. True in the browser too; a matter for the playtest and tuning.
 - **Fixed 2026-10-13**, found by the port: a hit in mid-air froze the hero's height (no gravity in the hurt state),
@@ -78,7 +78,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 1. **Playtest** both stages, ideally on an SNES-style pad, and tune.
 2. **Two-player co-op** (two SNES pads, `SS.Joy` reads both): a second pair of boots.
 3. **P4** (`f256/docs/port-plan.md`): sprints 1-5 done. The whole browser game now runs on the F256: the title,
-   Boot Hill, Main Street, the music. Big Shell Dillon and the death scene are in (2026-10-15). Next: the grab and throw, pads, the next stages.
+   Boot Hill, Main Street, the music. Big Shell Dillon, the death scene and the grab/knee/throw are in (2026-10-15): the F256 has every browser move. Next: Ghost Town, pads.
 4. A per-stage sprite CLUT (118 colours already, all enemies in one).
 5. The next stages from `story.md` reworked for the brawler.
 6. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).

@@ -101,22 +101,12 @@ Music               cmpa      <msong
                     beq       nmu9                 already playing
                     pshs      a
                     bsr       Hush
-                    lbsr      MusUnmap
                     puls      a
                     sta       <msong
-                    cmpa      #$FF
+                    cmpa      #$FF                (silence: the window stays, on the last song)
                     beq       nmu9
-                    adda      <musblk             map its block
-                    tfr       a,b
-                    clra
-                    tfr       d,x
-                    ldb       #1
-                    pshs      u
-                    os9       F$MapBlk
-                    tfr       u,x
-                    puls      u
+                    bsr       MusMap
                     bcs       nmu8
-                    stx       <mmap
                     leax      2,x                 the first record
                     lda       ,x
                     stx       <mptr
@@ -141,6 +131,34 @@ nhs1                 pshs      b
                     cmpb      #$BA
                     blo       nhs1
                     rts
+
+* MusMap - A = a song: its block in the music window, X = the window.
+*   The window is always mapped, from start-up (MusInit) to the end, so it
+*   keeps the top block of our 64K: its last 768 bytes ($FD00-$FFFF) are
+*   the system's, so no 8K window can work there, but a song (under
+*   7,424 bytes) can.  Unmapped and mapped again at once, the kernel hands
+*   the same block back (it gives the highest free one).  With the window
+*   anywhere else, a load's 8K read landed in the top block once tsk
+*   passed 23,808 bytes, and failed (E$Read).  Exit: carry = error in B
+MusMap              pshs      a
+                    bsr       MusUnmap
+                    puls      a
+                    adda      <musblk
+                    tfr       a,b
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    pshs      u
+                    os9       F$MapBlk
+                    tfr       u,x
+                    puls      u
+                    bcs       nmk9
+                    stx       <mmap
+nmk9                rts
+
+* MusInit - the music window, first of all our windows (see MusMap)
+MusInit             clra
+                    bra       MusMap
 
 MusUnmap            ldx       <mmap
                     beq       nmm9

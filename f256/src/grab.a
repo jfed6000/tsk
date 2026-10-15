@@ -1,0 +1,323 @@
+********************************************************************
+* grab.a - the grab, the knee and the throw (brawler.js updatePlayer
+*   grab/knee/throw, grabTarget, updateEnemies held/air).
+*   Walk into an outlaw that's staggered, closing in or headless, in your
+*   lane and close, and he's got it by the collar (ES.Held, held 17 px in
+*   front).  X knees it (1 a knee; the third and it's thrown); C or jump
+*   throws it: it flies (ES.Thrown) and knocks down whoever it meets (3),
+*   and the landing costs it 3.  Let go after 1.6 s and it staggers off.
+*   Two-Bit and Dillon can't be grabbed.
+********************************************************************
+
+GrabT               equ       96                  1.6 s holding: it struggles free
+KneeDur             equ       HR.snap.N*HR.snap.T  (the knee is the snap kick's frames)
+ThrowDur            equ       HR.throw.N*HR.throw.T+6
+ThrowVX             equ       75                  280 px/s
+ThrowVH             equ       56                  210 px/s
+
+* GrabTarget - hdx = the way he's walking: X = an outlaw he can grab, or
+*   carry set if none
+GrabTarget          leax      en,u
+                    lda       #NEn
+                    sta       <aloop
+gt1                 lda       EN.St,x
+                    cmpa      #ES.Stag
+                    beq       gt2
+                    cmpa      #ES.Appr
+                    beq       gt2
+                    cmpa      #ES.Headl
+                    bne       gt8
+gt2                 lda       EN.Ty,x             (not a boss)
+                    cmpa      #TY.Boss
+                    beq       gt8
+                    ldd       EN.H,x              on the ground
+                    bne       gt8
+                    ldd       EN.Z,x              in his lane (9 px)
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #9*16
+                    bhs       gt8
+                    ldd       EN.X,x              the side he's walking to, within 24 px
+                    subd      <hx
+                    beq       gt8
+                    std       <tdx
+                    eora      <hdx                (hdx is -1 or 1: the signs agree)
+                    bmi       gt8
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #24*16
+                    bhs       gt8
+                    andcc     #$FE
+                    rts
+gt8                 leax      EN.Size,x
+                    dec       <aloop
+                    bne       gt1
+                    comb
+                    rts
+
+* Grab - X = the outlaw: by the collar
+Grab                stx       hheld,u
+                    lda       #ES.Held
+                    lbsr      SetE
+                    lbsr      EStop
+                    clr       hknees,u
+                    lda       #ST.Grab
+                    lbsr      SetS
+                    lda       #SF.Land
+                    lbra      Sfx
+
+* HoldPut - the held one 17 px in front of him, just nearer, facing him.
+*   Exit: X = it, carry set if he's not holding anyone (any more)
+HoldPut             ldx       hheld,u
+                    beq       hp9x
+                    lda       EN.St,x
+                    cmpa      #ES.Held
+                    bne       hp8x
+                    ldd       #17*16
+                    tst       <hface
+                    beq       hp1x
+                    lbsr      NegD
+hp1x                addd      <hx
+                    std       EN.X,x
+                    ldd       <hz
+                    addd      #8
+                    std       EN.Z,x
+                    lda       <hface
+                    eora      #1
+                    sta       EN.Fc,x
+                    andcc     #$FE
+                    rts
+hp8x                clr       hheld,u             (KO'd, or struggled free)
+                    clr       hheld+1,u
+hp9x                comb
+                    rts
+
+* Release - let go of whoever he's holding: it staggers (headless, a
+*   skeleton without its skull).  For a hit, his death, the time running out
+Release             ldx       hheld,u
+                    beq       rl9x
+                    clr       hheld,u
+                    clr       hheld+1,u
+                    lda       EN.St,x
+                    cmpa      #ES.Held
+                    bne       rl9x
+                    lda       #ES.Stag
+                    tst       EN.Ty,x
+                    bne       rl1x
+                    tst       EN.Sk,x
+                    bne       rl1x
+                    lda       #ES.Headl
+rl1x                lbsr      SetE
+                    ldd       #16                 60 px/s away from him
+                    tst       <hface
+                    beq       rl2x
+                    lbsr      NegD
+rl2x                std       EN.VX,x
+rl9x                rts
+
+* sGrab - holding: X knees, C or jump throws, or it struggles free
+sGrab               ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lbsr      HoldPut
+                    bcc       sgr1
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+sgr1                lda       <ipress
+                    bita      #IN.Kick
+                    beq       sgr2
+                    lda       #ST.Knee
+                    lbsr      SetS
+                    lbra      hmove
+sgr2                bita      #IN.Side+IN.Jump
+                    beq       sgr3
+                    lda       #ST.Throw
+                    lbsr      SetS
+                    lbra      hmove
+sgr3                lda       <ht
+                    cmpa      #GrabT
+                    lblo      hmove
+                    bsr       Release
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
+* sKnee - the knee lands on its second frame: 1, and 20 points; the third
+*   knee throws it
+sKnee               ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lbsr      HoldPut
+                    bcs       skn8
+                    lda       <hfr
+                    beq       skn8
+                    lda       EN.Hit,x            (once a knee)
+                    cmpa      <hatk
+                    beq       skn8
+                    lda       <hatk
+                    sta       EN.Hit,x
+                    inc       hknees,u
+                    lda       EN.Id,x             its bar in the HUD
+                    sta       <lhit
+                    lda       #LastLen
+                    sta       <lhitt
+                    lda       #SF.Hit
+                    lbsr      Sfx
+                    dec       EN.Hp,x
+                    lda       #FlashT
+                    sta       EN.Fl,x
+                    lda       #2
+                    sta       <hitstop
+                    ldd       EN.X,x              the spark
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       #22*16
+                    std       <sh
+                    pshs      x
+                    clra
+                    lbsr      Spark
+                    puls      x
+                    ldd       #20
+                    lbsr      ScoreAt
+                    ldx       hheld,u
+                    tst       EN.Hp,x
+                    bgt       skn8
+                    lda       <hface              kneed out
+                    sta       <hdir
+                    lbsr      KO
+                    clr       hheld,u
+                    clr       hheld+1,u
+skn8                lda       <ht
+                    cmpa      #KneeDur
+                    lblo      hmove
+                    ldx       hheld,u
+                    bne       skn9
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+skn9                lda       hknees,u
+                    cmpa      #3
+                    blo       skn9a
+                    lda       #ST.Throw
+                    lbsr      SetS
+                    lbra      hmove
+skn9a               lda       #ST.Grab            back to holding (0.4 s into it)
+                    lbsr      SetS
+                    lda       #24
+                    sta       <ht
+                    lbra      hmove
+
+* sThrow - on the throw's second frame it flies
+sThrow              ldd       #0
+                    std       <hvx
+                    std       <hvz
+                    lda       <hfr
+                    beq       sth8
+                    lbsr      HoldPut
+                    bcs       sth8
+                    clr       hheld,u
+                    clr       hheld+1,u
+                    lda       #ES.Thrown
+                    lbsr      SetE
+                    ldd       #ThrowVX
+                    tst       <hface
+                    beq       sth1
+                    lbsr      NegD
+sth1                std       EN.VX,x
+                    ldd       #ThrowVH
+                    std       EN.VH,x
+                    ldd       #14*16
+                    std       EN.H,x
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #50
+                    ldy       #TX.yeehaw
+                    lbsr      WordE
+sth8                lda       <ht
+                    cmpa      #ThrowDur
+                    lblo      hmove
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lbra      hmove
+
+********************************************************************
+* the outlaw's side
+********************************************************************
+EHeld               lbsr      EStop               (he puts it where it goes)
+                    lbra      EnMove
+
+* EThrown - X = a thrown outlaw: the arc; whoever it meets in its lane is
+*   knocked down (3); landing costs it 3
+EThrown             clr       <hdir               the way it's flying
+                    tst       EN.VX,x
+                    bpl       eth0
+                    inc       <hdir
+eth0                equ       *
+                    leay      en,u                whoever it meets
+                    lda       #NEn
+                    sta       <aloop
+eth1                cmpy      <ecur
+                    beq       eth8
+                    lda       EN.St,y
+                    lbsr      Hitbl
+                    bcs       eth8
+                    lda       EN.Ty,y             (not a boss)
+                    cmpa      #TY.Boss
+                    beq       eth8
+                    ldd       EN.Z,y
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       eth8
+                    ldd       EN.X,y
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #22*16
+                    bhs       eth8
+                    ldd       EN.H,y
+                    cmpd      #30*16
+                    bge       eth8
+                    pshs      y
+                    tfr       y,x
+                    lda       #3
+                    ldb       #1
+                    lbsr      HitE
+                    puls      y
+                    ldx       <ecur
+eth8                leay      EN.Size,y
+                    dec       <aloop
+                    bne       eth1
+                    ldd       EN.VH,x             the arc
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    lbgt      EnMove
+                    ldd       #0                  down: it costs it 3
+                    std       EN.H,x
+                    std       EN.VH,x
+                    std       EN.VX,x
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #4
+                    lbsr      Puff
+                    ldx       <ecur
+                    lda       #FlashT
+                    sta       EN.Fl,x
+                    ldb       EN.Hp,x
+                    subb      #3
+                    stb       EN.Hp,x
+                    bgt       eth9
+                    clr       <hdir
+                    lbsr      KO
+                    ldx       <ecur
+                    lbra      EnMove
+eth9                lda       #ES.Down
+                    lbsr      SetE
+                    lbra      EnMove

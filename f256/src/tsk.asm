@@ -52,6 +52,7 @@ name                fcs       /tsk/
                     use       boss.a
                     use       dillon.a
                     use       death.a
+                    use       grab.a
                     use       snd.a
                     use       title.a
                     use       amb.a

@@ -95,6 +95,8 @@ st3                 lbsr      WSigSet             tell us when our terminal is h
                     lbsr      WriteLn
                     lbsr      Alloc
                     lbcs      Fail
+                    lbsr      MusInit             the music window first: it takes the top block (snd.a MusMap)
+                    lbcs      Fail
                     lbsr      LoadAll
                     lbcs      Fail
                     lbsr      Display

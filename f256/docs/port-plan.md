@@ -192,7 +192,21 @@ One program module, **`tsk`**, assembled from:
    - **Memory:** the 16 new hero frames and the hat bits add 96K of sprite cells: the peak is about 1.37 MB.
    - **Host fix:** `hostrun.py` mapped blocks at $D000, inside the module once it passed 20K ($8000 + 23K), so the
      HUD's cells overwrote the code. Its windows are now $4000 and $6000, the parameters at $3F00.
-8. The grab and throw, the pad harness, co-op.
+8. ✓ **The grab, the knee and the throw** *(2026-10-15: `tsk` 24.0K)*: `grab.a`, so the F256 now has every move the
+   browser has. Walk into an outlaw that's staggered, closing in or headless (in your lane, within 24 px) and he's
+   got it by the collar (`ES.Held`, 17 px in front). X knees it (1 a knee, 20 points; the third knee throws it); C or
+   jump throws it (`ES.Thrown`): it flies at 280 px/s, knocks down whoever it meets (3), and the landing costs it 3.
+   After 1.6 s it struggles free. A hit, or his death, makes him let go. Bosses can't be grabbed. Both autopilots
+   now walk into a staggered outlaw and knee it, so the attract mode shows the move.
+   - **The top-block trap (found here):** a process has eight 8K blocks, and `$FD00-$FFFF` of the top one is the
+     system's. While `tsk` was 23,808 bytes or less (3 blocks less 768) it sat in the top three blocks; once it grew
+     past that, NitrOS-9 put it lower and the top block went to the next window, and the first 8K load into it
+     (sprites.bin) failed with `E$Read` (244), in MAME and so on the K2. The fix: the music window is mapped first
+     at start-up and stays mapped (`snd.a MusMap`), so it owns the top block (a song is at most 7,424 bytes:
+     `midi2tsk.py` checks); every other window gets a whole block. The budget is now **32,768** (data 2 blocks,
+     the music window, one service window, the module the 4 blocks between); `make` enforces it. Shrinking the
+     data area to 8K would raise it toward port-guide's 40,192.
+9. The pad harness, co-op.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

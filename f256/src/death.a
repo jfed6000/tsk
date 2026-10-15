@@ -21,7 +21,8 @@ HopT                equ       10                  then onto his head
 
 * Die - his health's gone (HurtHero): the hat crumbles, he topples.
 *   Exit: carry set if that was the last life (game over)
-Die                 lda       #ST.Die
+Die                 lbsr      Release             (whoever he held goes free)
+                    lda       #ST.Die
                     lbsr      SetS
                     clr       <hhp
                     clr       <hinv               (no blinking: it's a scene)

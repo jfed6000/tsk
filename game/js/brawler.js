@@ -1057,6 +1057,7 @@ T.runBrawler = function (A) {
     if (!params.has('bot') || phase !== 'play') return;
     const p = player; botT -= dt;
     keys.left = keys.right = keys.up = keys.down = false;
+    if (p.state === 'grab') { if (botT <= 0) { pressed.snap = true; botT = 0.25; } return; }   // holding one: knee it (the third throws)
     if (boss && boss.type === 'dillon' && boss.state === 'roll') {      // the shell's coming: kick it back, or get out of its lane
       const dx = boss.x - p.x;
       if (!boss.deflected && Math.sign(dx) === -Math.sign(boss.vx) && Math.abs(dx) < 40 && inLane(boss, p, 10) && botT <= 0) { p.face = Math.sign(dx) || 1; pressed.side = true; botT = 0.4; }
@@ -1084,6 +1085,7 @@ T.runBrawler = function (A) {
     const dx = e.x - p.x, dz = e.z - p.z, reach = p.weapon && p.weapon.type === 'whip' ? 50 : p.weapon ? 200 : 28;
     if (Math.abs(dz) > 4) keys[dz > 0 ? 'down' : 'up'] = true;
     if (Math.abs(dx) > reach) keys[dx > 0 ? 'right' : 'left'] = true;
+    else if (e.state === 'stagger' && !p.weapon && Math.abs(dz) < 8) keys[dx > 0 ? 'right' : 'left'] = true;   // walk into it: the grab
     else if (botT <= 0 && Math.abs(dz) < 8) { p.face = Math.sign(dx) || 1; pressed[Math.random() < 0.3 && !p.weapon ? 'side' : 'snap'] = true; botT = 0.22; }
   }
 

@@ -28,6 +28,8 @@ ES.Enter            equ       14                  walking in from off the screen
 ES.Ko               equ       15                  kicked into the next county
 ES.Boss             equ       16                  Two-Bit, hittable (boss.a: bst says what he's doing)
 ES.BossX            equ       17                  Two-Bit, not hittable (talking, underground, KO'd)
+ES.Held             equ       18                  held by the collar (grab.a)
+ES.Thrown           equ       19                  thrown: flying into its friends
 
 * a skull's states
 SL.Fly              equ       1
@@ -482,6 +484,8 @@ EnTab               fdb       EnMove-EnTab
                     fdb       EKo-EnTab
                     fdb       BossStep-EnTab
                     fdb       BossStep-EnTab
+                    fdb       EHeld-EnTab
+                    fdb       EThrown-EnTab
 
 ERise               lbsr      EStop
                     lda       EN.T,x
@@ -938,7 +942,7 @@ Hitbl               pshs      a,x
                     lda       a,x
                     cmpa      #1
                     puls      a,x,pc
-HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,0
+HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,0,0,0
 
 * ETall - X = an enemy, tmp = its height off the floor (px):
 *   D = tmp + how tall it is
@@ -1257,9 +1261,14 @@ ko6                 leay      SL.Size,y
 *   Exit: A = 1 if it hurt him (he wasn't untouchable)
 ********************************************************************
 HurtHero            tst       <hinv
-                    bne       hu0
+                    lbne      hu0
                     tst       dying,u
                     bne       hu0
+                    tst       <god
+                    bne       hu0
+                    pshs      a
+                    lbsr      Release             a hit makes him let go
+                    puls      a
                     tst       <phase
                     bne       hu0
                     tst       <god
@@ -2046,6 +2055,10 @@ EfTab               fdb       EfIdle-EfTab
                     fdb       EfIdle-EfTab
                     fdb       EfAppr-EfTab        walking in (Main Street's)
                     fdb       EfHurt-EfTab
+                    fdb       EfIdle-EfTab        (the boss's two: never a skeleton's)
+                    fdb       EfIdle-EfTab
+                    fdb       EfHurt-EfTab        held
+                    fdb       EfHurt-EfTab        thrown
 EfAppr              ldd       EN.VX,x             moving: walk; else stand
                     lbsr      AbsD
                     pshs      d
@@ -2108,6 +2121,10 @@ DlFrame             lda       EN.St,x
                     beq       df2
                     cmpa      #ES.Stag
                     beq       df3
+                    cmpa      #ES.Held
+                    beq       df3
+                    cmpa      #ES.Thrown
+                    beq       df1
                     cmpa      #ES.Strike
                     beq       df1
                     cmpa      #ES.Air
@@ -2152,6 +2169,10 @@ cf1                 cmpa      #ES.Strike
                     lda       #CY.swing-CY.First
                     bra       cf9
 cf2                 cmpa      #ES.Stag
+                    beq       cf3
+                    cmpa      #ES.Held
+                    beq       cf3
+                    cmpa      #ES.Thrown
                     beq       cf3
                     cmpa      #ES.Air
                     bne       cf4
@@ -2344,7 +2365,17 @@ bs00a               tst       <bott
                     beq       bs0
                     dec       <bott
 bs0                 clr       <binp
-                    ldd       #0
+                    lda       <hst                holding one: knee it (the third throws it)
+                    cmpa      #ST.Grab
+                    bne       bs0a
+                    tst       <bott
+                    lbne      bs9
+                    lda       #IN.Kick
+                    sta       <binp
+                    lda       #15
+                    sta       <bott
+                    lbra      bs9
+bs0a                ldd       #0
                     std       <bnear
                     ldd       #$7FFF
                     std       <bbest
@@ -2408,7 +2439,23 @@ bs4b                tfr       x,d
 bs5                 ora       <binp
                     sta       <binp
                     bra       bs9
-bs6                 tst       <bott
+bs6                 lda       EN.St,y             staggered, close, and his hands free: walk into it,
+                    cmpa      #ES.Stag            for the grab
+                    bne       bs6a
+                    tst       <hwep
+                    bne       bs6a
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    bhs       bs6a
+                    lda       #IN.Right
+                    tst       <tdx
+                    bpl       bs6b
+                    lda       #IN.Left
+bs6b                ora       <binp
+                    sta       <binp
+                    bra       bs9
+bs6a                tst       <bott
                     bne       bs9
                     ldd       <tdz
                     lbsr      AbsD

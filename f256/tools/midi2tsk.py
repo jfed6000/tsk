@@ -154,6 +154,9 @@ def main():
          '* MU.<song> = the song number (assets/mus_<song>.bin is loaded into music block MU.<song>)', '']
     for k, nm in enumerate(names):
         data, loop, end = convert(MUSIC / f'{nm}.mid')
+        # the music window keeps the top block of the 64K, whose last 768 bytes are the system's (snd.a MusMap)
+        if len(data) > 0x1D00:
+            sys.exit(f'midi2tsk: {nm} is {len(data)} bytes; a song must fit in 7,424 (the top block, snd.a MusMap)')
         (ASSETS / f'mus_{nm}.bin').write_bytes(data)
         L.append(f'MU.{nm:<10} equ       {k}')
         print(f'{nm:9} {len(data):5} bytes  {end / FPS:5.1f} s  ' + (f'loops from {loop / FPS:.1f} s' if loop is not None else 'once'))

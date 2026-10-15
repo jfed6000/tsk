@@ -24,8 +24,11 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
 ASSETFILES  = sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin clut_dusk.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin
-TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/dillon.a src/death.a src/snd.a src/title.a src/amb.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
-BUDGET      = 40192
+TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/dillon.a src/death.a src/grab.a src/snd.a src/title.a src/amb.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
+# The module budget. port-guide's 40,192 assumes an 8K data area; ours is 13.7K (two blocks), so: data 2
+# blocks, the music window in the top block (snd.a MusMap), one service window, and the module the 4 blocks
+# between = 32,768 bytes.
+BUDGET      = 32768
 
 all: tsk tskview
 

@@ -320,6 +320,8 @@ dbnc                rmb       1                   Dillon's roll: bounces off the
 ddefl               rmb       1                   1 = his shell's been kicked back
 ddmg                rmb       1                   the damage he's taken dizzy (14: he shakes it off)
 frail               rmb       1                   1 = any hit kills (tsk f)
+hheld               rmb       2                   the outlaw he's holding by the collar, 0 = nobody (grab.a)
+hknees              rmb       1                   knees landed on it
 dying               rmb       1                   1 = the death scene's playing (death.a)
 dtime               rmb       1                   its passes
 dhat                rmb       1                   its hat: 0 none yet, 1 drifting, 2 in his hand, 3 the hop

@@ -39,7 +39,7 @@ Files are per stage where they differ: `tiles_bh.bin`/`tiles_ms.bin`, `maps_*`, 
 ## tsk: the game
 
 ```
-make                 # tsk (23.1K of the 40,192-byte budget; data area 13.7K) and tskview
+make                 # tsk (24.0K of the 32,768-byte budget; data area 13.7K) and tskview
 make install DSK=/absolute/path/to/image.dsk
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
