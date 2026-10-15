@@ -268,9 +268,14 @@ One program module, **`tsk`**, assembled from:
     - **The slots:** of the process's eight 8K blocks, data 1, the music window 1, the service window 1, the stage
       module 1, the core 4 (the makefile's budget is now 32,768).
     - **Loading** (`stgmod.a`): the stage's file list ends with its module's name (empty for Boot Hill);
-      `LoadStage` calls `StgLoad`, which unlinks the last one and `F$Load`s this one from the execution directory
-      (CMDS: `make install` puts them there). NitrOS-9 maps it into the free slot; `Cleanup` unlinks it, and after
-      `q` `mdir` shows none left (checked in MAME).
+      `LoadStage` calls `StgLoad`, which unlinks the last one and `F$Link`s this one if it's in memory already
+      (`load /dd/TSK/tskcd` beforehand), else `F$Load`s it from the execution directory. NitrOS-9 maps it into the
+      free slot; `Cleanup` unlinks it, and after `q` `mdir` shows none left (a preloaded one stays, linked once).
+    - **The modules live in the game's directory**, beside the art (`make install` puts them in TSK, with `e` and
+      `pe`): at start-up tsk does `I$ChgDir "."` with `PEXEC.`. A relative name resolves by the `EXEC.` bit alone,
+      so "." is the data directory, and `PEXEC.` makes it the execution directory - for tsk's own process (each
+      process has its own two, `P$DIO`; the shell's stays CMDS). If it fails, CMDS still serves. All of it checked
+      in MAME on a fresh image.
     - **Calls across the line** go through the data area, U-indexed: `HK.<x>` holds the address of the stage routine
       x (from the module's `HookTab`), or `NoHook` (carry clear; `NoHookC`, carry set, for the bot hooks:
       `HkDef`) when no module has it; the core's stub is `x jmp [HK.x,u]`. `CV.<x>` holds the core routine x

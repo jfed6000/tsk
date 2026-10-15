@@ -56,16 +56,23 @@ sgf3                stx       ,y++
                     puls      d,x,y,pc
 
 * StgLoad - X = a stage module's name ($0D-terminated; empty = none):
-*   the last one out, this one in (from the execution directory), its
-*   hooks set.  Exit: carry = error in B
+*   the last one out, this one in, its hooks set: F$Link if it's in
+*   memory already (loaded with `load`), else F$Load from the execution
+*   directory - the game's directory (platform.a: I$ChgDir "." with
+*   PEXEC.).  Exit: carry = error in B
 StgLoad             lbsr      StgFree
                     lda       ,x
                     cmpa      #$0D
                     beq       sgl9
-                    pshs      u
+                    pshs      u,x
                     clra                          any type
+                    os9       F$Link              in memory already?
+                    bcc       sgl0
+                    ldx       ,s                  (the name again)
+                    clra
                     os9       F$Load              U = its header, Y = its hook table
                     bcs       sgle
+sgl0                leas      2,s                 (the name)
                     tfr       u,d
                     puls      u
                     std       stgmh,u
@@ -83,5 +90,5 @@ sgl2                leax      2,x
                     puls      y
 sgl9                andcc     #$FE
                     rts
-sgle                puls      u
+sgle                puls      u,x
                     rts

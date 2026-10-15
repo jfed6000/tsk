@@ -22,7 +22,8 @@ MODBASE, PARAMS = 0x8000, 0x1F00                      # the data area is at 0 (o
 STGBASE = 0x6000                                       # the stage module's slot (F$Load: stgmod.a)
 WINDOWS = [0x2000, 0x4000]                             # F$MapBlk's windows: two at once at most (port-guide), below
                                                        # the stage module and the core (it has $8000-$FFFF: 32K)
-F_LOAD, F_UNLINK = 0x01, 0x02
+F_LINK, F_LOAD, F_UNLINK = 0x00, 0x01, 0x02
+I_CHGDIR, E_MNF = 0x86, 221
 F_EXIT, F_ICPT, F_SLEEP, F_MAPBLK, F_CLRBLK = 0x06, 0x09, 0x0A, 0x4F, 0x50
 I_OPEN, I_READ, I_WRITLN, I_GETSTT, I_SETSTT, I_CLOSE = 0x84, 0x89, 0x8C, 0x8D, 0x8E, 0x8F
 SS_MCR, SS_LIVEKEYS, SS_GFXALLOC, SS_SPRPUSH = 0x8C, 0xC6, 0xD4, 0xD1
@@ -102,8 +103,10 @@ class Host(CPU6809):
             if blk is not None:
                 self.blocks[blk] = bytes(self.mem[self.u:self.u + 0x2000])
             return 0
-        if fn in (F_ICPT, I_CLOSE):
+        if fn in (F_ICPT, I_CLOSE, I_CHGDIR):
             return 0
+        if fn == F_LINK:                         # nothing's ever in memory ahead of us here
+            return E_MNF
         if fn == F_LOAD:                         # a stage module from the execution directory, into its slot
             raw = bytes(self.mem[self.x:self.x + 32])
             n = 0

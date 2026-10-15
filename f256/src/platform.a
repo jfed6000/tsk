@@ -107,6 +107,11 @@ st2                 lda       #$FF                no stage's art loaded yet
                     tfr       y,d
                     stb       <mcrhi
 st3                 lbsr      WSigSet             tell us when our terminal is hidden
+                    leax      DotDir,pcr          our execution directory = our data directory, for
+                    lda       #PEXEC.             this process only (the shell's is its own): F$Load
+                    os9       I$ChgDir            finds the stage modules beside the art. (A relative
+*                                                 name goes by EXEC. alone, so "." is the data dir; PEXEC.
+*                                                 makes it the exec dir.) If it fails, CMDS still serves.
                     leax      MsgLoad,pcr
                     lbsr      WriteLn
                     lbsr      Alloc
@@ -1007,5 +1012,7 @@ MsgLoad             fcc       /Texas Shitkickers - saddling up.../
                     fcb       $0D
 MsgBye              fcc       /So long, partner./
                     fcb       $0D
-MsgErr              fcc       "tsk failed - run it from the TSK directory (chd /dd/TSK), with tskms, tskgt and tskcd in CMDS"
+DotDir              fcc       /./
+                    fcb       $0D
+MsgErr              fcc       "tsk failed - run it from the TSK directory (chd /dd/TSK): the art and tskms, tskgt, tskcd"
                     fcb       $0D

@@ -3,7 +3,7 @@
 #   make assets                  export the assets from the browser prototype (tools/export.py) and the music (midi2tsk.py)
 #   make music                   compose the music (compose.py), convert it, and render the MP3 previews (game/music)
 #   make                         build tsk (the game) and tskview (the asset viewer / graphics harness)
-#   make install DSK=/abs/x.dsk  tsk and tskview to CMDS, the assets to TSK, on a disk image
+#   make install DSK=/abs/x.dsk  tsk and tskview to CMDS; the assets and the stage modules to TSK, on a disk image
 #   make mame                    run the game's demo (tsk d) in the Wildbits MAME (wbjr2) headless, snapshots in mame/snap
 #   make mamebot                 the autopilot fighting the skeletons (tsk b), a snapshot every 6 frames
 #   make mameboss                Boot Hill's last waves and Two-Bit (tsk bg), a snapshot every 12 frames
@@ -72,7 +72,8 @@ tskview: src/tskview.asm src/tskassets.d
 install: tsk $(STAGEMODS) tskview
 	@test -n "$(DSK)" || { echo "usage: make install DSK=/absolute/path/to/image.dsk"; exit 1; }
 	-os9 makdir $(DSK),TSK
-	for p in tsk $(STAGEMODS) tskview; do os9 del $(DSK),CMDS/$$p 2>/dev/null; os9 copy -r $$p $(DSK),CMDS/$$p && os9 attr -e -pe $(DSK),CMDS/$$p || exit 1; done
+	for p in tsk tskview; do os9 del $(DSK),CMDS/$$p 2>/dev/null; os9 copy -r $$p $(DSK),CMDS/$$p && os9 attr -e -pe $(DSK),CMDS/$$p || exit 1; done
+	for p in $(STAGEMODS); do os9 del $(DSK),CMDS/$$p 2>/dev/null; os9 del $(DSK),TSK/$$p 2>/dev/null; os9 copy -r $$p $(DSK),TSK/$$p && os9 attr -e -pe $(DSK),TSK/$$p || exit 1; done
 	for f in $(ASSETFILES); do os9 del $(DSK),TSK/$$f 2>/dev/null; os9 copy -r assets/$$f $(DSK),TSK/$$f || exit 1; done
 
 mame: tsk $(STAGEMODS) tskview
