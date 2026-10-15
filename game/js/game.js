@@ -196,6 +196,8 @@ function sfx(k) {
     case 'squawk': tone('sawtooth', 900, 500, 0.12, 0.05); tone('sawtooth', 700, 380, 0.12, 0.05, 0.12); break;
     case 'check': tone('triangle', 520, 520, 0.08, 0.08); tone('triangle', 780, 780, 0.2, 0.08, 0.08); break;
     case 'win': [523, 659, 784, 1046].forEach((f, i) => tone('square', f, f, 0.16, 0.06, i * 0.13)); break;
+    case 'rattle': for (let i = 0; i < 7; i++) noise(0.035, 0.16, 'highpass', 3500, 5000, i * 0.055); break;   // a rattler coiling
+    case 'card': noise(0.05, 0.2, 'bandpass', 2600, 1200); tone('square', 1400, 900, 0.04, 0.03); break;    // a card flicked
   }
 }
 

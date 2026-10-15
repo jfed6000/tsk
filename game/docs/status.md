@@ -23,7 +23,8 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 | **Death scene** | Losing a life: the hat crumbles, he topples over backwards; a hat lifts off the lives and drifts down, he reaches up, catches it, gets up and it goes on: "STILL KICKIN'!". The gang hangs back, the boss waits. With no hats left he just lies there: GAME OVER (the hats are spare lives). Browser and F256 (`tsk f`: any hit kills) |
 | **Story** | `story.md`: "died with his boots on" revenge western. the Shitkickers (the boots Ringo died in) against the Diamondback Gang |
 | **Stage 1: Boot Hill (brawler)** | The wordless opening (rise from the grave, the hat hops on), the graveyard, five waves of skeletons clawing out of the ground plus dillos, lightning, boss **Two-Bit** (shovel swing, clods thrown across lanes, tunnels through depth and bursts up into a daze, raises two dead at half health) |
-| **Stage 2: Main Street at dusk** | False fronts, sunset, night falling a step per wave (a CLUT fade that spares the lights), outlaw coyotes and skeleton gunslingers, five waves, boss **Big Shell Dillon** (giant armadillo: claw swipe, curls and rolls down your lane; kick the shell back and he crashes dizzy; Outlaw Dillos at half health), then "TO BE CONTINUED..." |
+| **Stage 2: Main Street at dusk** | False fronts, sunset, night falling a step per wave (a CLUT fade that spares the lights), outlaw coyotes and skeleton gunslingers, five waves, boss **Big Shell Dillon** (giant armadillo: claw swipe, curls and rolls down your lane; kick the shell back and he crashes dizzy; Outlaw Dillos at half health) |
+| **Stage 3: Ghost Town at moonrise** (browser, 2026-10-15) | An abandoned mining town under a huge moon (boarded windows, cobwebs, a dead mine above), then through the batwing doors into Doc Gila's LAST CHANCE saloon (bar, cracked mirror, bottles, piano, curtain, lamplight). Hanging signs creak and fall as you pass ("TIMBER!": 2 to you, 3 to outlaws); card tables break like barrels. New outlaw: the **rattler henchman** (keeps 70 px off, coils with a rattle, lunges low and long: jump it, then kick it while it's stretched out). Boss **Doc Gila**, the Gila monster card sharp: a fan of three cards across the lanes, a bite up close, and every third move a flipped card table to deal from behind (break it with three kicks, or side kick it into him: "ANTE UP!", "BUSTED!", dizzy); "DEAL 'EM IN!" brings two rattlers. Music: "Dead Man's Hand". Then "TO BE CONTINUED..." |
 | **Brawler systems** | Depth band with shadows, waves with screen lock and "GO >>", 3-kick combo, side kick, flying kick, stomp, grab/knee/throw, weapon pickups, beans, health bar plus lives (hats), last-hit enemy bar, combos, game over |
 | **Skeleton gunslinger** | Keeps distance, aligns to your lane, aims (eyes flare), fires dodgeable bullets, reloads after six; heap and reassemble; skull knocked off, headless body gropes for it, skull kickable into others; shatters into bones; sometimes drops its gun |
 | **F256: asset exporter** | `f256/tools/export.py` + `game/js/export.js`: Boot Hill → tiles.bin (576 tiles, 3 sets), maps.bin, sprites.bin (551 cells), frames.bin (234 frames, with the combat effects), CLUTs, generated `f256/src/tskassets.d` and `tsktabs.a` (the hero's attack boxes); preview PNGs rebuilt from the binaries |
@@ -40,6 +41,9 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 | `js/undead.js` | Skeleton gunslinger sprites; the Boot Hill graveyard street for the brawler |
 | `js/mainstreet.js` | Main Street at dusk, night-fall shading (`T.shadeOf`), tumbleweed |
 | `js/dillon.js` | Big Shell Dillon, Main Street's boss (64x64 frames, the rolling ball) |
+| `js/ghosttown.js` | Ghost Town's backdrop (one 2,032-px street strip: the street, then the saloon inside), the hanging signs, card tables |
+| `js/critters.js` | The rattler henchman |
+| `js/gila.js` | Doc Gila, Ghost Town's boss, and his cards |
 | `js/brawler.js` | **The game**: stages, waves, combat, enemies, boss, opening, depth-sorted display list |
 | `js/levels.js`, `js/game.js` | The platformer; `game.js` also does the shared asset, input and sound setup and hands off |
 | `docs/story.md` | Story, villain, levels, roster, beats, decisions and open questions |
@@ -80,5 +84,6 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 3. **P4** (`f256/docs/port-plan.md`): sprints 1-5 done. The whole browser game now runs on the F256: the title,
    Boot Hill, Main Street, the music. Big Shell Dillon, the death scene and the grab/knee/throw are in (2026-10-15): the F256 has every browser move. Next: Ghost Town, pads.
 4. A per-stage sprite CLUT (118 colours already, all enemies in one).
-5. The next stages from `story.md` reworked for the brawler.
+5. **Ghost Town on the F256** (after the user's playtest): its tiles and sprite bank, the rattler, the signs and tables, Doc Gila, "Dead Man's Hand" (4.8K, fits the music window). Watch the module budget (24.0K of 32,768) and sprite RAM.
+6. The next stages from `story.md`: the Cattle Drive, the Train Heist, the Mission, High Noon.
 6. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).

@@ -15,6 +15,8 @@ Songs:
     boogie    "Graveyard Boogie": a candidate: Bo Diddley toms into a one-chord E boogie with a slide (after
               Thorogood and ZZ Top, the user's steer) (loops)
     boothill  "Boot Hill": a slow minor blues at midnight, tremolo guitar and a lonely whistle (loops)
+    deadman   "Dead Man's Hand": Ghost Town and Doc Gila's saloon - a minor-key saloon boogie on a honky-tonk
+              piano, a wailing harmonica, the slide from the boogie in the break (loops)
     clear     a stage-clear tag (once)
     over      game over: a dying blues turnaround (once)
 """
@@ -340,6 +342,106 @@ def boogie():
     return s, 4 * 4, 24 * 4                       # loop from bar 4 (after the intro), end after bar 23
 
 
+# ---------------------------------------------------------------------------------------------- Ghost Town
+def deadman():
+    """Dead Man's Hand: Ghost Town, and Doc Gila's Last Chance saloon. A minor blues boogie in A, 132 bpm, hard
+    swing: the saloon's honky-tonk piano rolling a minor boogie in the left hand and playing the tune in the right,
+    upright bass, a rim-shot backbeat on the ride; the harmonica wails the second chorus; the break brings in the
+    slide guitar from the Graveyard Boogie over stop-time saloon stomps. (Aces and eights: the hand Wild Bill held.)"""
+    s = Song(132, swing=0.6)
+    s.prog(4, HONKYTONK, vol=104, pan=56)          # the saloon piano
+    s.prog(2, ACOUSTIC_BASS, vol=110)
+    s.prog(3, HARMONICA, vol=96, pan=80)
+    s.prog(0, OVERDRIVE, vol=92, pan=40)           # the slide, in the break
+    s.cc(9, 0, 7, 104)
+    s.bend_range(0, 12)
+
+    CH = {'A': 'A2', 'D': 'D3', 'E': 'E2'}         # the minor boogie's roots (left hand)
+
+    def lh(bar, chord):
+        """The left hand: a minor boogie - root, 5th, 6th, b7th and back, two to a beat; the bass doubles the root"""
+        r = n(CH[chord]); base = bar * 4
+        figure = [0, 7, 9, 10, 12, 10, 9, 7] if chord != 'E' else [0, 7, 9, 10, 12, 10, 9, 7]
+        for i, iv in enumerate(figure):
+            s.note(4, base + i * 0.5, r + iv, 0.4, 92 if i % 2 == 0 else 74)
+        s.note(2, base, r - 12, 0.9, 112); s.note(2, base + 2, r - 12 + 7, 0.9, 100)
+
+    def kit(bar, fill=False):
+        base = bar * 4
+        for i in range(4):
+            s.drum(base + i, RIDE, 84); s.drum(base + i + 0.5, RIDE, 60)
+        s.drum(base, KICK, 104); s.drum(base + 2, KICK, 96)
+        s.drum(base + 1, RIM, 100); s.drum(base + 3, RIM, 104)
+        if fill:
+            for k, b in enumerate((3, 3.25, 3.5, 3.75)):
+                s.drum(base + b, SNARE, 90 + k * 8)
+
+    blues = ['A', 'A', 'A', 'A', 'D', 'D', 'A', 'A', 'E', 'D', 'A', 'E']   # the 12-bar, minor (Am, Dm, E7)
+
+    # intro, 2 bars: the piano alone, a tremolo on the high A, then the boogie starts
+    for k in range(6):
+        s.note(4, k * 0.25, 'A5' if k % 2 == 0 else 'C6', 0.22, 90)
+    s.chord(4, 1.5, ['E4', 'G4', 'C5', 'E5'], 2.4, 100)
+    lh(1, 'A')
+    s.drum(7, SNARE, 96); s.drum(7.5, SNARE, 110)
+
+    # A: the 12-bar with the piano's tune (bars 2-13)
+    tune = [  # (beat within the chorus, note, length)
+        (0, 'E5', 0.5), (0.5, 'C5', 0.5), (1, 'A4', 1), (2.5, 'C5', 0.5), (3, 'D5', 0.5), (3.5, 'D#5', 0.5),
+        (4, 'E5', 1.5), (6, 'G5', 0.5), (6.5, 'E5', 0.5), (7, 'C5', 1),
+        (8, 'A4', 0.5), (8.5, 'C5', 0.5), (9, 'E5', 0.5), (9.5, 'A5', 1.5), (12, 'G5', 1), (13, 'E5', 1), (14, 'C5', 2),
+        (16, 'F5', 0.5), (16.5, 'D5', 0.5), (17, 'A4', 1), (18.5, 'F5', 0.5), (19, 'A5', 1),
+        (20, 'G#5', 0.5), (20.5, 'F5', 0.5), (21, 'D5', 1), (22, 'B4', 1),
+        (24, 'C5', 0.5), (24.5, 'E5', 0.5), (25, 'A5', 2), (27.5, 'G5', 0.5),
+        (28, 'E5', 0.5), (28.5, 'C5', 0.5), (29, 'A4', 2),
+        (32, 'B4', 0.5), (32.5, 'D5', 0.5), (33, 'E5', 0.5), (33.5, 'G#5', 1.5),
+        (36, 'A5', 0.5), (36.5, 'F5', 0.5), (37, 'D5', 1), (38, 'F5', 1),
+        (40, 'E5', 0.5), (40.5, 'C5', 0.5), (41, 'A4', 1), (42, 'C5', 0.5), (42.5, 'A4', 1.5),
+        (44, 'G#4', 0.5), (44.5, 'B4', 0.5), (45, 'D5', 0.5), (45.5, 'E5', 2.5),
+    ]
+    for b, nt, ln in tune:
+        s.note(4, 8 + b, nt, ln * 0.92, 104)
+        s.note(4, 8 + b, n(nt) - 12, ln * 0.92, 70)            # doubled an octave down, quieter
+    for k, c in enumerate(blues):
+        lh(2 + k, c); kit(2 + k, fill=(k == 11))
+
+    # B: the second chorus - the harmonica wails it, the piano comps (bars 14-25)
+    harp = [
+        (0, 'A4', 'C5', 1.5), (2, 'A4', 'A4', 0.5), (2.5, 'G4', 'G4', 0.5), (3, 'E4', 'E4', 1),
+        (4, 'C5', 'C5', 0.5), (4.5, 'D5', 'D5', 0.5), (5, 'E5', 'E5', 3),
+        (8, 'G5', 'G5', 0.5), (8.5, 'E5', 'E5', 0.5), (9, 'D5', 'D5', 0.5), (9.5, 'C5', 'C5', 0.5), (10, 'A4', 'A4', 2),
+        (16, 'D5', 'D5', 1), (17, 'F5', 'F5', 1), (18, 'A5', 'A5', 2), (20, 'G#5', 'G#5', 0.5), (20.5, 'F5', 'F5', 0.5), (21, 'D5', 'D5', 3),
+        (24, 'E5', 'E5', 0.5), (24.5, 'C5', 'C5', 0.5), (25, 'A4', 'A4', 3),
+        (32, 'B4', 'B4', 0.5), (32.5, 'D5', 'D5', 0.5), (33, 'E5', 'E5', 3), (36, 'D5', 'D5', 1), (37, 'C5', 'C5', 1), (38, 'A4', 'A4', 2),
+        (40, 'E5', 'E5', 1), (41, 'C5', 'C5', 1), (42, 'A4', 'A4', 2), (44, 'B4', 'B4', 1), (45, 'G#4', 'G#4', 3),
+    ]
+    for b, f, t_, ln in harp:
+        s.note(3, 56 + b, f, ln * 0.9, 110)
+    for k, c in enumerate(blues):
+        bar = 14 + k
+        lh(bar, c); kit(bar, fill=(k == 11))
+        r = n({'A': 'A4', 'D': 'D4', 'E': 'E4'}[c])            # right-hand comping: minor stabs on the off-beats
+        third = 3 if c != 'E' else 4
+        for b in (0.5, 2.5):
+            s.chord(4, bar * 4 + b, [r, r + third, r + 7], 0.3, 86)
+
+    # the break, 4 bars: stop-time saloon stomps, the slide over them (bars 26-29)
+    for k in range(4):
+        base = (26 + k) * 4
+        s.chord(4, base, ['A2', 'E3', 'A3', 'C4', 'E4'], 0.6, 112); s.note(2, base, 'A1', 0.6, 118)
+        s.drum(base, KICK, 120); s.drum(base, CRASH if k == 0 else SPLASH, 104)
+        s.drum(base + 1.5, KICK, 110); s.drum(base + 1.5, SNARE, 112)
+    for b, f, t_, ln, v in [(0.5, 'G3', 'A3', 1.2, 118), (2, 'C4', 'C4', 0.5, 110), (2.5, 'D4', 'E4', 1.4, 120),
+                            (4.5, 'G4', 'A4', 2.5, 122), (8.5, 'E4', 'E4', 0.5, 108), (9, 'D4', 'D4', 0.5, 106),
+                            (9.5, 'C4', 'C4', 0.5, 104), (10, 'G3', 'A3', 2, 118), (12.5, 'D#4', 'E4', 3, 124)]:
+        if f == t_:
+            s.note(0, 104 + b, f, ln * 0.9, v)
+        else:
+            s.slide(0, 104 + b, f, t_, ln, v)
+    s.drum(119, SNARE, 100); s.drum(119.25, SNARE, 106); s.drum(119.5, SNARE, 112); s.drum(119.75, SNARE, 120)
+    return s, 2 * 4, 30 * 4                       # loop from bar 2 (after the intro), end after bar 29
+
+
 # ---------------------------------------------------------------------------------------------- Boot Hill
 def boothill():
     """Boot Hill at midnight: E minor, 76 bpm. Tremolo guitar picking the chords, a whistle that could be the
@@ -423,7 +525,8 @@ def over():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie)):
+    for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie),
+                     ('deadman', deadman)):
         song, loop, end = fn()
         k = song.save(OUT / f'{name}.mid', loop, end)
         secs = end * 60 / song.bpm

@@ -47,7 +47,7 @@ scene on, he's sizing the hero up as footwear.
 |---|---|---|---|
 | 1 | **Boot Hill** (built) | **Two-Bit**, a coyote gravedigger | He buried Ringo and is robbing the graves. He's the first to find out the boots got up. |
 | 2 | **The Desert** | **Big Shell Dillon**, the giant armadillo | Boss of the Outlaw Dillos. He curls up and rolls like a boulder, so kick the shell back at him. |
-| 3 | **Ghost Town** | **Doc Gila**, a Gila monster card sharp | Runs the saloon. A brawl through swinging doors, tables and falling signs. |
+| 3 | **Ghost Town** (built, browser) | **Doc Gila**, a Gila monster card sharp | Runs the saloon. A brawl through swinging doors, tables and falling signs. |
 | 4 | **The Cattle Drive** | **Jackrabbit Jack**, the rustler | A stampede chase on the back of a longhorn: the Metal Slug vehicle level. |
 | 5 | **The Train Heist** | **Sting**, a scorpion with too much dynamite | Fighting along the roofs of a moving train. The tunnel ducking writes itself. |
 | 6 | **The Mission** | Waves, then Diamondback's enforcer | A last stand defending the town, *Magnificent Seven* or Alamo style. The Texas level. |
