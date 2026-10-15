@@ -185,7 +185,7 @@ T.runBrawler = function (A) {
 
   // ---------------------------------------------------------------- music: the songs rendered from game/music/*.mid
   // (f256/tools/compose.py -> render.py), the same notes the F256 sends its SAM2695. M mutes.
-  const SONGS = { title: true, boothill: true, clear: false, over: false, boogie: true, deadman: true, stampede: true };     // name: loops
+  const SONGS = { title: true, boothill: true, clear: false, over: false, boogie: true, deadman: true, stampede: true, heist: true };     // name: loops
   let song = null, songName = null, musicOff = false;
   function music(name) {
     if (name === songName) return;
@@ -237,7 +237,7 @@ T.runBrawler = function (A) {
     phase = S.intro && !params.has('nointro') && !keep ? 'intro' : 'play'; phaseT = 0;
     intro.hatOn = false;
     if (phase === 'intro') { player.x = 96; player.z = 34; }
-    music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : name === 'ghosttown' ? 'deadman' : name === 'cattledrive' || name === 'train' ? 'stampede' : 'title');   // (the train: its own song to come)
+    music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : name === 'ghosttown' ? 'deadman' : name === 'cattledrive' ? 'stampede' : name === 'train' ? 'heist' : 'title');
     ZMAX = S.zmax || 80;
     for (const w of S.waves) for (const x of [w.cam + 10, w.cam + VW - 10]) if (S.gaps && S.gaps.some(g => x > g[0] && x < g[1]))   // a locked edge
       console.warn(`${name}: the wave at ${w.cam} has a screen edge in a gap at ${x}`);                                            // over a gap traps him

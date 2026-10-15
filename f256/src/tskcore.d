@@ -52,7 +52,7 @@ CySpd               equ       $000F
 CyStrikeT           equ       $000F
 CyTall              equ       $002C
 CyWindT             equ       $0019
-ddm0                equ       $4636
+ddm0                equ       $4644
 DGetupT             equ       $0015
 DieDur              equ       $001E
 DlEnter             equ       $0010
@@ -84,7 +84,7 @@ ES.Stag             equ       $0006
 ES.Strike           equ       $000C
 ES.Thrown           equ       $0013
 ES.Wind             equ       $000B
-eth0                equ       $4BD4
+eth0                equ       $4BE2
 FlashLen            equ       $0008
 FlashT              equ       $0006
 FlyV                equ       $002D
@@ -265,7 +265,7 @@ StompV              equ       $FFFFFF6B
 StoneX              equ       $0042
 StoneZ              equ       $0004
 StrikeT             equ       $001E
-swb9                equ       $28AF
+swb9                equ       $28BD
 TauntDur            equ       $0036
 TauntEvery          equ       $00F0
 ThrowDur            equ       $0018
@@ -278,12 +278,12 @@ TwG                 equ       $0003
 WaitT               equ       $0078
 WalkX               equ       $001C
 WalkZ               equ       $0011
-whb00               equ       $3CF4
-whb1x               equ       $3D25
+whb00               equ       $3D02
+whb1x               equ       $3D33
 WhipDur             equ       $0012
 WhipN               equ       $000E
-whk1                equ       $3D75
+whk1                equ       $3D83
 WindT               equ       $0012
-xdi0                equ       $466E
-xhdd2               equ       $481A
+xdi0                equ       $467C
+xhdd2               equ       $4828
 ZMax                equ       $0050

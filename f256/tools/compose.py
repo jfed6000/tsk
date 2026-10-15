@@ -19,6 +19,8 @@ Songs:
               piano, a wailing harmonica, the slide from the boogie in the break (loops)
     stampede  "Stampede!": the Cattle Drive and Jackrabbit Jack - a galloping train beat in A, a fiddle up front, the
               harmonica answering, a stop-time breakdown with whip cracks (loops)
+    heist     "Iron Horse": the Train Heist and Sting - the train whistle, then a ZZ Top-ish shuffle boogie in D on the
+              overdrive over a chugging train beat, the harmonica wailing, a stop-time tunnel, a slide ride-out (loops)
     clear     a stage-clear tag (once)
     over      game over: a dying blues turnaround (once)
 """
@@ -507,6 +509,113 @@ def stampede():
     return s, 0, 20 * 4                             # loops from the top, ends after bar 19
 
 
+# ---------------------------------------------------------------------------------------------- the Train Heist
+def heist():
+    """Iron Horse: the Train Heist and Sting. D, 150 bpm, a shuffle. The whistle (a harmonica chord, bent down) over
+    the train pulling out (bars 0-1, the first time only); a 12-bar boogie in D - the overdrive's boogie riff, the
+    bass doubling it, the snare chugging every eighth - the harmonica wailing over the second half (bars 2-13); the
+    tunnel: stop-time hits in the dark and a snare roll building, the whistle again (14-17); a slide guitar riding
+    out over the riff, a turnaround, and back to bar 2 (18-25)."""
+    s = Song(150, swing=0.62)
+    s.prog(0, OVERDRIVE, vol=96, pan=44)          # the riff, and the slide later
+    s.prog(1, DISTORTION, vol=74, pan=88)         # the stop-time hits, the ride-out's chords
+    s.prog(2, FINGER_BASS, vol=112)
+    s.prog(3, HARMONICA, vol=104, pan=70)
+    s.bend_range(3, 2); s.bend_range(0, 12)
+    s.cc(9, 0, 7, 104)
+    R = {'D': n('D3'), 'G': n('G2'), 'A': n('A2')}    # the riff's roots
+
+    def train(bar, accent=True, kick=True):
+        """The train beat: the snare on every eighth, a ghost between, the backbeat on 2 and 4, the kick on 1 and 3"""
+        base = bar * 4
+        for i in range(8):
+            s.drum(base + i * 0.5, SNARE, 64 if i % 2 == 0 else 50)
+        if accent:
+            s.drum(base + 1, SNARE, 112); s.drum(base + 3, SNARE, 116)
+        if kick:
+            s.drum(base, KICK, 112); s.drum(base + 2, KICK, 104); s.drum(base + 2.5, KICK, 80)
+        s.drum(base, HAT_P, 60); s.drum(base + 2, HAT_P, 60)
+
+    def riff(bar, ch, vel=96):
+        """The boogie: the root under 5th, 6th, flat 7th, 6th - a pair of shuffle eighths each beat; the bass doubles it"""
+        r = R[ch]; base = bar * 4
+        for b, top in enumerate((7, 9, 10, 9)):
+            for e in (0, 0.5):
+                s.chord(0, base + b + e, [r, r + top], 0.42, vel - (8 if e else 0))
+            s.note(2, base + b, r - 12, 0.45, 112); s.note(2, base + b + 0.5, r - 12 + top, 0.4, 96)
+
+    def whistle(beat, length=1.6):
+        """The train's whistle: a harmonica chord that sags as it fades"""
+        s.bend(3, beat - 0.01, 0)
+        s.chord(3, beat, ['A4', 'D5', 'F#5'], length, 110)
+        for k in range(1, 5):
+            s.bend(3, beat + length * (0.4 + 0.15 * k), -0.12 * k)
+        s.bend(3, beat + length + 0.05, 0)
+
+    # the whistle, and the train pulling out (the first time only)
+    whistle(0, 1.5); whistle(2, 1.8)
+    for i in range(16):
+        s.drum(i * 0.5, SNARE, 40 + i * 4)
+    s.drum(6, KICK, 100); s.drum(7, KICK, 104); s.drum(7.5, SNARE, 110)
+    # the 12-bar boogie (bars 2-13), the harmonica over its second half
+    form = ['D', 'D', 'D', 'D', 'G', 'G', 'D', 'D', 'A', 'G', 'D', 'A']
+    for k, ch in enumerate(form):
+        riff(2 + k, ch); train(2 + k)
+    s.drum(8, CRASH, 110)
+    harp = [  # (beat from bar 6, note, length, bend at the start: semitones below, sliding up)
+        (0, 'A4', 1.5, 1), (1.5, 'C5', 0.5, 0), (2, 'D5', 1, 0), (3, 'C5', 0.5, 0), (3.5, 'A4', 0.5, 0),
+        (4, 'G4', 2, 1), (6, 'F4', 0.5, 0), (6.5, 'D4', 1.5, 0),
+        (8, 'D5', 0.5, 0), (8.5, 'D5', 0.5, 0), (9, 'C5', 0.5, 0), (9.5, 'A4', 0.5, 0), (10, 'C5', 2, 1),
+        (12, 'A4', 1, 0), (13, 'G4', 0.5, 0), (13.5, 'F4', 0.5, 0), (14, 'D4', 2, 0),
+        (16, 'E5', 2, 2), (18, 'D5', 1, 0), (19, 'C5', 1, 0),
+        (20, 'D5', 0.5, 0), (20.5, 'C5', 0.5, 0), (21, 'A4', 0.5, 0), (21.5, 'G4', 0.5, 0), (22, 'A4', 2, 1),
+        (24, 'F5', 0.5, 0), (24.5, 'E5', 0.5, 0), (25, 'D5', 1, 0), (26, 'A4', 1, 1), (27, 'C5', 1, 0),
+        (28, 'D5', 1.5, 0), (29.5, 'A4', 0.5, 0), (30, 'C#5', 2, 1),
+    ]
+    for b, nt, ln, bnd in harp:
+        beat = 24 + b
+        if bnd:
+            s.bend(3, beat - 0.01, -bnd / 2); s.note(3, beat, nt, ln * 0.92, 108)
+            for k in range(1, 4):
+                s.bend(3, beat + 0.08 * k, -bnd / 2 * (1 - k / 3))
+        else:
+            s.note(3, beat, nt, ln * 0.92, 104)
+    # the tunnel (bars 14-17): stop-time in the dark, a snare roll building, the whistle at the end
+    for k in range(4):
+        base = (14 + k) * 4
+        s.chord(1, base, ['D3', 'A3', 'D4', 'F#4'], 0.5, 112); s.note(2, base, 'D2', 0.5, 118)
+        s.drum(base, KICK, 122); s.drum(base, CRASH if k % 2 == 0 else SPLASH, 96)
+        for i in range(16 if k == 3 else 8):
+            st = 0.25 if k == 3 else 0.5
+            s.drum(base + 1 + i * st * (3 / 4 if k == 3 else 3 / 4), SNARE, 44 + k * 14 + i * 2)
+    whistle(16 * 4 + 2, 1.8)
+    # the ride-out (bars 18-25): the riff with a slide on top, the chords on the distortion, a turnaround
+    out = ['D', 'D', 'G', 'D', 'A', 'G', 'D', 'A']
+    for k, ch in enumerate(out):
+        bar = 18 + k
+        riff(bar, ch, 84); train(bar)
+        s.chord(1, bar * 4 + 1, [R[ch] + 12, R[ch] + 19, R[ch] + 24], 0.3, 86); s.chord(1, bar * 4 + 3, [R[ch] + 12, R[ch] + 19, R[ch] + 24], 0.3, 86)
+    s.drum(72, CRASH, 112)
+    slide = [  # (beat from bar 18, from, to, length)
+        (0, 'A4', 'D5', 2), (2.5, 'C5', 'C5', 0.5), (3, 'A4', 'A4', 1),
+        (4, 'F5', 'F#5', 1.5), (5.5, 'D5', 'D5', 0.5), (6, 'A4', 'A4', 2),
+        (8, 'C5', 'D5', 1), (9, 'B4', 'B4', 1), (10, 'G4', 'G4', 2),
+        (12, 'A4', 'D5', 3),
+        (16, 'E5', 'E5', 1), (17, 'D5', 'D5', 0.5), (17.5, 'C5', 'C5', 0.5), (18, 'A4', 'A4', 2),
+        (20, 'D5', 'G5', 2), (22, 'F5', 'F5', 0.5), (22.5, 'D5', 'D5', 1.5),
+        (24, 'A5', 'A5', 1), (25, 'F#5', 'F#5', 0.5), (25.5, 'D5', 'D5', 0.5), (26, 'C5', 'D5', 2),
+        (28, 'A4', 'A4', 0.5), (28.5, 'C#5', 'C#5', 0.5), (29, 'E5', 'E5', 0.5), (29.5, 'G5', 'G5', 0.5), (30, 'A5', 'A5', 2),
+    ]
+    for b, frm, to, ln in slide:
+        beat = 72 + b
+        if frm != to:
+            s.slide(0, beat, frm, to, ln * 0.92, 112, span=12, steps=4, slide_len=0.3)
+        else:
+            s.note(0, beat, frm, ln * 0.92, 108)
+    s.drum(103, SNARE, 104); s.drum(103.25, SNARE, 110); s.drum(103.5, SNARE, 116); s.drum(103.75, SNARE, 122)
+    return s, 2 * 4, 26 * 4                         # loops back to bar 2 (the whistle once), ends after bar 25
+
+
 # ---------------------------------------------------------------------------------------------- Boot Hill
 def boothill():
     """Boot Hill at midnight: E minor, 76 bpm. Tremolo guitar picking the chords, a whistle that could be the
@@ -591,7 +700,7 @@ def over():
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie),
-                     ('deadman', deadman), ('stampede', stampede)):
+                     ('deadman', deadman), ('stampede', stampede), ('heist', heist)):
         song, loop, end = fn()
         k = song.save(OUT / f'{name}.mid', loop, end)
         secs = end * 60 / song.bpm

@@ -8,5 +8,6 @@ MU.over       equ       3
 MU.boogie     equ       4
 MU.deadman    equ       5
 MU.stampede   equ       6
+MU.heist      equ       7
 
-MU.N       equ       7
+MU.N       equ       8

@@ -25,7 +25,7 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --pragma=nosymbolcase,condundefzero,dollarnotlocal \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
-ASSETFILES  = pal_bh.bin pal_ms.bin pal_gt.bin pal_cd.bin fri.bin frr.bin frr_bh.bin frr_ms.bin frr_gt.bin sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin clut_dusk.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin mus_deadman.bin mus_stampede.bin spr_gt.bin tiles_gt.bin maps_gt.bin spr_cd.bin tiles_cd.bin maps_cd.bin frr_cd.bin
+ASSETFILES  = pal_bh.bin pal_ms.bin pal_gt.bin pal_cd.bin fri.bin frr.bin frr_bh.bin frr_ms.bin frr_gt.bin sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin clut_dusk.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin mus_deadman.bin mus_stampede.bin mus_heist.bin spr_gt.bin tiles_gt.bin maps_gt.bin spr_cd.bin tiles_cd.bin maps_cd.bin frr_cd.bin
 TSKSRC      = src/tsk.asm src/data.a src/stages.d src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/death.a src/grab.a src/rat.a src/stgmod.a src/snd.a src/title.a src/amb.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
 # The stage modules (stgmod.a): a stage's own code, F$Loaded with its art into the process's free 8K slot.
 # tools/stagegen.py writes the glue (src/tskvec.d, tskhook.a, tskhk_*.a, tskcore.d) from the sources.
