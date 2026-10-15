@@ -257,12 +257,12 @@ T.runBrawler = function (A) {
     return { x0, x1: x0 + hw, h0: p.h - hy - hh, h1: p.h - hy };
   }
   const hits = (b, e) => b.x0 < e.x + 11 && b.x1 > e.x - 11 && b.h0 < e.h + eHeight(e) && b.h1 > e.h;
-  const hittable = e => !['down', 'getup', 'ko', 'held', 'enter', 'rise', 'under', 'rumble', 'dig', 'intro', 'curl', 'roll'].includes(e.state) && !(e.state === 'air' && e.thrown) && !e.cover;
+  const hittable = e => !['down', 'getup', 'ko', 'held', 'enter', 'rise', 'under', 'rumble', 'dig', 'intro', 'curl', 'roll', 'vanish', 'leap', 'hang', 'drop'].includes(e.state) && !(e.state === 'air' && e.thrown) && !e.cover;
   const allFoes = () => (boss ? enemies.concat([boss]) : enemies);
 
   // light hits stagger; knockdowns launch; out of health = kicked into the next county (or back to the grave)
   function hitE(e, dmg, knock, dir = player.face) {
-    if (e === boss) return hitBoss(dmg, dir);
+    if (e === boss) return hitBoss(dmg, dir, knock);
     e.hp -= dmg; e.flash = 0.1; lastHit = e; lastHitT = 2.2;
     spark(e.x - dir * 6, e.z, e.h + eHeight(e) * 0.6, dmg >= 2);
     if (e.hp <= 0) return koE(e, dir);
@@ -688,7 +688,7 @@ T.runBrawler = function (A) {
     sfx('dig'); dirt(boss.x, boss.z, 10);
   }
   function bSet(s) { boss.state = s; boss.t = 0; }
-  function hitBoss(dmg, dir) {
+  function hitBoss(dmg, dir, knock) {
     const b = boss;
     if (b.state === 'daze') dmg = Math.ceil(dmg * 1.5);
     if (b.type === 'dillon' && b.state === 'daze' && (b.dazeDmg = (b.dazeDmg || 0) + dmg) >= 14 && b.hp > dmg) bSet('approach');   // he shakes it off
@@ -709,6 +709,8 @@ T.runBrawler = function (A) {
       else if (b.type === 'gila') { popup(b.x, FLOOR + b.z - 70, "DEAL 'EM IN!", '#ff9d3c', 1, 1.6); spawn('rattler', 1, 0); spawn('rattler', -1, 0); }
       else { popup(b.x, FLOOR + b.z - 66, 'RISE, BOYS!', '#ff9d3c', 1, 1.6); spawn('skel@', 1, 0); spawn('skel@', -1, 0); }
     }
+    // Doc Gila won't stand for a big hit: a card trick (gone, then back behind you) or a leap to land on you, turn about
+    if (b.type === 'gila' && knock && ['approach', 'recover', 'stagger', 'deal', 'flick', 'jaws', 'bite'].includes(b.state)) gilaEscape();
   }
   function updateBoss(dt) {
     const b = boss, p = player;
@@ -1010,6 +1012,34 @@ T.runBrawler = function (A) {
         else if (b.t > 1.0) { breakTable(); b.cover = false; bSet('approach'); }   // done: he kicks it away
         break;
       case 'daze': stop(); if (b.t > 2.2) bSet('approach'); break;
+      case 'vanish':                                // the card trick: gone, then back on your other side
+        stop();
+        if (b.t > 0.7) {
+          let nx = p.x - p.face * 64;
+          if (nx < L0 || nx > L1) nx = p.x + p.face * 64;
+          b.x = Math.max(L0, Math.min(L1, nx)); b.z = p.z; b.face = Math.sign(p.x - b.x) || 1;
+          cardBurst(6); sfx('card'); popup(b.x, FLOOR + b.z - 66, 'PICK A CARD!', '#ffd34a', 1);
+          if (Math.abs(p.x - b.x) < 60) bSet('jaws'); else { bSet('deal'); b.t = 0.25; }
+        }
+        break;
+      case 'land': stop(); if (b.t > 1.2) bSet('approach'); break;
+      case 'crouch': stop(); b.face = toward; if (b.t > 0.25) { bSet('leap'); b.vh = 720; sfx('jump'); } break;   // (720: off the top of the screen)
+      case 'leap': case 'hang': case 'drop': {    // up off the screen, his shadow hunting you, then down on it
+        const track = b.state === 'drop' ? 0 : 130;
+        b.vx = Math.abs(dx) > 2 ? Math.sign(dx) * Math.min(Math.abs(dx) * 3, track) : 0;
+        b.vz = Math.abs(dz) > 2 ? Math.sign(dz) * Math.min(Math.abs(dz) * 3, track * 0.6) : 0;
+        if (b.state === 'leap') { b.vh -= GRAV * dt; b.h += b.vh * dt; if (b.vh <= 0 || b.h > 170 + b.z) { bSet('hang'); b.vh = 0; } }
+        else if (b.state === 'hang') { if (b.t > 0.6) { bSet('drop'); b.vh = -700; } }
+        else {
+          b.h += b.vh * dt;
+          if (b.h <= 0) {
+            b.h = 0; b.vh = 0; stop(); shake = Math.max(shake, 8); hitstop = 0.06; puff(b.x, b.z, 8); sfx('stomp');
+            if (Math.abs(p.x - b.x) < 24 && inLane(b, p, 12) && p.h < 20 && hurtPlayer(b, 3)) popup(p.x, FLOOR + p.z - 62, 'SQUASHED!', '#ff6b4a', 1);
+            bSet('land');                           // he lands heavy: open a while, no tricks
+          }
+        }
+        break;
+      }
       case 'ko':
         b.vh -= GRAV * 0.6 * dt; b.h += b.vh * dt; b.x += b.vx * dt;
         if (b.t > 2 && phase === 'play') { boss = null; lock = null; waveI++; stageClear(); }
@@ -1017,6 +1047,19 @@ T.runBrawler = function (A) {
     }
     b.x += b.vx * dt; b.z = Math.max(0, Math.min(ZMAX, b.z + b.vz * dt));
     b.x = Math.max(L0 - 4, Math.min(L1 + 4, b.x));
+  }
+  function cardBurst(n) {                        // a puff of cards: the trick
+    const b = boss;
+    for (let i = 0; i < n; i++) parts.push({ k: 'chunk', img: GILA.card[i % 4], x: b.x, z: b.z, h: 20 + Math.random() * 20,
+      vx: (Math.random() - 0.5) * 220, vh: 80 + Math.random() * 160, life: 0.8, max: 0.8 });
+    puff(b.x, b.z, 5, 10);
+  }
+  function gilaEscape() {
+    const b = boss;
+    b.vx = b.vz = 0;
+    b.trick = (b.trick || 0) + 1;
+    if (b.trick % 2) { bSet('vanish'); cardBurst(10); sfx('card'); sfx('whoosh'); }
+    else { bSet('crouch'); sfx('whoosh'); }
   }
   function flickCards() {                         // three cards: his lane and one each side of it
     const b = boss; sfx('card');
@@ -1082,6 +1125,7 @@ T.runBrawler = function (A) {
       const G = GILA;
       return { intro: G.talk[(b.t * 6 | 0) % 2], approach: (b.vx || b.vz) ? G.walk[(b.anim * 7 | 0) % 4] : G.idle[(b.anim * 3 | 0) % 2],
         deal: G.deal, flick: G.flick, jaws: G.jaws, bite: G.bite, recover: G.idle[0], stagger: G.hurt, cover: G.duck,
+        vanish: null, crouch: G.jaws, leap: G.leap, hang: G.leap, drop: G.drop, land: G.idle[0],
         daze: G.daze[(b.t * 8 | 0) % 4], ko: G.ko }[b.state];
     }
     if (b.type === 'dillon') {
@@ -1158,7 +1202,7 @@ T.runBrawler = function (A) {
       } else {
         const img = bossImg(b);
         if (img) put(img, wx(b.x), sy(b.z, b.h), CB.OX, CB.OY, depth(b.z), b.face, b.flash > 0 ? 'flash' : null);
-        if (b.state !== 'ko') put(PICK.shadow, wx(b.x), sy(b.z, 0), 16, 4, 9);
+        if (b.state !== 'ko' && b.state !== 'vanish') put(PICK.shadow, wx(b.x), sy(b.z, 0), 16, 4, 9);
       }
     }
     for (const s of skulls) { put(SKEL.skull[s.state === 'ground' ? 0 : (s.anim * 12 | 0) % 4], wx(s.x), sy(s.z, s.h + 6), 8, 8, depth(s.z)); put(PICK.shadowS, wx(s.x), sy(s.z, 0), 12, 4, 9); }
@@ -1231,6 +1275,11 @@ T.runBrawler = function (A) {
       const dx = boss.x - p.x;
       if (!boss.deflected && Math.sign(dx) === -Math.sign(boss.vx) && Math.abs(dx) < 40 && inLane(boss, p, 10) && botT <= 0) { p.face = Math.sign(dx) || 1; pressed.side = true; botT = 0.4; }
       else if (!boss.deflected) keys[p.z > boss.z ? 'down' : 'up'] = Math.abs(p.z - boss.z) < 14 && Math.abs(dx) < 90;
+      return;
+    }
+    if (boss && boss.type === 'gila' && ['leap', 'hang', 'drop'].includes(boss.state)) {   // his shadow: get out from under it
+      keys[p.z > boss.z ? 'down' : 'up'] = Math.abs(p.z - boss.z) < 16;
+      keys[p.x > boss.x ? 'right' : 'left'] = Math.abs(p.x - boss.x) < 30;
       return;
     }
     if (boss && boss.type === 'gila' && boss.table && !boss.table.sliding) {   // behind his table: side kick it into him

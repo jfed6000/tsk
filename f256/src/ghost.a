@@ -357,6 +357,14 @@ GS.Ko               equ       9
 GS.Jaws             equ       10                  the bite's wind-up
 GS.Bite             equ       11
 GS.CFlick           equ       12                  cards from behind the table (not hittable)
+GS.Vanish           equ       13                  the card trick: gone (not drawn, not hittable)
+GS.Crouch           equ       14                  about to leap
+GS.Leap             equ       15                  going up off the screen (not hittable)
+GS.Hang             equ       16                  up there, his shadow hunting you (not hittable)
+GS.Drop             equ       17                  coming down on it (not hittable)
+GS.Land             equ       18                  landed heavy: open a while, no tricks
+LeapV               equ       192                 720 px/s: off the top of the screen
+DropV               equ       -187                700 px/s down
 GilaHp              equ       44
 CardV               equ       56                  210 px/s
 TableV              equ       80                  a side-kicked table: 300 px/s
@@ -408,6 +416,13 @@ GSet                ldx       <bslot
                     beq       ggst1x
                     cmpa      #GS.CFlick
                     beq       ggst1x
+                    cmpa      #GS.Vanish
+                    beq       ggst1x
+                    cmpa      #GS.Leap
+                    blo       ggst0x
+                    cmpa      #GS.Drop
+                    bls       ggst1x
+ggst0x              equ       *
                     cmpa      #GS.Ko
                     beq       ggst1x
                     ldb       #ES.Boss
@@ -436,6 +451,12 @@ GsTab               fdb       GIntro-GsTab
                     fdb       GJaws-GsTab
                     fdb       GBite-GsTab
                     fdb       GFlick-GsTab        (from behind the table)
+                    fdb       GVanish-GsTab
+                    fdb       GCrouch-GsTab
+                    fdb       GAir-GsTab          leap
+                    fdb       GAir-GsTab          hang
+                    fdb       GAir-GsTab          drop
+                    fdb       GLand-GsTab
 
 GIntro              lbsr      FaceHero
                     lbsr      EStop
@@ -682,6 +703,276 @@ GDaze               lbsr      EStop
                     lbra      DMove
 
 GKo                 lbra      BKo
+
+* ---------------------------------------------------------------- his tricks
+* GilaReact - the end of HitBoss (X = him): a big hit (knock) while he's
+*   walking, recovering, staggered, dealing or biting, and he won't stand
+*   for it - the card trick and the leap, turn about
+GilaReact           lda       bkind,u
+                    cmpa      #2
+                    bne       grx9
+                    tst       <knock
+                    beq       grx9
+                    ldx       <bslot
+                    tst       EN.Hp,x
+                    ble       grx9
+                    lda       <bst
+                    leay      ReactTab,pcr
+grx1                ldb       ,y+
+                    bmi       grx9
+                    pshs      b
+                    cmpa      ,s+
+                    bne       grx1
+                    lbsr      EStop
+                    inc       gtrick,u
+                    lda       gtrick,u
+                    lsra
+                    bcc       grx2
+                    lda       #GS.Vanish          the card trick: gone in a burst of cards
+                    lbsr      GSet
+                    lda       #10
+                    lbsr      CardBurst
+                    lda       #SF.Card
+                    lbra      Sfx
+grx2                lda       #GS.Crouch          the leap
+                    lbsr      GSet
+                    lda       #SF.Whoosh
+                    lbra      Sfx
+grx9                rts
+ReactTab            fcb       GS.Appr,GS.Recov,GS.Stag,GS.Deal,GS.Flick,GS.Jaws,GS.Bite,$FF
+
+* CardBurst - A = how many: cards flying off him
+CardBurst           sta       <kcnt
+                    ldx       <bslot
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+gcb1                lda       #20
+                    lbsr      RandN
+                    adda      #20
+                    ldb       #16
+                    mul
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       gcb2
+                    lda       <kcnt
+                    anda      #3
+                    tfr       a,b
+                    clra
+                    addd      #GL.card
+                    std       PT.F,y
+                    lda       #48
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #58
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #42
+                    lbsr      RandN
+                    adda      #21
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+gcb2                dec       <kcnt
+                    bne       gcb1
+                    lda       #5
+                    lbra      Puff
+
+* the card trick: 0.7 s gone, then back 64 px behind you (or in front, if
+*   behind is off the screen): PICK A CARD!, and straight into a move
+GVanish             lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #42
+                    lbls      DMove
+                    ldd       #64*16              behind him: against the way he faces
+                    tst       <hface
+                    bne       gv1x
+                    lbsr      NegD
+gv1x                addd      <hx
+                    bsr       OnScreen
+                    bcc       gv2x
+                    ldd       #64*16              (off the screen: in front of him)
+                    tst       <hface
+                    beq       gv1y
+                    lbsr      NegD
+gv1y                addd      <hx
+gv2x                std       EN.X,x
+                    ldd       <hz
+                    std       EN.Z,x
+                    lbsr      FaceHero
+                    lda       #6
+                    lbsr      CardBurst
+                    lda       #SF.Card
+                    lbsr      Sfx
+                    ldx       <bslot
+                    lda       #66
+                    ldy       #TX.pickcard
+                    lbsr      WordE
+                    ldx       <bslot
+                    ldd       <hx                 close: the bite; else the cards, quick
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #60*16
+                    bhs       gv3x
+                    lda       #GS.Jaws
+                    lbsr      GSet
+                    lbra      DMove
+gv3x                lda       #GS.Deal
+                    lbsr      GSet
+                    lda       #15
+                    sta       EN.T,x
+                    lbra      DMove
+
+* OnScreen - D = an x (12.4): carry set if it's outside cam + 24 .. cam + 296
+OnScreen            pshs      d
+                    ldd       <cam
+                    addd      #24
+                    lbsr      To124
+                    cmpd      ,s
+                    bgt       gos8
+                    ldd       <cam
+                    addd      #296
+                    lbsr      To124
+                    cmpd      ,s
+                    blt       gos8
+                    puls      d
+                    andcc     #$FE
+                    rts
+gos8                puls      d
+                    orcc      #1
+                    rts
+
+GCrouch             lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #15
+                    lbls      DMove
+                    lda       #GS.Leap
+                    lbsr      GSet
+                    ldd       #LeapV
+                    std       EN.VH,x
+                    lda       #SF.Jump
+                    lbsr      Sfx
+                    lbra      DMove
+
+* up off the screen, his shadow hunting you (130 px/s), then down on it
+GAir                ldd       #0
+                    std       EN.VX,x
+                    std       EN.VZ,x
+                    lda       <bst
+                    cmpa      #GS.Drop
+                    beq       gai3
+                    ldd       <hx                 tracking you
+                    subd      EN.X,x
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bls       gai1
+                    ldd       #35
+                    tst       <tdx
+                    bpl       gai0
+                    ldd       #-35
+gai0                std       EN.VX,x
+gai1                ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #2*16
+                    bls       gai3
+                    ldd       #21
+                    tst       <tdz
+                    bpl       gai2
+                    ldd       #-21
+gai2                std       EN.VZ,x
+gai3                lda       <bst
+                    cmpa      #GS.Leap
+                    bne       gai5
+                    ldd       EN.VH,x             going up
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    ldd       EN.VH,x
+                    bgt       gai4
+                    lda       #GS.Hang
+                    lbsr      GSet
+                    ldd       #0
+                    std       EN.VH,x
+gai4                lbra      DMove
+gai5                cmpa      #GS.Hang
+                    bne       gai6
+                    lda       EN.T,x
+                    cmpa      #36
+                    lbls      DMove
+                    lda       #GS.Drop
+                    lbsr      GSet
+                    ldd       #DropV
+                    std       EN.VH,x
+                    lbra      DMove
+gai6                ldd       EN.H,x              coming down
+                    addd      EN.VH,x
+                    std       EN.H,x
+                    lbgt      DMove
+                    ldd       #0                  down: the street shakes
+                    std       EN.H,x
+                    std       EN.VH,x
+                    lda       #16
+                    lbsr      Shk
+                    lda       #4
+                    sta       <hitstop
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #8
+                    lbsr      Puff
+                    ldx       <bslot
+                    ldd       <hx                 on you?
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #24*16
+                    bhs       gai8
+                    ldd       <hz
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       gai8
+                    ldd       <hh
+                    cmpd      #20*16
+                    bge       gai8
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    tsta
+                    beq       gai8
+                    ldx       #TX.squashed
+                    lda       #62
+                    lbsr      WordH
+gai8                lda       #GS.Land
+                    lbsr      GSet
+                    lbra      DMove
+
+GLand               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #72
+                    lbls      DMove
+                    lda       #GS.Appr
+                    lbsr      GSet
+                    lbra      DMove
+
+* DrawGila - from DrawBoss: vanished, he isn't drawn at all (carry clear);
+*   else carry set: drawn as any enemy
+DrawGila            lda       <bst
+                    cmpa      #GS.Vanish
+                    bne       gdg1
+                    andcc     #$FE
+                    rts
+gdg1                orcc      #1
+                    rts
 
 * Flick - three cards across the lanes: his, and 16 px either side
 Flick               lda       #SF.Card
@@ -971,6 +1262,12 @@ GfTab               fdb       GfTalk-GfTab
                     fdb       GfJaws-GfTab
                     fdb       GfBite-GfTab
                     fdb       GfDuck-GfTab
+                    fdb       GfIdle-GfTab        (vanished: not drawn, DrawGila)
+                    fdb       GfJaws-GfTab        crouching
+                    fdb       GfLeap-GfTab
+                    fdb       GfLeap-GfTab
+                    fdb       GfDrop-GfTab
+                    fdb       GfIdle-GfTab        landed
 GfTalk              lda       EN.T,x
                     ldb       #10
                     lbsr      Div
@@ -1011,6 +1308,10 @@ GfDaze              lda       EN.T,x
                     anda      #3
                     adda      #GL.daze-GL.First
                     bra       ggfx
+GfLeap              lda       #GL.leap-GL.First
+                    bra       ggfx
+GfDrop              lda       #GL.drop-GL.First
+                    bra       ggfx
 GfKo                lda       #GL.ko-GL.First
 ggfx                 tst       EN.Fc,x
                     beq       ggfx1
@@ -1026,6 +1327,40 @@ ggfx1                tfr       a,b
 BotGila             lda       bkind,u
                     cmpa      #2
                     lbne      gbg9x
+                    lda       <bst                in the air: out from under his shadow
+                    cmpa      #GS.Leap
+                    blo       gbgt
+                    cmpa      #GS.Drop
+                    bhi       gbgt
+                    ldx       <bslot
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    lbsr      AbsD
+                    clr       <binp
+                    cmpd      #16*16
+                    bhs       gbga
+                    ldb       #IN.Down
+                    tst       <tdz
+                    bpl       gbgd
+                    ldb       #IN.Up
+gbgd                stb       <binp
+gbga                ldd       <hx
+                    subd      EN.X,x
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #30*16
+                    bhs       gbgb
+                    ldb       #IN.Right
+                    tst       <tdx
+                    bpl       gbgc
+                    ldb       #IN.Left
+gbgc                orb       <binp
+                    stb       <binp
+gbgb                ldb       <binp
+                    andcc     #$FE
+                    rts
+gbgt                equ       *
                     tst       gtab,u
                     lbeq      gbg9x
                     ldd       gtvx,u

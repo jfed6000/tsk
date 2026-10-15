@@ -130,6 +130,8 @@ T.buildGila = function () {
     hurt: mk({ lean: -0.3, eyes: 'x', mouth: 1, fa: -1, fan: false, vis: 3 }),
     daze: [0, 1, 2, 3].map(i => mk({ eyes: 'daze', lean: -0.12 + (i % 2) * 0.08, fa: 1.2, mouth: 0.4, stars: i / 4 * TAU / 3, vis: 2, fan: false })),
     ko: mk({ lean: -0.6, eyes: 'x', mouth: 1.5, fa: -2, ba: -2, vis: 7, fan: false, legs: [1.2, -1.2] }),
+    leap: mk({ crouch: 6, lean: -0.2, fa: -2.6, ba: -2.4, mouth: 1, eyes: 'mad', legs: [-1.3, 1.1], fan: false }),   // in the air, arms up
+    drop: mk({ crouch: 2, lean: 0.25, fa: 1.9, ba: 1.7, mouth: 2, eyes: 'mad', legs: [0.9, -0.9], fan: false }),     // coming down on you
     card,
   };
 };

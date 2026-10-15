@@ -338,6 +338,7 @@ gthit               rmb       1                   the hero's attack that last ki
 gtx                 rmb       2                   the table: x, z (12.4)
 gtz                 rmb       2
 gtvx                rmb       2                   sliding (side-kicked), 0 = standing
+gtrick              rmb       1                   Doc Gila's tricks so far: odd the card trick, even the leap
 sgn                 rmb       4*SN.Size           Ghost Town's hanging signs
 sgsav               rmb       2                   (Signs: the sign being looked at)
 dying               rmb       1                   1 = the death scene's playing (death.a)

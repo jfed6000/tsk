@@ -161,6 +161,7 @@ T.runExport = function (A) {
     ['ghostt', 'GHOST TOWN', '#ffd34a', 3], ['moonrise', 'MOONRISE', '#e8a070', 1], ['gtclear', 'GHOST TOWN CLEAR!', '#ffd34a', 3],
     ['weep', "READ 'EM AND WEEP, BOOTS!", '#fff3c4', 1], ['dealin', "DEAL 'EM IN!", '#ff9d3c', 1], ['anteup', 'ANTE UP!', '#ffd34a', 1],
     ['busted', 'BUSTED!', '#ffd34a', 1], ['chomp', 'CHOMP!', '#ff6b4a', 1], ['timber', 'TIMBER!', '#ffd34a', 1],
+    ['pickcard', 'PICK A CARD!', '#ffd34a', 1], ['squashed', 'SQUASHED!', '#ff6b4a', 1],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
 
@@ -189,7 +190,7 @@ T.runExport = function (A) {
   addGroup('GL', [['idle', GIL.idle, 3, true], ['walk', GIL.walk, 7, true], ['talk', GIL.talk, 6, true], ['deal', [GIL.deal], 1, false],
     ['flick', [GIL.flick], 1, false], ['jaws', [GIL.jaws], 1, false], ['bite', [GIL.bite], 1, false], ['duck', [GIL.duck], 1, false],
     ['hurt', [GIL.hurt], 1, false], ['daze', GIL.daze, 8, true], ['ko', [GIL.ko], 1, false],
-    ['card', GIL.card, 16, true, 6, 6]], B.OX, B.OY);
+    ['card', GIL.card, 16, true, 6, 6], ['leap', [GIL.leap], 1, false], ['drop', [GIL.drop], 1, false]], B.OX, B.OY);
   const SIGNS = ['BARBER', 'DENTIST', 'WHISKEY', 'GUNS'].map(nm => GPR.sign(nm));   // (brawler.js STAGES.ghosttown.signs)
   addGroup('GP', [...SIGNS.flatMap((g, i) => [['sign' + i, [g.up], 1, false, g.up.ox, 0], ['signd' + i, [g.down], 1, false, g.down.ox, 24]]),
     ['table', [GPR.table], 1, false, GPR.table.ox, GPR.table.oy], ['flipped', [GPR.flipped], 1, false, GPR.flipped.ox, GPR.flipped.oy],

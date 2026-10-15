@@ -221,6 +221,11 @@ One program module, **`tsk`**, assembled from:
      `EB.St` 2. His table (`gtab`...) breaks in three kicks, or a side kick slides it into him (`TableHit`,
      `TableStep`). `make mamegila` runs `tsk hkg`.
    - **Cost:** the worst pass in a Main Street → Ghost Town run is 92K cycles (of about 105K a frame).
+   - **His tricks** (the user's ask, 2026-10-15): a knockdown hit (`<knock`) while he walks, recovers, staggers,
+     deals or bites sets off the card trick (`GS.Vanish`: not drawn, not hittable, 0.7 s, then 64 px behind you)
+     or the leap (`GS.Crouch`, `Leap`, `Hang`, `Drop`: up at 720 px/s, his shadow tracking you at 130 px/s, down
+     at 700; 3 if you're under him; then `GS.Land`, open 1.2 s), turn about (`gtrick`). The hook is the end of
+     `HitBoss` (`GilaReact`).
 10. The pad harness, co-op, the next stages.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.

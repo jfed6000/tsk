@@ -275,7 +275,7 @@ whs0                lda       #66
                     lbsr      NewSkel
                     lbsr      NewSkel
                     ldx       <bslot
-whb9                 rts
+whb9                 lbra      GilaReact           (Doc Gila's tricks, ghost.a)
 
 * GangDown - the next of the gang still standing goes down, knocked away
 *   from him; none left, and it's done (gdown cleared).  Exit: X = him
@@ -1059,8 +1059,10 @@ bfx1                tfr       a,b
 
 * DrawBoss - X = him: the mound while he's under the street, else
 *   himself.  Exit: carry set if DrawEn should draw him itself
-DrawBoss            tst       bkind,u             (Dillon has no mound)
+DrawBoss            lda       bkind,u             (Dillon has no mound; Doc Gila vanishes)
                     beq       wdb0
+                    cmpa      #2
+                    lbeq      DrawGila
                     comb
                     rts
 wdb0                lda       <bst
