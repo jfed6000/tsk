@@ -321,7 +321,8 @@ One program module, **`tsk`**, assembled from:
       inside (`SF.Creak`), the way out. `DuckNow` (down is duck: `ST.Duck`). TUNNEL! and DUCK! are drawn in the
       HUD's pass (`TrainWords` from `Titles`): `BuildChar` writes records through Y, which `DrawTrain`'s pass hasn't
       set up.
-    - **Sting** (`sting.a`, `bkind` 4, `SS.*` in stages.d): `StingGuard` (the start of `HitBoss`: CLANK!, or the
+    - **Sting** (`sting.a`, `bkind` 4, `SS.*` in stages.d): `Shove` (he's solid: walk into him guarding and it's 1, out
+      his front; `Ahead` counts in him as in front - the user's K2 run beat him by kicking from inside him), `StingGuard` (the start of `HitBoss`: CLANK!, or the
       dropped stick), `StingReact` (the end: the staggers), `StingSalvo` (half health); his sticks (`stk`: lobbed
       with a signed divide, `SDiv`; kicked by `StickKick` from `HeroAtk`) and the bangs (`bom`, `Explode`: `sblast`
       skips his guard).

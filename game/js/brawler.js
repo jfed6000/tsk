@@ -72,7 +72,7 @@ T.runBrawler = function (A) {
   const STING = T.buildSting();                    // its boss, Sting, and his dynamite
   let sticks = [], booms = [];                     // lit sticks of dynamite (flying, lying, kicked); the bangs
   let tunnel = null, tunnelT = 0, tdark = 0;
-  const tally = { fell: 0, swept: 0, ko: 0 };   // (for the test harness: outlaws down the gaps, swept off, KO'd)       // a tunnel coming or going by; the next one's in tunnelT; the dark in it
+  const tally = { fell: 0, swept: 0, ko: 0, clank: 0, shove: 0, kicked: 0 };   // (for the test harness: outlaws down the gaps, swept off, KO'd)       // a tunnel coming or going by; the next one's in tunnelT; the dark in it
 
   // ---------------------------------------------------------------- the stages
   // waves: lock the screen at cam and send the gang in. 'skel@' = a skeleton claws up out of the ground on screen.
@@ -315,11 +315,12 @@ T.runBrawler = function (A) {
   function hitE(e, dmg, knock, dir = player.face) {
     if (e === boss) {
       if (boss.type === 'sting' && ['approach', 'windup', 'pinchw', 'pinch', 'sting', 'intro', 'duck'].includes(boss.state)
-        && Math.sign(player.x - boss.x) === boss.face) {   // his pincers up in front: it glances off (open him up, or get round behind)
-        boss.flash = 0.05; spark(boss.x + boss.face * 18, boss.z, 24, false); sfx('shell'); hitstop = 0.03;
+        && (player.x - boss.x) * boss.face > -8) {   // his pincers up in front - or you're in him: it glances off (open him up, or get round behind)
+        boss.flash = 0.05; spark(boss.x + boss.face * 18, boss.z, 24, false); sfx('shell'); hitstop = 0.03; tally.clank++;
         if (!boss.clankT || time - boss.clankT > 0.6) { boss.clankT = time; popup(boss.x + boss.face * 16, FLOOR + boss.z - 46, 'CLANK!', '#c3c8d8', 1, 0.6); }
         return;
       }
+      tally.kicked++;
       return hitBoss(dmg, dir, knock);
     }
     e.hp -= dmg; e.flash = 0.1; lastHit = e; lastHitT = 2.2;
@@ -1364,6 +1365,9 @@ T.runBrawler = function (A) {
     const stop = () => { b.vx = b.vz = 0; };
     const tunnelNear = tunnel && b.state !== 'ko' && (tunnel.st === 'warn' || (tunnel.st === 'mouth' && tunnel.x + camX > b.x - 30));
     if (tunnelNear && !['duck', 'intro', 'daze'].includes(b.state)) { bSet('duck'); stop(); }   // he knows this line
+    // he's solid: walk into him while he's guarding and a claw swipes you back out the front (1). Get round him quick, or jump
+    if (['approach', 'windup', 'pinchw', 'duck', 'light', 'toss'].includes(b.state) && Math.abs(dx) < 14 && inLane(b, p, 8) && p.h < 20
+      && hurtPlayer({ x: b.x - b.face * 4 }, 1)) { tally.shove++; sfx('shell'); }
     switch (b.state) {
       case 'intro':                                  // down off the cab
         if (b.h > 0) { b.vh -= GRAV * dt; b.h = Math.max(0, b.h + b.vh * dt); if (b.h === 0) { puff(b.x, b.z, 6); sfx('land'); shake = Math.max(shake, 4); } break; }
@@ -1389,7 +1393,7 @@ T.runBrawler = function (A) {
       case 'pinchw': stop(); b.face = toward; if (b.t > 0.32) { bSet('pinch'); b.hitDone = false; sfx('whoosh'); } break;
       case 'pinch':
         stop();
-        if (!b.hitDone && b.t < 0.15 && inLane(b, p, 10) && p.h < 30 && Math.sign(dx) === b.face && Math.abs(dx) < 50) { b.hitDone = true; hurtPlayer(b, 2); }
+        if (!b.hitDone && b.t < 0.15 && inLane(b, p, 10) && p.h < 30 && dx * b.face > -8 && Math.abs(dx) < 50) { b.hitDone = true; hurtPlayer(b, 2); }
         if (b.t > 0.35) bSet('recover');
         break;
       case 'windup':                                 // the tail cocked; the glint: it's coming
@@ -1399,7 +1403,7 @@ T.runBrawler = function (A) {
         break;
       case 'sting':                                  // the tail lashes out low and long in front of him: jump it
         stop();
-        if (!b.hitDone && b.t < 0.16 && inLane(b, p, 10) && p.h < 22 && Math.sign(dx) === b.face && Math.abs(dx) < 62) {
+        if (!b.hitDone && b.t < 0.16 && inLane(b, p, 10) && p.h < 22 && dx * b.face > -8 && Math.abs(dx) < 62) {
           b.hitDone = true; hurtPlayer(b, 3); popup(p.x, FLOOR + p.z - 62, 'STUNG!', '#ff6b4a', 1);
         }
         if (b.t > 0.25) { if (b.hitDone) bSet('recover'); else { bSet('stuck'); sfx('land'); spark(b.x + b.face * 30, b.z, 4, false); } }
@@ -1791,6 +1795,13 @@ T.runBrawler = function (A) {
       const dx = boss.x - p.x;
       if (!boss.deflected && Math.sign(dx) === -Math.sign(boss.vx) && Math.abs(dx) < 40 && inLane(boss, p, 10) && botT <= 0) { p.face = Math.sign(dx) || 1; pressed.side = true; botT = 0.4; }
       else if (!boss.deflected) keys[p.z > boss.z ? 'down' : 'up'] = Math.abs(p.z - boss.z) < 14 && Math.abs(dx) < 90;
+      return;
+    }
+    if (boss && boss.type === 'sting' && boss.state !== 'ko' && params.has('hug')) {   // ?hug: the test of walking into him and kicking
+      const dx = boss.x - p.x;
+      if (Math.abs(boss.z - p.z) > 2) keys[boss.z > p.z ? 'down' : 'up'] = true;
+      if (Math.abs(dx) > 3) keys[dx > 0 ? 'right' : 'left'] = true;
+      else if (botT <= 0) { p.face = boss.face; pressed.snap = true; botT = 0.3; }
       return;
     }
     if (boss && boss.type === 'sting' && boss.state !== 'ko') {                 // Sting: his dynamite back at him; jump the sting

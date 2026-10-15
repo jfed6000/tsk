@@ -73,15 +73,16 @@ ZLeft              ldd       <hx
 ztw1                orcc      #1
                     rts
 
-* Ahead - X = him: carry clear if you're in front of him (the way he faces)
-Ahead               bsr       ZLeft
-                    bcs       zah1
-                    tst       EN.Fc,x             right of him: in front if he faces right
-                    beq       zah8
-                    bra       zah9
-zah1                tst       EN.Fc,x
-                    bne       zah8
-zah9                orcc      #1
+* Ahead - X = him: carry clear if you're in front of him (the way he faces),
+*   or in him: anything short of 8 px behind his middle
+Ahead               ldd       <hx
+                    subd      EN.X,x              how far ahead of him, the way he faces
+                    tst       EN.Fc,x
+                    beq       zah1
+                    lbsr      NegD
+zah1                cmpd      #-8*16
+                    bgt       zah8
+                    orcc      #1
                     rts
 zah8                andcc     #$FE
                     rts
@@ -144,7 +145,8 @@ zs1                 lda       <bst
                     lda       #SS.Duck
                     lbsr      SSet
                     lbsr      EStop
-zs2                 lda       <bst
+zs2                 lbsr      Shove
+                    lda       <bst
                     leay      SsTab,pcr
                     lsla
                     ldd       a,y
@@ -164,6 +166,42 @@ SsTab               fdb       ZsIntro-SsTab
                     fdb       ZsStuck-SsTab
                     fdb       ZsLight-SsTab
                     fdb       ZsToss-SsTab
+
+* Shove - X = him: he's solid.  Walk into him while he's guarding and a
+*   claw swipes you back out the front (1).  Exit: X = him
+Shove               lda       <bst
+                    leay      zshv9,pcr
+zshv1               cmpa      ,y+
+                    beq       zshv2
+                    tst       ,y
+                    bpl       zshv1
+                    rts
+zshv2               ldd       <hh
+                    cmpd      #20*16
+                    bge       zshv8
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    bhs       zshv8
+                    ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       zshv8
+                    ldd       #-4*16              (from just behind his middle: out the front)
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <sx
+                    lda       #1
+                    lbsr      HurtHero
+                    tsta
+                    beq       zshv7
+                    lda       #SF.Shell
+                    lbsr      Sfx
+zshv7               ldx       <bslot
+zshv8               rts
+zshv9               fcb       SS.Appr,SS.WindUp,SS.PinchW,SS.Duck,SS.Light,SS.Toss,$FF
 
 ZsIntro              ldd       EN.H,x              down off the cab
                     beq       zin2
