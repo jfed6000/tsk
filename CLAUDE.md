@@ -12,4 +12,4 @@ in `game/` that obeys the F256 display rules.
     due two days later. Claude's tasks are assigned to `claude` with no dates.
   - Tasks link (`affects`) to the Components deliverables they change. Complete them in PPM when done.
 - Test headless with Chromium and the URL flags (`?ff`, `?bot`, `?god`, `?debug`, `?sheet`); see `game/README.md`.
-- Commit when work is done (branch main; no remote yet).
+- Commit when work is done (branch main), then push to `origin` (http://seshat.local:3000/magnus/tsk.git).
