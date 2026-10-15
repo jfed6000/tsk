@@ -113,13 +113,29 @@ lblk                rmb       1                   LoadFile: current block
 lcnt                rmb       1                   LoadFile: blocks left
 loff                rmb       2                   LoadFile: offset in the current block
 lmap                rmb       2                   LoadFile: where the block is mapped
-tmrec               rmb       12                  SS.TmSet record
 tsn                 rmb       1                   tile set counter
 * input
 demo                rmb       1                   1 = the demo script drives the hero (tsk d)
 bot                 rmb       1                   1 = the autopilot drives him (tsk b)
 god                 rmb       1                   1 = nothing hurts him (tsk g)
 skipb               rmb       1                   1 = start at Two-Bit (tsk k)
+botarg              rmb       1                   1 = tsk b: the autopilot plays every game
+attract             rmb       1                   1 = this game's the attract mode
+attt                rmb       2                   passes of the attract mode
+klast               rmb       1                   the keyboard alone, last pass (not the bot's)
+kpress              rmb       1                   the keyboard's new presses
+camdir              rmb       1                   the title's camera: 0 right, 1 left
+hisc                rmb       4                   the high score (BCD)
+* sound (snd.a)
+musblk              rmb       1                   the first music block (a block a song)
+msong               rmb       1                   the song playing ($FF = none)
+mwait               rmb       1                   frames to its next record
+mptr                rmb       2                   the next record
+mmap                rmb       2                   where its block is mapped (0 = not)
+mcnt                rmb       1
+mbn                 rmb       1                   bytes in this frame's MIDI buffer
+mipath              rmb       1                   /mi's path (MidiPath builds)
+msnd                rmb       1                   1 = no sound effects
 bott                rmb       1                   autopilot: passes before its next kick
 binp                rmb       1                   autopilot: the input it builds
 bnear               rmb       2                   autopilot: the enemy it's after
@@ -164,6 +180,8 @@ hudeid              rmb       1                   the enemy shown (its id, 0 = n
 hudehp              rmb       1                   its health shown
 hudcb               rmb       1                   the combo shown (0 = none)
 hudnm               rmb       1                   1 = his name's still to draw
+hudhi               rmb       1                   1 = the title's high score to draw in the strip
+hudclr              rmb       1                   1 = the strip to clear (after the title)
 hmapd               rmb       1                   1 = the HUD block is mapped this pass
 lhit                rmb       1                   the enemy last hit (its id)
 lhitt               rmb       1                   passes its bar still shows
@@ -266,8 +284,12 @@ tmpn                rmb       1
 tmpf                rmb       1
 tmp                 rmb       2
 dpend               equ       .
+                    ifgt      dpend-256
+                    error     "the direct page is full: move a variable below dpend"
+                    endc
 
 * ---------------------------------------------------------------- the rest
+tmrec               rmb       12                  SS.TmSet record (reached by leax tmrec,u only)
 recs                rmb       NRecs*8             our sprite table, registered with the driver
 dl                  rmb       NDL*DL.Size         the display list
 dlkey               rmb       NDL                 each entry's sort key: bigger = nearer = drawn on top
@@ -281,6 +303,8 @@ it                  rmb       NIt*IT.Size         items lying about
 hb                  rmb       NHb*HB.Size         his bullets
 cl                  rmb       NCl*CL.Size         Two-Bit's clods
 hbuf                rmb       24                  text being built
+pend                rmb       NPend*PN.Size       queued MIDI: note-offs, delayed notes
+mbuf                rmb       NMBuf               this frame's MIDI
 pt                  rmb       NPt*PT.Size         particles
 frames              rmb       FRM.Size            frames.bin
 clutbuf             rmb       1024                sprite CLUT, then the all-white hit-flash CLUT

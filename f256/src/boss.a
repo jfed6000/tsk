@@ -45,7 +45,9 @@ CL.VH               equ       11
 CL.Size             equ       13
 
 * StartBoss - the last wave: Two-Bit digs up out of the street
-StartBoss           lbsr      NewSlot
+StartBoss           lda       #SF.Dig
+                    lbsr      Sfx
+                    lbsr      NewSlot
                     bcs       wsb9
                     stx       <bslot
                     lda       #TY.Boss
@@ -108,7 +110,9 @@ wbs2x                stb       EN.St,x
 *   again.  No knockdowns: a hit while he's walking, recovering or
 *   throwing staggers him.  X is kept.
 ********************************************************************
-HitBoss             lda       <bst
+HitBoss             lda       #SF.HitBig
+                    lbsr      Sfx
+                    lda       <bst
                     cmpa      #BS.Daze
                     bne       whb1
                     lda       <dmg                x 1.5, rounded up
@@ -450,7 +454,12 @@ BThrow              lda       EN.T,x
                     lbsr      BSet
                     lbra      BMove
 
-BDig                lbsr      EStop
+BDig                lda       EN.T,x              the shovel goes in (on its first pass)
+                    cmpa      #1
+                    bne       wbd0
+                    lda       #SF.Dig
+                    lbsr      Sfx
+wbd0                lbsr      EStop
                     lda       EN.T,x
                     cmpa      #24
                     lbls      BMove
@@ -537,7 +546,9 @@ BRumble             lbsr      Rand
 wbr1x                lda       EN.T,x
                     cmpa      #30
                     bls       wbr9x
-                    lda       #BS.Pop             up he comes
+                    lda       #SF.Stomp           up he comes
+                    lbsr      Sfx
+                    lda       #BS.Pop
                     lbsr      BSet
                     ldd       <bmx
                     std       EN.X,x
@@ -706,7 +717,9 @@ wdx2                 dec       <kcnt
 * Clods: three flung in an arc at you and either side of you
 *   (brawler.js flingClods: aimed to land in 0.7, 0.78, 0.86 s)
 ********************************************************************
-Fling               leay      cl,u
+Fling               lda       #SF.Dig
+                    lbsr      Sfx
+                    leay      cl,u
                     clr       <tmpi               k = 0, 1, 2
 wfl1                 ldx       <bslot
                     lda       #1

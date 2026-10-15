@@ -268,7 +268,8 @@ ns3                 clr       ,y+
 NewSkel             bsr       NewSlot
                     bcc       nk0
                     rts
-nk0
+nk0                 lda       #SF.Dig             clawing up out of the ground
+                    lbsr      Sfx
                     lda       #ES.Rise
                     sta       EN.St,x
                     lda       #220                x = camera + 50 + 0..219
@@ -486,6 +487,8 @@ ea2                 subd      EN.X,x
                     lbsr      AbsD
                     cmpd      #40*16
                     lbhs      EnMove
+                    lda       #SF.Shell           the hammer's cocked
+                    lbsr      Sfx
                     lda       #ES.Aim
                     lbsr      SetE
                     lbsr      EStop
@@ -503,7 +506,9 @@ EAim                lbsr      EStop
                     lbra      EnMove
 
 * Fire - X = the skeleton: a bullet from the muzzle, down its lane
-Fire                leay      eb,u
+Fire                lda       #SF.Shot
+                    lbsr      Sfx
+                    leay      eb,u
                     ldb       #NEb
 fi1                 tst       EB.St,y
                     beq       fi2
@@ -605,6 +610,8 @@ eg3                 std       EN.VZ,x
                     cmpd      #6*16
                     lbhs      EnMove
                     clr       SL.St,y
+                    lda       #SF.Tip             its head back on
+                    lbsr      Sfx
                     lda       #1
                     sta       EN.Sk,x
                     lda       #ES.Appr
@@ -638,6 +645,8 @@ EAir                ldd       EN.VH,x             the arc
                     std       EN.H,x
                     std       EN.VH,x
                     std       EN.VX,x
+                    lda       #SF.Land
+                    lbsr      Sfx
                     lda       #ES.Down
                     lbsr      SetE
                     ldd       EN.X,x
@@ -921,6 +930,11 @@ HitE                sta       <dmg
                     lda       EN.Ty,x             Two-Bit takes it his own way
                     cmpa      #TY.Boss
                     lbeq      HitBoss
+                    lda       #SF.Hit             the thwack (a knockdown's bigger)
+                    tst       <knock
+                    beq       hie1
+                    lda       #SF.HitBig
+hie1                lbsr      Sfx
                     ldb       EN.Hp,x
                     subb      <dmg
                     stb       EN.Hp,x
@@ -1025,7 +1039,9 @@ nk2                 lda       #SL.Fly
 *   skull if it still has one fly off; any loose skull of its own is
 *   nobody's now; the slot is free.  X is kept.
 ********************************************************************
-KO                  lda       #5
+KO                  lda       #SF.Ko
+                    lbsr      Sfx
+                    lda       #5
                     sta       <hitstop
                     lda       #8
                     lbsr      Shk
@@ -1043,7 +1059,9 @@ KO                  lda       #5
                     ldd       #150
                     lbsr      ScoreAt
                     lbra      KoWord
-ko0                 ldd       #350
+ko0                 lda       #SF.Bones
+                    lbsr      Sfx
+                    ldd       #350
                     lbsr      ScoreAt
                     lbsr      KoWord
                     lbsr      GunDrop             its six-shooter, sometimes
@@ -1141,6 +1159,8 @@ HurtHero            tst       <hinv
                     lda       <hhp
                     suba      <dmg
                     sta       <hhp
+                    lda       #SF.Hurt
+                    lbsr      Sfx
                     lda       #InvT
                     sta       <hinv
                     lda       #ST.Hurt
@@ -1225,7 +1245,9 @@ bb3                 leax      EN.Size,x
 * StompShock - the stomp lands: everything close to him and on the
 *   ground is knocked flying, away from him
 ********************************************************************
-StompShock          ldx       #TX.stomp
+StompShock          lda       #SF.Stomp
+                    lbsr      Sfx
+                    ldx       #TX.stomp
                     lda       #56
                     lbsr      WordH
                     lda       #12
@@ -1465,6 +1487,8 @@ ha13                tst       EB.St,x
                     cmpd      <bx1
                     bge       ha15
                     clr       EB.St,x
+                    lda       #SF.Shell           a bullet kicked out of the air
+                    lbsr      Sfx
                     ldd       EB.X,x
                     std       <sx
                     ldd       EB.Z,x

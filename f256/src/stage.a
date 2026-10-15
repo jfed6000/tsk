@@ -19,7 +19,9 @@ ComboLen              equ       84                  1.4 s to land the next hit o
 ********************************************************************
 * GameInit - a new game: everything cleared, the hero at the start
 ********************************************************************
-GameInit            leax      en,u                every table: enemies, skulls, bullets, popups, particles
+GameInit            ldd       #0
+                    std       <attt
+                    leax      en,u                every table: enemies, skulls, bullets, popups, particles
                     ldy       #frames-en
 gi1                 clr       ,x+
                     leay      -1,y
@@ -35,6 +37,8 @@ gi2                 std       <rnd
                     lbsr      CamInit
                     lbsr      HudInit
                     lbsr      PickInit
+                    lda       #MU.boothill        the stage's theme from the grave on (after the
+                    lbsr      Music               clear above: the MIDI buffer's in that range)
                     clr       <hwep
                     clr       <hammo
                     ldd       #0
@@ -86,6 +90,8 @@ sg0                 tst       <combot
                     beq       sg1
                     dec       <combot
 sg1                 lda       <phase
+                    cmpa      #PH.Title
+                    lbeq      TitleStep
                     cmpa      #PH.Intro
                     lbeq      IntroStep
                     cmpa      #PH.Play
@@ -98,6 +104,9 @@ sg2                 cmpa      #PH.Clear
                     ldd       <phaset
                     cmpd      #ClearT
                     blo       sgx
+                    lbsr      HiScore             TO BE CONTINUED: the title theme again
+                    lda       #MU.title
+                    lbsr      Music
                     lda       #PH.End
                     bra       SetPh
 sg4                 ldd       <phaset             the end, game over: jump to go again
@@ -106,7 +115,7 @@ sg4                 ldd       <phaset             the end, game over: jump to go
                     lda       <ipress
                     bita      #IN.Jump
                     beq       sgx
-                    lbra      GameInit
+                    lbra      TitleInit           back to the title
 sgx                 rts
 
 * SetPh - A = the new phase
@@ -129,6 +138,8 @@ wv0                 tst       <lock
                     inc       <wavei
                     lda       #GoLen
                     sta       <got
+                    lda       #SF.Check
+                    lbsr      Sfx
                     lda       <wavei
                     cmpa      #NWaves
                     lbhs      StageClear
@@ -210,6 +221,8 @@ WaveTab             fdb       0
 * StageClear - the stage is won: he taunts
 ********************************************************************
 StageClear          clr       <lock
+                    lda       #MU.clear
+                    lbsr      Music
                     lda       #PH.Clear
                     lbsr      SetPh
                     ldd       #0
@@ -221,7 +234,10 @@ StageClear          clr       <lock
                     lbra      SetS
 
 * GameOver - the last life is gone
-GameOver            lda       #PH.Over
+GameOver            lbsr      HiScore
+                    lda       #MU.over
+                    lbsr      Music
+                    lda       #PH.Over
                     lbra      SetPh
 
 ********************************************************************

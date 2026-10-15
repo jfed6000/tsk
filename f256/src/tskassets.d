@@ -26,12 +26,12 @@ MAP2.Of equ $0DB6        offset in maps.bin
 MAP.Size equ $1BE4
 
 * sprites.bin: 1K cells
-SPR.N    equ 825         cells
-SPR.Size equ $0CE400    bytes
+SPR.N    equ 836         cells
+SPR.Size equ $0D1000    bytes
 
 * frames.bin
-FRM.N    equ 400         frames
-FRM.Size equ $145A
+FRM.N    equ 403         frames
+FRM.Size equ $148F
 
 * animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)
 * the mirrored (facing left) copy of frame f is f + <group>.Mir
@@ -352,4 +352,13 @@ TX.dizzy.T     equ 60
 TX.x           equ 399
 TX.x.N         equ 1
 TX.x.T         equ 60
+TX.press       equ 400
+TX.press.N     equ 1
+TX.press.T     equ 60
+TX.tagline     equ 401
+TX.tagline.N   equ 1
+TX.tagline.T   equ 60
+TX.tagline2    equ 402
+TX.tagline2.N  equ 1
+TX.tagline2.T  equ 60
 

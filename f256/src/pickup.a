@@ -120,6 +120,8 @@ kim3                 lda       IT.Ty,x             beans: walked over
                     cmpd      #10*16
                     bhs       kim9
                     clr       IT.Ty,x
+                    lda       #SF.Check           beans!
+                    lbsr      Sfx
                     lda       <hhp
                     adda      #7
                     cmpa      #MaxHp
@@ -196,7 +198,9 @@ kuf2                 leay      IT.Size,y
                     rts
 
 * PickUp - Y = the weapon he's standing on: it's his
-PickUp              lda       IT.Ty,y
+PickUp              lda       #SF.Tip
+                    lbsr      Sfx
+                    lda       IT.Ty,y
                     sta       <hwep
                     clr       IT.Ty,y
                     ldb       IT.Am,y
@@ -263,7 +267,9 @@ kgd9                 rts
 ********************************************************************
 * BreakBar - Y = a barrel: splinters, 50 points, what was inside.
 *   X is kept.
-BreakBar            pshs      x
+BreakBar            lda       #SF.Break
+                    lbsr      Sfx
+                    pshs      x
                     clr       BR.St,y
                     lda       #3
                     sta       <hitstop
@@ -355,7 +361,9 @@ kbh2                 leay      BR.Size,y
 * The weapons
 ********************************************************************
 * HeroFire - a shot from the six-shooter
-HeroFire            dec       <hammo
+HeroFire            lda       #SF.Shot
+                    lbsr      Sfx
+                    dec       <hammo
                     lda       #2
                     lbsr      Shk
                     leay      hb,u
@@ -405,7 +413,7 @@ kwh2                 ldd       <hh
                     addd      #8
                     std       <bh0
                     addd      #32
-                    std       <kbh1
+                    std       <bh1
                     lda       <hface
                     sta       <hdir
                     leax      en,u
@@ -436,7 +444,7 @@ kwh3                 lda       EN.St,x
                     cmpd      <bh0
                     ble       kwh5
                     ldd       <tmp
-                    cmpd      <kbh1
+                    cmpd      <bh1
                     bge       kwh5
                     lda       #2
                     clrb

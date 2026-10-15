@@ -18,7 +18,8 @@ from cpu6809 import CPU6809, C  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 F256 = os.path.dirname(HERE)
-MODBASE, PARAMS, WINDOW = 0x8000, 0x7F00, 0x4000      # the data area is at 0 (up to 16K)
+MODBASE, PARAMS = 0x8000, 0x7F00                      # the data area is at 0 (up to 16K)
+WINDOWS = [0x4000, 0xD000]                             # F$MapBlk's windows: two at once at most (port-guide)
 F_EXIT, F_ICPT, F_SLEEP, F_MAPBLK, F_CLRBLK = 0x06, 0x09, 0x0A, 0x4F, 0x50
 I_OPEN, I_READ, I_WRITLN, I_GETSTT, I_SETSTT, I_CLOSE = 0x84, 0x89, 0x8C, 0x8D, 0x8E, 0x8F
 SS_MCR, SS_LIVEKEYS, SS_GFXALLOC, SS_SPRPUSH = 0x8C, 0xC6, 0xD4, 0xD1
@@ -35,6 +36,7 @@ class Host(CPU6809):
         self.sym, self.passes, self.watch, self.every, self.records = sym, passes, watch, every, records
         self.enemies, self.kos, self.hits = enemies, 0, 0
         self.files, self.nextblk, self.npass, self.pushes = {}, 0x40, 0, []
+        self.blocks, self.mapped = {}, {}        # block -> its 8K; window -> the block mapped there
 
     def v(self, name, size=None):
         a = self.sym[name]
@@ -87,10 +89,21 @@ class Host(CPU6809):
             if self.npass >= self.passes:
                 raise Exit(0)
             return 0
-        if fn in (F_ICPT, F_CLRBLK, I_CLOSE):
+        if fn == F_CLRBLK:                       # the window's bytes back into its block
+            blk = self.mapped.pop(self.u, None)
+            if blk is not None:
+                self.blocks[blk] = bytes(self.mem[self.u:self.u + 0x2000])
             return 0
-        if fn == F_MAPBLK:
-            self.u = WINDOW
+        if fn in (F_ICPT, I_CLOSE):
+            return 0
+        if fn == F_MAPBLK:                       # the block's bytes into a free window
+            free = [w for w in WINDOWS if w not in self.mapped]
+            if not free:
+                raise Exit('F$MapBlk with two windows already mapped')
+            w = free[0]
+            self.mapped[w] = self.x
+            self.mem[w:w + 0x2000] = self.blocks.get(self.x, bytes(0x2000))
+            self.u = w
             return 0
         if fn == I_WRITLN:
             s = bytes(self.mem[self.x:self.x + self.y]).split(b'\r')[0]

@@ -55,6 +55,12 @@ HeroInit            ldd       #70*16
 * SetS - A = the new state.  Its time starts at 0, its animation from frame 0,
 *   and it's a new attack (hatk: each attack hits each thing once; never 0)
 SetS                sta       <hst
+                    pshs      a,y                 its sound (brawler.js: jump, whoosh, land, tip)
+                    leay      SetSfx,pcr
+                    lda       a,y
+                    bmi       ss00
+                    lbsr      Sfx
+ss00                puls      a,y
                     clr       <ht
                     clr       <hdesc
                     clr       <hdesc+1
@@ -524,6 +530,11 @@ HeroFrame           ldx       <hdesc
 hfr1                rts
 
 * the descriptor for each state (Idle and Jump are picked above)
+* a state's sound as it starts ($FF = none): idle, walk, jump, flying
+*   kick, stomp, land, snap, side, taunt, hurt, whip, shoot
+SetSfx              fcb       $FF,$FF,SF.Jump,SF.Whoosh,SF.Whoosh,SF.Land,SF.Whoosh,SF.Whoosh,SF.Tip,$FF
+                    fcb       SF.Whoosh,$FF
+
 AnTab               fdb       AnIdle-AnTab
                     fdb       AnRun-AnTab
                     fdb       AnJump0-AnTab

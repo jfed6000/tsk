@@ -83,7 +83,18 @@ st3                 lbsr      WSigSet             tell us when our terminal is h
                     lbcs      Fail
                     lbsr      Display
                     lbcs      Fail
+                    lbsr      SndInit             the music's loaded; the effects' instruments
+                    lbcs      Fail
+                    lda       <bot                (tsk b: the bot plays the games it's given)
+                    sta       <botarg
+                    lda       <demo               the demo, the autopilot or k: straight in;
+                    ora       <bot                else the title
+                    ora       <skipb
+                    beq       st4
                     lbsr      GameInit
+                    bra       st5
+st4                 lbsr      TitleInit
+st5
 
 ********************************************************************
 * the frame loop: one pass a 60 Hz tick
@@ -93,10 +104,11 @@ Main                ldx       #2                  one tick (1 only yields)
                     tst       <sigcode
                     lbne      Quit
                     tst       <paused
-                    lbne      PausWt
+                    lbne      PausHu
                     lbsr      Input
                     tst       <qkey
                     lbne      Quit
+                    lbsr      AttrChk             the attract mode: a button ends it
                     tst       <hitstop            a hit landing: everything holds still
                     beq       mn1
                     dec       <hitstop
@@ -114,7 +126,8 @@ mn1                 lbsr      Stage               the clocks, the phase, the her
                     tst       <shake
                     beq       mn2
                     dec       <shake
-mn2                 lbsr      Weather
+mn2                 lbsr      Sound               the music and the effects (through hitstop too)
+                    lbsr      Weather
                     lbcs      Fail
                     lbsr      Hud
                     lbcs      Fail
@@ -142,6 +155,8 @@ Fail                pshs      b
 *   abort signals end the program from here: the keys belong to the
 *   terminal on screen.
 ********************************************************************
+PausHu              lbsr      Hush                the music stops while we're hidden
+                    lbsr      MidiFlush
 PausWt              ldx       #30
                     os9       F$Sleep
                     tst       <sigcode
@@ -241,6 +256,13 @@ in7a                orb       1,y
 in8                 dec       <tmpn
                     bne       in6
                     leas      6,s
+                    pshs      b                   the keyboard's own new presses (attract mode)
+                    lda       <klast
+                    coma
+                    andb      ,s
+                    stb       <kpress
+                    puls      b
+                    stb       <klast
                     tst       <demo
                     beq       in8a
                     lbsr      DemoStep            B = the script's input
@@ -319,6 +341,11 @@ Alloc               ldx       #NTilBlk
                     bcs       alx
                     tfr       x,d
                     stb       <sprblk
+                    ldx       #MU.N               the music: a block a song
+                    lbsr      GfxAlloc
+                    bcs       alx
+                    tfr       x,d
+                    stb       <musblk
                     ldx       #NMapBlk
                     lbsr      GfxAlloc
                     bcs       alx
@@ -358,7 +385,7 @@ LoadAll             lda       <tilblk
                     ldy       #0
                     leax      FTiles,pcr
                     lbsr      LoadFile
-                    bcs       lax
+                    lbcs      lax
                     lda       <sprblk
                     ldb       #NSprBlk
                     ldy       #0
@@ -390,6 +417,25 @@ LoadAll             lda       <tilblk
                     leay      fclut,u
                     ldd       #1024
                     lbsr      LoadData
+                    bcs       lax
+                    leax      MusFiles,pcr        the songs, a block each
+                    clr       <tsn
+la1                 pshs      x
+                    lda       <musblk
+                    adda      <tsn
+                    ldb       #1
+                    ldy       #0
+                    lbsr      LoadFile
+                    puls      x
+                    bcs       lax
+la2                 lda       ,x+                 the next name
+                    cmpa      #$0D
+                    bne       la2
+                    inc       <tsn
+                    lda       <tsn
+                    cmpa      #MU.N
+                    blo       la1
+                    clrb
 lax                 rts
 
 ********************************************************************
@@ -667,7 +713,9 @@ we1                 tst       <lflash
 we2                 clrb
 wex                 rts
 
-Bolt                lda       #FlashLen
+Bolt                lda       #SF.Thunder
+                    lbsr      Sfx
+                    lda       #FlashLen
                     sta       <lflash
                     leax      fclut,u
                     ldy       #CLUT.Til*256
@@ -699,6 +747,7 @@ BlkAddr             clrb
 ********************************************************************
 Cleanup             pshs      cc,d,x,y
                     lbsr      WSigClr
+                    lbsr      SndOff              silence: every note off, the song unmapped
                     tst       <regd
                     beq       cu1
                     lbsr      ClearRecs
@@ -757,6 +806,10 @@ cu3                 lda       #NTilBlk            and only then free the blocks
                     lda       #NMapBlk
                     ldb       <mapblk
                     lbsr      GfxFree
+                    lda       #MU.N
+                    ldb       <musblk
+                    lbsr      GfxFree
+                    clr       <musblk
                     clr       <tilblk
                     clr       <sprblk
                     clr       <mapblk
@@ -786,6 +839,18 @@ FClutT              fcc       /clut_tile.bin/
                     fcb       $0D
 FClutF              fcc       /clut_flash.bin/
                     fcb       $0D
+* the songs, in MU.* order (f256/src/tskmusic.d)
+MusFiles            fcc       /mus_title.bin/
+                    fcb       $0D
+                    fcc       /mus_boothill.bin/
+                    fcb       $0D
+                    fcc       /mus_clear.bin/
+                    fcb       $0D
+                    fcc       /mus_over.bin/
+                    fcb       $0D
+                    ifne      MU.N-4
+                    error     "the song list here doesn't match tskmusic.d"
+                    endc
 MsgLoad             fcc       /Texas Shitkickers - saddling up.../
                     fcb       $0D
 MsgBye              fcc       /So long, partner./

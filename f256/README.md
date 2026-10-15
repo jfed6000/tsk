@@ -10,6 +10,10 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 | `tools/export.py` | The asset exporter. It runs the browser prototype headless with `?export` (`../game/js/export.js` draws and packs), writes `assets/*.bin` and the generated `src/tskassets.d`, then rebuilds `assets/preview/*.png` **from the binaries alone** to prove the data |
 | `src/tsk.asm` + `src/*.a` | **tsk**, the game (P4, `docs/port-plan.md`) |
 | `src/tskview.asm` | **tskview**, the asset viewer and graphics harness |
+| `tools/compose.py`, `tools/render.py` | The music, written as code into `game/music/*.mid`, and rendered to MP3 through fluidsynth (previews, and the browser's music) |
+| `tools/midi2tsk.py` | `game/music/*.mid` → `assets/mus_*.bin` (one 8K block a song) and the generated `src/tskmusic.d` |
+| `tools/midicap.py` | The MIDI the game sends, as a `.mid`: from the host 6809, or from MAME's log (`make mametitle`) |
+| `tools/dpcheck.py` | The build fails on a direct-page operand that isn't a direct-page variable |
 | `tools/hostrun.py` | The game on the host 6809 with the OS-9 calls answered in Python: a pass-by-pass trace of any variable |
 | `tools/mame.sh`, `tools/tsk.lua`, `tools/tskview.lua` | Run the game's demo or tskview headless in the Wildbits MAME (`wbjr2`), with scripted keys and snapshots in `mame/snap/wbjr2/` |
 
@@ -40,10 +44,13 @@ make host            # the demo on the host 6809, the hero's state every 10 pass
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
 make mamebot         # the autopilot playing the opening and the first waves in MAME
 make mameboss        # straight to Two-Bit (tsk kg) in MAME
+make mametitle       # the title screen in MAME; the MIDI it sent as mame/midi.mid
+make music           # compose, convert and render the music (game/music/*.mid, *.mp3)
 python3 tools/hostrun.py --args bg --passes 5000 --every 100 --watch phase,wavei,score --enemies --slow 80000
 ```
 
-On the machine: `chd /dd/TSK`, then `tsk` to play. Other letters can be combined:
+On the machine: `chd /dd/TSK`, then `tsk`: the title screen, then jump to play. The music and effects play on the
+SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other letters can be combined, and skip the title:
 
 | Argument | Does |
 |---|---|
@@ -74,7 +81,10 @@ display list with his shadow.
 - **Two-Bit:** the swing, the clods, the dig-tunnel-pop, and raising the dead at half health.
 - **The ending:** the clear, TO BE CONTINUED, or game over, and jump to play again.
 
-Verified on the host and in MAME; not yet run on the K2. Not yet ported: the grab and throw, sound.
+**Sprint 4** (2026-10-14): the title screen (with attract mode and a high score) and sound. Music and effects on the
+SAM2695: the title shuffle, Boot Hill's theme, the clear and game-over tags, sixteen effects.
+
+Verified on the host and in MAME; not yet run on the K2. Not yet ported: the grab and throw.
 
 ## tskview
 

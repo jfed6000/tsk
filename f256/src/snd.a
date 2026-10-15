@@ -1,0 +1,419 @@
+********************************************************************
+* snd.a - music and sound effects on the SAM2695, the F256's General
+*   MIDI synth.  It plays notes, so the 6809 only sends a few bytes a
+*   frame: no samples, almost no CPU.
+*
+*   The music is composed as MIDI (game/music/*.mid, f256/tools/
+*   compose.py or any DAW) and converted by f256/tools/midi2tsk.py into
+*   one 8K block a song: records of (wait in frames, length, MIDI bytes).
+*   The sequencer plays one song at a time, looping or once.
+*
+*   The sound effects share the synth: GM drum-kit notes on channel 10
+*   (index 9) with the music's drums, and channels 13-15 for the
+*   gunshot, the whoosh and the timpani.  Note-offs and delayed notes
+*   wait in a small queue.
+*
+*   Everything goes out through one routine, MidiFlush, once a frame:
+*   by default straight into the MIDI FIFO at $FF30 (whose bytes also
+*   feed the 2695), the way Joust drives the VS1053; built with
+*   MidiPath=1 it writes to /mi instead.
+********************************************************************
+
+                    ifndef    MidiPath
+MidiPath            equ       0                   0 = the FIFO at $FF30; 1 = the /mi device
+                    endc
+
+MidiBase            equ       $FF30               MIDI_CTRL, MIDI_DATA, the FIFO counts (wildbits.d MIDI.Base)
+MidiData            equ       MidiBase+1
+MidiTxCnt           equ       MidiBase+8          TX FIFO occupancy, write clock domain (big-endian)
+MidiRoom            equ       2048-64             leave the FIFO this much room
+NMBuf               equ       96                  bytes a frame at most (31,250 baud carries 52)
+NPend               equ       16                  queued note-offs and delayed notes
+
+* a queued message
+PN.T                equ       0                   frames to go (0 = free)
+PN.M                equ       1                   three bytes of MIDI
+PN.Size             equ       4
+
+* sound effect numbers (SfxTab)
+SF.Whoosh           equ       0
+SF.Hit              equ       1
+SF.HitBig           equ       2
+SF.Ko               equ       3
+SF.Bones            equ       4
+SF.Stomp            equ       5
+SF.Land             equ       6
+SF.Jump             equ       7
+SF.Shot             equ       8
+SF.Break            equ       9
+SF.Tip              equ       10
+SF.Dig              equ       11
+SF.Thunder          equ       12
+SF.Check            equ       13
+SF.Hurt             equ       14
+SF.Shell            equ       15
+
+********************************************************************
+* SndInit - after the music is loaded: the effect channels' instruments
+*   (Exit: carry = error - only from opening /mi)
+********************************************************************
+SndInit             lda       #$FF
+                    sta       <msong
+                    clr       <mbn
+                    leax      pend,u
+                    ldb       #NPend*PN.Size
+nsi1                 clr       ,x+
+                    decb
+                    bne       nsi1
+                    ifne      MidiPath
+                    leax      MiName,pcr
+                    lda       #WRITE.
+                    os9       I$Open
+                    bcs       nsi9
+                    sta       <mipath
+                    endc
+                    leax      SfxInit,pcr         the effect channels' programs
+nsi2                 lda       ,x+
+                    beq       nsi3
+                    lbsr      MidiPut
+                    bra       nsi2
+nsi3                 lbsr      MidiFlush
+                    andcc     #$FE
+nsi9                 rts
+
+* channels 13-15: gunshot, breath (the whoosh), timpani; full volume
+SfxInit             fcb       $CC,127,$BC,7,110
+                    fcb       $CD,121,$BD,7,90
+                    fcb       $CE,47,$BE,7,120
+                    fcb       0
+
+                    ifne      MidiPath
+MiName              fcc       "/mi"
+                    fcb       $0D
+                    endc
+
+********************************************************************
+* Music - A = the song (MU.*), or $FF for silence: the old one stops
+*   (all its notes off), the new one's block is mapped and it starts.
+*   Exit: carry = error
+********************************************************************
+Music               cmpa      <msong
+                    beq       nmu9                 already playing
+                    pshs      a
+                    bsr       Hush
+                    lbsr      MusUnmap
+                    puls      a
+                    sta       <msong
+                    cmpa      #$FF
+                    beq       nmu9
+                    adda      <musblk             map its block
+                    tfr       a,b
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    pshs      u
+                    os9       F$MapBlk
+                    tfr       u,x
+                    puls      u
+                    bcs       nmu8
+                    stx       <mmap
+                    leax      2,x                 the first record
+                    lda       ,x
+                    stx       <mptr
+                    sta       <mwait
+                    bne       nmu9
+                    lbra      MusRec              (a first record at frame 0 plays now)
+nmu8                 lda       #$FF                no song
+                    sta       <msong
+nmu9                 rts
+
+* Hush - every note off on the music's channels (0-9): CC 123 each
+Hush                ldb       #$B0
+nhs1                 pshs      b
+                    tfr       b,a
+                    lbsr      MidiPut
+                    lda       #123
+                    lbsr      MidiPut
+                    clra
+                    lbsr      MidiPut
+                    puls      b
+                    incb
+                    cmpb      #$BA
+                    blo       nhs1
+                    rts
+
+MusUnmap            ldx       <mmap
+                    beq       nmm9
+                    pshs      u
+                    tfr       x,u
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      u
+                    clr       <mmap
+                    clr       <mmap+1
+nmm9                 rts
+
+********************************************************************
+* Sound - one pass (also while a hit holds the action: music doesn't
+*   stop for hitstop): the song, the queue, then everything out
+********************************************************************
+Sound               lda       <msong
+                    cmpa      #$FF
+                    beq       nsd2
+                    tst       <mwait
+                    beq       nsd1
+                    dec       <mwait
+                    bne       nsd2
+nsd1                 lbsr      MusRec
+nsd2                 leax      pend,u              the queue
+                    ldb       #NPend
+nsd3                 tst       PN.T,x
+                    beq       nsd4
+                    dec       PN.T,x
+                    bne       nsd4
+                    pshs      b,x
+                    lda       PN.M,x
+                    lbsr      MidiPut
+                    lda       PN.M+1,x
+                    lbsr      MidiPut
+                    lda       PN.M+2,x
+                    lbsr      MidiPut
+                    puls      b,x
+nsd4                 leax      PN.Size,x
+                    decb
+                    bne       nsd3
+                    lbra      MidiFlush
+
+* MusRec - the record at mptr is due: out it goes, and the ones after it
+*   with no wait; mwait = the next one's wait
+MusRec              ldx       <mptr
+nmr1                 lda       1,x                 its length
+                    cmpa      #$FF                the end
+                    beq       nmr5
+                    leax      2,x
+                    tsta
+                    beq       nmr3                 (an empty record: a wait, or the loop point)
+                    sta       <mcnt
+nmr2                 lda       ,x+
+                    pshs      x
+                    lbsr      MidiPut
+                    puls      x
+                    dec       <mcnt
+                    bne       nmr2
+nmr3                 lda       ,x                  the next one's wait
+                    beq       nmr1                 none: it plays now too
+                    sta       <mwait
+                    stx       <mptr
+                    rts
+nmr5                 ldy       <mmap               the end: loop, or stop
+                    ldd       ,y
+                    cmpd      #$FFFF
+                    beq       nmr6
+                    leax      d,y
+                    lda       ,x
+                    beq       nmr1
+                    sta       <mwait
+                    stx       <mptr
+                    rts
+nmr6                 lda       #$FF                played once: silence
+                    lbra      Music
+
+********************************************************************
+* Sfx - A = an effect (SF.*): its notes now, their note-offs and any
+*   delayed notes queued.  X, Y and D are kept.
+*   SfxTab: per effect an offset to its entries: delay (frames), status,
+*   note, velocity, length (frames; 0 = no note-off); $FF ends them.
+********************************************************************
+Sfx                 pshs      d,x,y
+                    tst       <msnd               (sound off: nothing)
+                    bne       nsx9
+                    leay      SfxTab,pcr
+                    lsla
+                    ldd       a,y
+                    leay      d,y
+nsx1                 lda       ,y                  delay
+                    cmpa      #$FF
+                    beq       nsx9
+                    tsta
+                    bne       nsx2
+                    lda       1,y                 now
+                    lbsr      MidiPut
+                    lda       2,y
+                    lbsr      MidiPut
+                    lda       3,y
+                    lbsr      MidiPut
+                    bra       nsx3
+nsx2                 lda       ,y                  later
+                    ldb       1,y
+                    lbsr      Queue
+                    lda       2,y
+                    sta       PN.M+1,x
+                    lda       3,y
+                    sta       PN.M+2,x
+nsx3                 lda       4,y                 its note-off, if it has a length
+                    beq       nsx4
+                    adda      ,y
+                    ldb       1,y
+                    lbsr      Queue
+                    lda       2,y
+                    sta       PN.M+1,x
+                    clr       PN.M+2,x            (a note-on at velocity 0)
+nsx4                 leay      5,y
+                    bra       nsx1
+nsx9                 puls      d,x,y,pc
+
+* Queue - A = frames from now, B = a status byte: X = a queue entry
+*   with those set (the caller fills the other two bytes); if the queue's
+*   full, the first entry is taken
+Queue               leax      pend,u
+                    pshs      b
+                    ldb       #NPend
+nqu1                 tst       PN.T,x
+                    beq       nqu2
+                    leax      PN.Size,x
+                    decb
+                    bne       nqu1
+                    leax      pend,u
+nqu2                 puls      b
+                    sta       PN.T,x
+                    stb       PN.M,x
+                    rts
+
+********************************************************************
+* The output stage
+********************************************************************
+* MidiPut - A = a byte for this frame's buffer (dropped if it's full)
+MidiPut             ldb       <mbn
+                    cmpb      #NMBuf
+                    bhs       nmp9
+                    pshs      x
+                    leax      mbuf,u
+                    sta       b,x
+                    inc       <mbn
+                    puls      x
+nmp9                 rts
+
+* MidiFlush - the buffer out, once a frame
+MidiFlush           ldb       <mbn
+                    beq       nmf9
+                    ifeq      MidiPath
+* straight into the FIFO: if it's near full (it drains 52 bytes a frame),
+* this frame's bytes are dropped rather than wait
+                    ldd       MidiTxCnt
+                    addb      <mbn
+                    adca      #0
+                    cmpd      #MidiRoom
+                    bhi       nmf8
+                    leax      mbuf,u
+                    ldb       <mbn
+nmf1                 lda       ,x+
+                    sta       MidiData
+                    decb
+                    bne       nmf1
+                    else
+                    lda       <mipath             through /mi
+                    leax      mbuf,u
+                    clra
+                    ldb       <mbn
+                    tfr       d,y
+                    lda       <mipath
+                    pshs      u
+                    os9       I$Write
+                    puls      u
+                    endc
+nmf8                 clr       <mbn
+nmf9                 rts
+
+* SndOff - on the way out (and when the terminal goes to the back):
+*   every note off, the controllers reset, the song unmapped
+SndOff              lbsr      Hush
+                    ldb       #$B0                CC 123 on the effect channels and the
+nsf1                 pshs      b                   drums too, every channel 0-15
+                    tfr       b,a
+                    lbsr      MidiPut
+                    lda       #123
+                    lbsr      MidiPut
+                    clra
+                    lbsr      MidiPut
+                    puls      b
+                    incb
+                    cmpb      #$C0
+                    blo       nsf1
+                    lbsr      MidiFlush
+                    lda       #$FF
+                    sta       <msong
+                    lbra      MusUnmap
+
+********************************************************************
+* The effects (brawler.js sfx, on GM sounds)
+********************************************************************
+SfxTab              fdb       FxWhoosh-SfxTab
+                    fdb       FxHit-SfxTab
+                    fdb       FxHitBig-SfxTab
+                    fdb       FxKo-SfxTab
+                    fdb       FxBones-SfxTab
+                    fdb       FxStomp-SfxTab
+                    fdb       FxLand-SfxTab
+                    fdb       FxJump-SfxTab
+                    fdb       FxShot-SfxTab
+                    fdb       FxBreak-SfxTab
+                    fdb       FxTip-SfxTab
+                    fdb       FxDig-SfxTab
+                    fdb       FxThunder-SfxTab
+                    fdb       FxCheck-SfxTab
+                    fdb       FxHurt-SfxTab
+                    fdb       FxShell-SfxTab
+* delay, status, note, velocity, length
+FxWhoosh            fcb       0,$9D,96,100,5      a breath, high and short
+                    fcb       $FF
+FxHit               fcb       0,$99,38,118,0      snare and floor tom: a thwack
+                    fcb       0,$99,41,104,0
+                    fcb       $FF
+FxHitBig            fcb       0,$99,40,127,0      the big one: electric snare, kick, splash
+                    fcb       0,$99,36,120,0
+                    fcb       0,$99,55,100,0
+                    fcb       $FF
+FxKo                fcb       0,$99,49,120,0      crash and kick
+                    fcb       0,$99,36,127,0
+                    fcb       3,$99,45,110,0      and a low tom after
+                    fcb       $FF
+FxBones             fcb       0,$99,75,110,0      claves and maracas: rattling bones
+                    fcb       2,$99,70,100,0
+                    fcb       4,$99,75,90,0
+                    fcb       6,$99,70,80,0
+                    fcb       9,$99,76,80,0
+                    fcb       $FF
+FxStomp             fcb       0,$99,35,127,0      both kicks, a floor tom and the china
+                    fcb       0,$99,36,127,0
+                    fcb       0,$99,41,120,0
+                    fcb       0,$99,52,110,0
+                    fcb       $FF
+FxLand              fcb       0,$99,36,80,0
+                    fcb       $FF
+FxJump              fcb       0,$99,76,96,0       a wood block
+                    fcb       $FF
+FxShot              fcb       0,$9C,60,127,24     the gunshot
+                    fcb       $FF
+FxBreak             fcb       0,$99,77,127,0      low wood block, clap, a rattle
+                    fcb       0,$99,39,100,0
+                    fcb       3,$99,70,90,0
+                    fcb       $FF
+FxTip               fcb       0,$99,56,100,0      cowbell, triangle
+                    fcb       4,$99,81,90,0
+                    fcb       $FF
+FxDig               fcb       0,$99,74,110,0      the long guiro: a shovel in dirt
+                    fcb       $FF
+FxThunder           fcb       0,$9E,28,127,90     timpani, low, with the crash and the kick
+                    fcb       0,$99,57,110,0
+                    fcb       0,$99,35,120,0
+                    fcb       6,$9E,26,110,80
+                    fcb       $FF
+FxCheck             fcb       0,$99,67,110,0      the agogos: high, low
+                    fcb       8,$99,68,110,0
+                    fcb       $FF
+FxHurt              fcb       0,$99,58,120,0      the vibraslap, and a tom
+                    fcb       0,$99,45,100,0
+                    fcb       $FF
+FxShell             fcb       0,$99,53,110,0      ride bell and triangle: a bullet kicked away
+                    fcb       0,$99,81,100,0
+                    fcb       $FF

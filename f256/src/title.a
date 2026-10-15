@@ -1,0 +1,265 @@
+********************************************************************
+* title.a - the title screen and the attract mode.
+*
+*   The logo over Boot Hill at midnight, the camera drifting along it,
+*   the Shitkickers front and centre (a taunt now and then), the story's
+*   tagline, the high score, PRESS JUMP blinking, and the title theme.
+*   Jump starts a game.  Left alone for 20 s, the autopilot plays (the
+*   attract mode) until a button, a game over, the end, or 50 s, and
+*   then it's back to the title.
+********************************************************************
+
+PH.Title            equ       5
+
+AttractT            equ       1200                20 s on the title before the attract mode
+AttractLen          equ       3000                50 s of attract at most
+TauntEvery          equ       240                 a taunt every 4 s
+TitleZ              equ       24                  where he stands, px into the street (feet at y 174)
+
+* TitleInit - to the title screen
+TitleInit           lda       #PH.Title
+                    lbsr      SetPh
+                    clr       <attract
+                    lda       <botarg             (tsk b: the autopilot plays the games)
+                    sta       <bot
+                    ldd       #0                  everything off the street
+                    std       <camf
+                    std       <cam
+                    clr       <camdir
+                    leax      en,u
+                    ldy       #frames-en
+tti1                 clr       ,x+
+                    leay      -1,y
+                    bne       tti1
+                    lbsr      HudInit
+                    lda       #1                  the strip shows the high score, not the HUD
+                    sta       <hudhi
+                    clr       <hudnm
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lda       #12
+                    sta       <ht
+                    clr       <hface
+                    clr       <hwep
+                    ldd       #TitleZ*16
+                    std       <hz
+                    ldd       #0
+                    std       <hh
+                    lbsr      TitleHero
+                    ldd       #300
+                    std       <nbolt
+                    lda       #MU.title
+                    lbra      Music
+
+* TitleStep - one pass of the title
+TitleStep           ldd       <camf               the camera drifts along the hill and back:
+                    tst       <camdir             a pixel every other pass
+                    bne       tts2
+                    addd      #8
+                    cmpd      #CamMax*16
+                    blo       tts3
+                    inc       <camdir
+                    bra       tts3
+tts2                 subd      #8
+                    bhi       tts3
+                    clr       <camdir
+                    ldd       #0
+tts3                 std       <camf
+                    lbsr      Asr4
+                    std       <cam
+                    lbsr      TitleHero
+                    lda       <ht                 a taunt now and then
+                    inca
+                    beq       tts4
+                    sta       <ht
+tts4                 lda       <hst
+                    cmpa      #ST.Taunt
+                    beq       tts5
+                    lda       <ht
+                    cmpa      #TauntEvery
+                    blo       tts6
+                    lda       #ST.Taunt
+                    lbsr      SetS
+                    bra       tts6
+tts5                 lda       <ht
+                    cmpa      #TauntDur
+                    blo       tts6
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lda       #12
+                    sta       <ht
+tts6                 lbsr      PickAnim
+                    lda       <ipress             jump: the game
+                    bita      #IN.Jump
+                    beq       tts7
+                    clr       <attract
+                    lbra      GameInit
+tts7                 ldd       <phaset             left alone: the attract mode
+                    cmpd      #AttractT
+                    blo       tts9
+                    lda       #1
+                    sta       <attract
+                    sta       <bot
+                    lbra      GameInit
+tts9                 rts
+
+* TitleHero - he stands in the middle of the screen
+TitleHero           ldd       <cam
+                    addd      #160
+                    lbsr      To124
+                    std       <hx
+                    rts
+
+* AttrChk - each pass of a game in the attract mode: a button, or long
+*   enough, or the game over, and it's back to the title.
+*   Exit: carry set if it went back
+AttrChk             tst       <attract
+                    beq       tat9
+                    lda       <kpress             (the keyboard's own presses: inp is the bot's)
+                    anda      #IN.Jump+IN.Kick+IN.Side
+                    bne       tat8
+                    ldd       <attt
+                    addd      #1
+                    std       <attt
+                    cmpd      #AttractLen
+                    bhs       tat8
+                    lda       <phase
+                    cmpa      #PH.Over
+                    beq       tat7
+                    cmpa      #PH.End
+                    bne       tat9
+tat7                 ldd       <phaset             a moment on the game over first
+                    cmpd      #90
+                    blo       tat9
+tat8                 lbsr      TitleInit
+                    comb
+                    rts
+tat9                 clra
+                    rts
+
+* HiScore - the game's over: a new high score? (BCD compares as bytes)
+HiScore             tst       <attract            the autopilot's don't count
+                    bne       ths9
+                    ldd       <score
+                    cmpd      <hisc
+                    blo       ths9
+                    bhi       ths8
+                    ldd       <score+2
+                    cmpd      <hisc+2
+                    bls       ths9
+ths8                 ldd       <score
+                    std       <hisc
+                    ldd       <score+2
+                    std       <hisc+2
+ths9                 rts
+
+* TitleTop - the title's words, and the hero's strip showing the high
+*   score (DrawTop, title phase).  Y = the next record.
+TitleTop            ldx       #TX.texas           the logo
+                    ldd       #26
+                    lbsr      Ttl
+                    ldx       #TX.shitk
+                    ldd       #54
+                    lbsr      Ttl
+                    ldx       #TX.tagline         the story in two lines
+                    ldd       #92
+                    lbsr      Ttl
+                    ldx       #TX.tagline2
+                    ldd       #102
+                    lbsr      Ttl
+                    lda       <phaset+1           PRESS JUMP, blinking
+                    bita      #32
+                    beq       ttt1
+                    ldx       #TX.press
+                    ldd       #204
+                    lbsr      Ttl
+ttt1                 lda       #CTL.Spr            the high score: the strip's cells, centred
+                    sta       <bctl
+                    ldd       #2
+                    std       <bcy
+                    clr       <tmpi
+ttt2                 lda       <tmpi
+                    ldb       #32
+                    mul
+                    addd      #96
+                    std       <bcx
+                    ldb       <tmpi
+                    clra
+                    addd      #DynCell
+                    lbsr      BuildRaw
+                    inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #4
+                    blo       ttt2
+                    rts
+
+* HiDraw - the strip as the high score (Hud, title phase).  The whole
+*   strip is cleared first; "HI SCORE 0012345", centred.
+HiDraw               tst       <hudhi
+                    beq       thh9
+                    clr       <hudhi
+                    lbsr      HudMap
+                    bcs       thh9
+                    lbsr      ClrStrip
+                    leax      hbuf,u
+                    leay      SHi,pcr
+thh1                 lda       ,y+
+                    beq       thh2
+                    sta       ,x+
+                    bra       thh1
+thh2                 leay      hisc,u
+                    lbsr      BcdTxt
+                    lda       #CI.Yel
+                    sta       <hcol
+                    leax      hbuf,u
+                    ldb       #(128-15*4)/2
+                    lda       #8
+                    lbsr      Text
+                    lbsr      UnmapDyn
+                    lda       #$FF                and the HUD's redrawn when a game starts
+                    sta       <hudsc
+                    sta       <hudhp
+                    sta       <hudwp
+                    lda       #1
+                    sta       <hudnm
+thh9                 rts
+
+* ClrStrip - the hero's strip blank: rows 0-31 of cells 0-3
+ClrStrip            clra                          (rows 0, 7, 14, 21, then 25 to end on 31)
+tcs1                 pshs      a
+                    clrb
+                    lbsr      Band
+                    puls      a
+                    adda      #7
+                    cmpa      #28
+                    blo       tcs2
+                    cmpa      #32
+                    bhs       tcs3
+                    lda       #25
+tcs2                 bra       tcs1
+tcs3                 rts
+
+* BcdTxt - Y = a BCD score (4 bytes): seven digits at X, 0-terminated.
+*   X = past them
+BcdTxt              lda       ,y+                 the top byte's low digit
+                    anda      #$0F
+                    adda      #'0
+                    sta       ,x+
+                    ldb       #3
+tbt1x                lda       ,y
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    adda      #'0
+                    sta       ,x+
+                    lda       ,y+
+                    anda      #$0F
+                    adda      #'0
+                    sta       ,x+
+                    decb
+                    bne       tbt1x
+                    clr       ,x
+                    rts
+
+SHi                 fcn       "HI SCORE "

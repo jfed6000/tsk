@@ -27,6 +27,7 @@
                     ifp1
                     use       defsfile
                     use       tskassets.d
+                    use       tskmusic.d
                     endc
 
 tylg                set       Prgrm+Objct
@@ -49,6 +50,8 @@ name                fcs       /tsk/
                     use       pickup.a
                     use       intro.a
                     use       boss.a
+                    use       snd.a
+                    use       title.a
                     use       draw.a
                     use       tsktabs.a
 

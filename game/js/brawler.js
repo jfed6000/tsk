@@ -119,10 +119,46 @@ T.runBrawler = function (A) {
   let dark = 0, tumble = null, tumbleT = 4, flashT = 0, nextBolt = 7, boss = null;
   const artCache = {};
 
+  // ---------------------------------------------------------------- music: the songs rendered from game/music/*.mid
+  // (f256/tools/compose.py -> render.py), the same notes the F256 sends its SAM2695. M mutes.
+  const SONGS = { title: true, boothill: true, clear: false, over: false };     // name: loops
+  let song = null, songName = null, musicOff = false;
+  function music(name) {
+    if (name === songName) return;
+    if (song) { song.pause(); song = null; }
+    songName = name;
+    if (!name || musicOff) return;
+    song = new Audio('music/' + name + '.mp3');
+    song.loop = SONGS[name]; song.volume = 0.6;
+    song.play().catch(() => {});                 // (no sound until a key's been pressed: the browser's rule)
+  }
+  let hiScore = 0;
+  try { hiScore = +localStorage.getItem('tsk-hi') || 0; } catch (e) {}
+  function saveHi() { if (score > hiScore && !params.has('bot')) { hiScore = score; try { localStorage.setItem('tsk-hi', hiScore); } catch (e) {} } }
+
   function resetPlayer(keep) {
     player = Object.assign({ x: 70, z: 40, h: 0, vx: 0, vz: 0, vh: 0, face: 1, state: 'idle', t: 1, hp: MAX_HP, lives: 3, inv: 0,
       weapon: params.get('weapon') ? { type: params.get('weapon'), ammo: params.get('weapon') === 'gun' ? 6 : 14 } : null,
       held: null, step: 0, queued: false, hitSet: new Set(), knees: 0, anim: 'idle', frame: 0, chainT: 0 }, keep || {});
+  }
+
+  // ---------------------------------------------------------------- the title screen (f256/src/title.a)
+  let titleDir = 1;
+  function toTitle() {
+    loadStage('boothill');
+    barrels = []; phase = 'title'; phaseT = 0;
+    player.x = 160; player.z = 24; player.face = 1; setS('idle'); player.t = 0.2;
+    music('title');
+  }
+  function updateTitle(dt) {
+    const p = player;
+    camX += titleDir * 30 * dt;                 // the camera drifts along the hill and back
+    if (camX >= W - VW) { camX = W - VW; titleDir = -1; } else if (camX <= 0) { camX = 0; titleDir = 1; }
+    p.x = camX + 160; p.t += dt;
+    if (p.state === 'idle' && p.t > 4) setS('taunt');
+    else if (p.state === 'taunt' && p.t >= HERO.taunt.dur) { setS('idle'); p.t = 0.2; }
+    pickAnim(p);
+    if (pressed.jump) { loadStage('boothill'); }
   }
 
   function loadStage(name, keep) {
@@ -135,6 +171,7 @@ T.runBrawler = function (A) {
     phase = S.intro && !params.has('nointro') && !keep ? 'intro' : 'play'; phaseT = 0;
     intro.hatOn = false;
     if (phase === 'intro') { player.x = 96; player.z = 34; }
+    music(name === 'boothill' ? 'boothill' : 'title');
   }
 
   // ---------------------------------------------------------------- spawning
@@ -243,7 +280,7 @@ T.runBrawler = function (A) {
     if (p.weapon && p.weapon.type === 'whip') dropWeapon();
     if (p.hp <= 0) {
       p.lives--;
-      if (p.lives <= 0) { phase = 'over'; phaseT = 0; popup(p.x, FLOOR + p.z - 60, 'GAME OVER', '#ff6b4a', 2, 9); return true; }
+      if (p.lives <= 0) { phase = 'over'; phaseT = 0; saveHi(); music('over'); popup(p.x, FLOOR + p.z - 60, 'GAME OVER', '#ff6b4a', 2, 9); return true; }
       p.hp = MAX_HP; p.inv = 2.2; p.weapon = null;
       popup(p.x, FLOOR + p.z - 56, 'DAGNABBIT!', '#ff6b4a', 2, 1.4);
       for (const e of enemies) if (hittable(e) && Math.abs(e.x - p.x) < 120) { e.state = 'air'; e.vx = Math.sign(e.x - p.x || 1) * 160; e.vh = 200; e.t = 0; }
@@ -693,7 +730,7 @@ T.runBrawler = function (A) {
     goT -= dt;
     if (lock === null && waveI < S.waves.length && phase === 'play' && camX >= S.waves[waveI].cam - 1) startWave();
   }
-  function stageClear() { phase = 'clear'; phaseT = 0; sfx('win'); setS('taunt'); player.vx = player.vz = 0; }
+  function stageClear() { phase = 'clear'; phaseT = 0; music('clear'); setS('taunt'); player.vx = player.vz = 0; }
 
   // ---------------------------------------------------------------- the opening on Boot Hill: the Shitkickers climb out of Ringo's grave
   const STONE = { x: 66, z: 4 };
@@ -771,7 +808,12 @@ T.runBrawler = function (A) {
     DL = [];
     const cx = Math.round(camX), wx = x => x - cx, p = player;
     // HUD
-    if (phase !== 'intro') {
+    if (phase === 'title') {
+      center(T.textSprite('HI SCORE ' + String(hiScore).padStart(7, '0'), '#ffd34a', 1), 10);
+      center(T.textSprite('TEXAS', '#ffe7b0', 4), 26); center(T.textSprite('SHITKICKERS', '#ff9d3c', 4), 54);
+      center(T.textSprite('HE DIED WITH HIS BOOTS ON', '#e8a070', 1), 92); center(T.textSprite('NOW THE BOOTS WANT REVENGE', '#e8a070', 1), 102);
+      if (Math.floor(phaseT * 2) % 2 === 0) center(T.textSprite('PRESS JUMP', '#ffd34a', 2), 204);
+    } else if (phase !== 'intro') {
       put(T.bossBar('SHITKICKERS', Math.max(0, p.hp), MAX_HP), 6, 6, 0, 0, 0);
       for (let i = 0; i < p.lives; i++) put(HAT, 108 + i * 24, 6, 0, 0, 0);
       put(T.textSprite('SCORE ' + String(score).padStart(7, '0'), '#fff3c4', 1), 6, 26, 0, 0, 0);
@@ -909,12 +951,14 @@ T.runBrawler = function (A) {
     time += dt; phaseT += dt; titleT += dt; comboT -= dt; lastHitT -= dt; shake = Math.max(0, shake - 30 * dt);
     if (helpAuto && S.intro && phase === 'play' && titleT > 3.2 && titleT < 10) showHelp = true;
     if (helpAuto && titleT >= 10 && showHelp) { showHelp = false; helpAuto = false; }
+    if (pressed.mute) { musicOff = !musicOff; const n = songName; songName = null; music(musicOff ? null : n); songName = n; }
+    if (phase === 'title') { updateTitle(dt); for (const k in pressed) pressed[k] = false; return; }
     if (phase === 'intro') updateIntro(dt);
     else if (phase === 'play') updatePlayer(dt);
     else if (phase === 'clear') {
       const p = player; p.t += dt; if (p.state === 'taunt' && p.t >= HERO.taunt.dur) setS('idle'); pickAnim(p);
-      if (phaseT > 3.5) { if (S.next) loadStage(S.next, { lives: p.lives, hp: Math.min(MAX_HP, p.hp + 6), weapon: null }); else { phase = 'end'; phaseT = 0; } }
-    } else if ((phase === 'end' || phase === 'over') && phaseT > 2 && pressed.jump) location.reload();
+      if (phaseT > 3.5) { if (S.next) loadStage(S.next, { lives: p.lives, hp: Math.min(MAX_HP, p.hp + 6), weapon: null }); else { phase = 'end'; phaseT = 0; saveHi(); music('title'); } }
+    } else if ((phase === 'end' || phase === 'over') && phaseT > 2 && pressed.jump) toTitle();
     updateEnemies(dt); updateBoss(dt); updateSkulls(dt); updateShots(dt); updateClods(dt); updateParts(dt);
     if (phase === 'play') updateWaves(dt);
     if (S.dusk) dark += (DARK[Math.min(waveI, DARK.length - 1)] - dark) * Math.min(1, dt * 0.6);
@@ -933,6 +977,7 @@ T.runBrawler = function (A) {
   }
 
   loadStage(STAGES[params.get('stage')] ? params.get('stage') : 'boothill');
+  if (!params.has('stage') && !params.has('nointro') && !params.has('bot') && !params.has('god')) toTitle();
   const STEP = 1 / 120;
   if (params.has('ff')) for (let i = 0; i < parseFloat(params.get('ff')) / STEP; i++) simulate(STEP);
   shake = 0;

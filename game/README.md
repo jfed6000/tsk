@@ -48,7 +48,9 @@ right side kicks, top tips the hat.
 ## URL flags
 
 - `?stage=mainstreet` or `?stage=desert`: start on another stage (the desert is the original test floor)
-- `?nointro`: skip the Boot Hill opening
+- `?nointro`: skip the title screen and the Boot Hill opening (`?stage`, `?bot` and `?god` skip the title too)
+- Music: `music/*.mp3`, rendered from `music/*.mid` (`f256/tools/compose.py`, `render.py`); M mutes it. The title screen
+  keeps a high score in localStorage.
 - `?weapon=whip` or `?weapon=gun`: start holding a weapon
 - `?bot`: a crude autopilot; `?god`: no damage; `?ff=SECONDS`: fast-forward at load (all for testing)
 - `?debug`: sprite-record count, wave and enemy states

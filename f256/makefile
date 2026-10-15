@@ -1,11 +1,13 @@
 # Texas Shitkickers - the F256 side (NitrOS-9 Level 2, 6809)
 #
-#   make assets                  export the assets from the browser prototype (tools/export.py)
+#   make assets                  export the assets from the browser prototype (tools/export.py) and the music (midi2tsk.py)
+#   make music                   compose the music (compose.py), convert it, and render the MP3 previews (game/music)
 #   make                         build tsk (the game) and tskview (the asset viewer / graphics harness)
 #   make install DSK=/abs/x.dsk  tsk and tskview to CMDS, the assets to TSK, on a disk image
 #   make mame                    run the game's demo (tsk d) in the Wildbits MAME (wbjr2) headless, snapshots in mame/snap
 #   make mamebot                 the autopilot fighting the skeletons (tsk b), a snapshot every 6 frames
 #   make mameboss                Boot Hill's last waves and Two-Bit (tsk bg), a snapshot every 12 frames
+#   make mametitle               the title screen and its music in MAME: the MIDI the 6809 sends, as mame/midi.mid
 #   make mameview                the same for tskview
 #   make host                    the demo on the host 6809 (tools/hostrun.py): the hero's state, pass by pass
 #
@@ -18,16 +20,23 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --pragma=nosymbolcase,condundefzero,dollarnotlocal \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
-ASSETFILES  = tiles.bin sprites.bin maps.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin
-TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/draw.a src/tskassets.d src/tsktabs.a
+ASSETFILES  = tiles.bin sprites.bin maps.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin
+TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/snd.a src/title.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
 BUDGET      = 40192
 
 all: tsk tskview
 
 assets:
 	python3 tools/export.py
+	python3 tools/midi2tsk.py
+
+music:
+	python3 tools/compose.py
+	python3 tools/midi2tsk.py
+	python3 tools/render.py
 
 tsk: $(TSKSRC)
+	python3 tools/dpcheck.py
 	$(AS) $(AFLAGS) --list=$@.list --map=$@.map -o $@ src/tsk.asm
 	@n=$$(stat -c %s $@); echo "tsk: $$n bytes of $(BUDGET)"; test $$n -le $(BUDGET) || { echo "tsk: over the module budget (port-guide section 3)"; exit 1; }
 	@printf 'tsk data area: %d bytes\n' 0x$$(grep "Symbol: size " $@.map | sed 's/.*= //')
@@ -51,6 +60,10 @@ mamebot: tsk tskview
 mameboss: tsk tskview
 	LUA=tools/tskboss.lua tools/mame.sh
 
+mametitle: tsk tskview
+	TSKMIDILOG=$(CURDIR)/mame/midi.log LUA=tools/tskmidi.lua tools/mame.sh
+	python3 tools/midicap.py --log mame/midi.log --out mame/midi.mid
+
 mameview: tskview
 	tools/mame.sh
 
@@ -60,4 +73,4 @@ host: tsk
 clean:
 	rm -f tsk tsk.list tsk.map tskview tskview.list tskview.map
 
-.PHONY: all assets install mame mamebot mameboss mameview host clean
+.PHONY: all music assets install mame mamebot mameboss mametitle mameview host clean

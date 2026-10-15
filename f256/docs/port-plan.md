@@ -119,8 +119,33 @@ One program module, **`tsk`**, assembled from:
      passes.
    - Not yet: the grab, knee and throw (the browser's walk-into-a-staggered-enemy), the stomp's ring, the help
      screen, sound.
-4. **Main Street:** the exporter grows a stage parameter, coyotes, the night-falling CLUT fade.
-5. **Sound** (SIDs or OPL3: decide from Tempest/Joust), the pad harness, co-op.
+4. ✓ **The title screen and sound** *(sprint 4, 2026-10-14: `tsk` 18.8K)*:
+   - **Music on the SAM2695** (General MIDI). It's composed as code (`tools/compose.py` → `game/music/*.mid`; any DAW's
+     `.mid` will do instead), converted by `tools/midi2tsk.py` into one 8K block a song (records of wait, length and
+     MIDI bytes on 60 Hz frames, with running status and a loop point), and played by `src/snd.a`'s sequencer, one
+     song at a time from its mapped block.
+   - **The songs:** the title "Shitkicker Shuffle" (fast E boogie: overdriven guitar, slapped upright, honky-tonk
+     piano, harmonica); "Boot Hill" (slow minor, tremolo guitar, whistle, a heartbeat on the floor tom); and the
+     clear and game-over tags. `tools/render.py` renders them through fluidsynth to MP3 for previews and for the
+     browser.
+   - **Sound effects** use GM drum-kit notes on channel 10, plus a gunshot, a whoosh and a timpani on channels 13-15,
+     with a queue for note-offs and delayed notes. The hero's sounds come from `SetS` (a per-state table); the rest
+     sit where brawler.js calls `sfx()`.
+   - **Output:** one routine, `MidiFlush`, once a frame, writes straight into the MIDI FIFO at $FF30 (whose bytes
+     also feed the 2695), checking the FIFO's fill. `MidiPath=1` builds write to `/mi` instead; **the Level 2 boot
+     has no `/mi` yet** (MIDrv is in `level1/wildbits/modules`), so direct is the default. An open question for the
+     user.
+   - **Verified:** the host 6809 plays all 759 notes of Boot Hill's theme exactly, through the loop, against a
+     reference player. In MAME a Lua tap on $FF31 caught all 671 notes of the title theme at a constant offset, and
+     `make mametitle` turns that capture into `mame/midi.mid` to render and hear.
+   - **The title screen** (`src/title.a`): the logo, the tagline, the high score (drawn into the HUD strip), PRESS
+     JUMP, the Shitkickers taunting, the camera drifting along Boot Hill. Jump starts a game. After 20 s the attract
+     mode runs the autopilot for up to 50 s (any button ends it). The end and game over go back to the title.
+   - **Found and fixed:** a label rename in step 4 of sprint 3 had turned the direct-page variable `bh1` into a code
+     label, so the whip's hit box wrote over a random variable. `tools/dpcheck.py` now fails the build on any `<name`
+     that isn't a direct-page variable.
+5. **Main Street:** the exporter grows a stage parameter, coyotes, the night-falling CLUT fade.
+6. The grab and throw, the pad harness, co-op.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

@@ -52,8 +52,9 @@ HudInit             lda       #$FF
 hi0                 clr       ,x+
                     decb
                     bne       hi0
-                    lda       #1                  the name, once
+                    lda       #1                  the name, once; the strip cleared first
                     sta       <hudnm
+                    sta       <hudclr
                     rts
 
 ********************************************************************
@@ -285,6 +286,17 @@ Hud                 lda       <lhitt              the enemy's bar runs down
                     bne       hd0
                     clr       <lhit
 hd0                 clr       <hmapd              map the HUD block only if something changed
+                    lda       <phase              the title: the high score
+                    cmpa      #PH.Title
+                    lbeq      HiDraw
+                    tst       <hudclr             after the title: the strip blank first
+                    beq       hdc1
+                    lbsr      HudMap
+                    lbcs      hdq
+                    lbsr      ClrStrip
+                    clr       <hudclr
+                    lbra      hd6
+hdc1
                     leay      pu,u                a queued points popup first: that's this pass's part
                     ldb       #NPu
 hdp1                tst       PU.L,y
@@ -813,6 +825,8 @@ po2                 leax      PU.Size,x
 *   Entry: Y = the first record.  Exit: Y = the next.
 ********************************************************************
 DrawTop             lda       <phase              no HUD in the opening
+                    cmpa      #PH.Title
+                    lbeq      TitleTop
                     cmpa      #PH.Intro
                     lbeq      dt5
                     lda       #CTL.Spr            the HUD
