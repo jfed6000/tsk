@@ -21,45 +21,79 @@ ComboLen              equ       84                  1.4 s to land the next hit o
 ********************************************************************
 GameInit            ldd       #0
                     std       <attt
-                    leax      en,u                every table: enemies, skulls, bullets, popups, particles
-                    ldy       #frames-en
-gi1                 clr       ,x+
-                    leay      -1,y
-                    bne       gi1
-                    lbsr      CombatInit
+                    lbsr      CombatInit          health, lives
                     ldd       <ticks              a different fight each time
                     eora      <rnd
                     eorb      <rnd+1
                     bne       gi2
                     incb
 gi2                 std       <rnd
-                    lbsr      HeroInit
-                    lbsr      CamInit
                     lbsr      HudInit
-                    lbsr      PickInit
-                    lda       #MU.boothill        the stage's theme from the grave on (after the
-                    lbsr      Music               clear above: the MIDI buffer's in that range)
                     clr       <hwep
                     clr       <hammo
                     ldd       #0
                     std       <score
                     std       <score+2
+                    clr       <combo
+                    clr       <combot
+                    lda       stgarg,u            (tsk m: Main Street first)
+* StageInit - A = the stage: its art loaded, its street set up, its music.
+*   The hero keeps his health, lives, score.
+StageInit           sta       stgn,u
+                    ldb       #SR.Size            its record
+                    mul
+                    leax      StgTab,pcr
+                    leax      d,x
+                    stx       stgp,u
+                    ldd       SR.W,x              its width, and the stops it sets
+                    std       levw,u
+                    subd      #320
+                    lbsr      To124
+                    std       cammax,u
+                    ldd       levw,u
+                    subd      #10
+                    lbsr      To124
+                    std       hxmax,u
+                    lda       SR.Flags,x
+                    sta       sflags,u
+                    lda       SR.NWv,x
+                    sta       nwaves,u
+                    lbsr      LoadStage           the tiles, maps and its own sprites
+                    lbcs      Fail
+                    leax      en,u                every table: enemies, skulls, bullets, popups, particles
+                    ldy       #frames-en
+gi1                 clr       ,x+
+                    leay      -1,y
+                    bne       gi1
+                    lbsr      HeroInit
+                    lbsr      CamInit
+                    lbsr      PickInit
+                    ldd       #0
                     std       <phaset
                     std       <titlet
                     clr       <phase
                     clr       <wavei
                     clr       <got
                     clr       <lock
-                    clr       <combo
-                    clr       <combot
                     clr       <hitstop
                     clr       <bslot
                     clr       <bslot+1
                     clr       <shake
+                    clr       twst,u
+                    clr       gdown,u
+                    clr       dstep,u
+                    ldd       #240                the first tumbleweed after 4 s
+                    std       twt,u
                     ldd       #420                the first bolt after 7 s
                     std       <nbolt
+                    ldx       stgp,u              its music (after the clear above: the MIDI buffer's in it)
+                    lda       SR.Mus,x
+                    lbsr      Music
+                    lda       sflags,u
+                    bita      #SG.Intro
+                    beq       gi3
                     tst       <skipb              (tsk k: straight to Two-Bit)
-                    lbeq      IntroInit           and it begins in the grave
+                    lbeq      IntroInit           Boot Hill begins in the grave
                     lda       #4
                     sta       <wavei
                     lda       #1
@@ -72,7 +106,103 @@ gi2                 std       <rnd
                     std       <hx
                     ldd       #40*16
                     std       <hz
+gi3                 rts
+
+* LoadStage - stage's art, with nothing on the screen while it loads:
+*   the maps and sprites off, the tiles, maps and sprite overlay read in,
+*   the tile sets and maps set up again.  Exit: carry = error in B
+LoadStage           lbsr      MapsOff
+                    lbsr      ClearRecs
+                    lbsr      PushRecs
+                    ldx       stgp,u
+                    ldd       SR.Files,x          its three file names
+                    leay      StgTab,pcr
+                    leax      d,y
+                    pshs      x
+                    lda       <tilblk             tiles_<s>.bin
+                    ldb       #NTilBlk
+                    ldy       #0
+                    lbsr      LoadFile
+                    puls      x
+                    bcs       ls9
+                    bsr       NextName
+                    pshs      x
+                    lda       <mapblk             maps_<s>.bin
+                    ldb       #NMapBlk
+                    ldy       #0
+                    lbsr      LoadFile
+                    puls      x
+                    bcs       ls9
+                    bsr       NextName
+                    lda       <sprblk             spr_<s>.bin, at the overlay's cells
+                    adda      #SPR.Base/8
+                    ldb       #NOvlBlk
+                    ldy       #0
+                    lbsr      LoadFile
+                    bcs       ls9
+                    lbra      StageGfx
+ls9                 rts
+
+* NextName - X = a $0D-terminated name: X = the one after it
+NextName            lda       ,x+
+                    cmpa      #$0D
+                    bne       NextName
                     rts
+
+********************************************************************
+* The stages (brawler.js STAGES).  A record: width (px), the three maps'
+*   widths and offsets, tile sets, flags, song, waves (count, table),
+*   barrels (count, table), title frames (name, under it, the clear),
+*   file names - the tables as offsets from StgTab.
+********************************************************************
+SR.W                equ       0
+SR.Map              equ       2                   three of width, offset
+SR.Sets             equ       14
+SR.Flags            equ       15
+SR.Mus              equ       16
+SR.NWv              equ       17
+SR.Waves            equ       18
+SR.NBar             equ       20
+SR.Bars             equ       21
+SR.Name             equ       23
+SR.Sub              equ       25
+SR.Clr              equ       27
+SR.Files            equ       29
+SR.Size             equ       31
+SG.Intro            equ       1                   the opening, the big title
+SG.Light            equ       2                   lightning
+SG.Dusk             equ       4                   night falls, wave by wave
+NOvlBlk             equ       (SPR.Ovl+7)/8
+
+StgTab              fdb       BH.W                Boot Hill at midnight
+                    fdb       BH.MAP0.W,BH.MAP0.Of,BH.MAP1.W,BH.MAP1.Of,BH.MAP2.W,BH.MAP2.Of
+                    fcb       BH.TIL.Sets,SG.Intro+SG.Light,MU.boothill,5
+                    fdb       WaveBH-StgTab
+                    fcb       5
+                    fdb       BarBH-StgTab
+                    fdb       TX.boothill,TX.midnight,TX.clear
+                    fdb       FileBH-StgTab
+                    fdb       MS.W                Main Street at dusk
+                    fdb       MS.MAP0.W,MS.MAP0.Of,MS.MAP1.W,MS.MAP1.Of,MS.MAP2.W,MS.MAP2.Of
+                    fcb       MS.TIL.Sets,SG.Dusk,MU.boogie,5
+                    fdb       WaveMS-StgTab
+                    fcb       7
+                    fdb       BarMS-StgTab
+                    fdb       TX.mainst,TX.dusk,TX.msclear
+                    fdb       FileMS-StgTab
+
+FileBH              fcc       /tiles_bh.bin/
+                    fcb       $0D
+                    fcc       /maps_bh.bin/
+                    fcb       $0D
+                    fcc       /spr_bh.bin/
+                    fcb       $0D
+FileMS              fcc       /tiles_ms.bin/
+                    fcb       $0D
+                    fcc       /maps_ms.bin/
+                    fcb       $0D
+                    fcc       /spr_ms.bin/
+                    fcb       $0D
 
 ********************************************************************
 * Stage - one pass of the stage's clocks and phases (not while a hit
@@ -104,7 +234,19 @@ sg2                 cmpa      #PH.Clear
                     ldd       <phaset
                     cmpd      #ClearT
                     blo       sgx
-                    lbsr      HiScore             TO BE CONTINUED: the title theme again
+                    lda       stgn,u             Boot Hill won: on to Main Street (health back up 6,
+                    bne       sg3                 lives and score kept, the weapon left behind)
+                    lda       <hhp
+                    adda      #6
+                    cmpa      #MaxHp
+                    ble       sg2a
+                    lda       #MaxHp
+sg2a                sta       <hhp
+                    clr       <hwep
+                    clr       <hammo
+                    lda       #1
+                    lbra      StageInit
+sg3                 lbsr      HiScore             TO BE CONTINUED: the title theme again
                     lda       #MU.title
                     lbsr      Music
                     lda       #PH.End
@@ -141,11 +283,11 @@ wv0                 tst       <lock
                     lda       #SF.Check
                     lbsr      Sfx
                     lda       <wavei
-                    cmpa      #NWaves
+                    cmpa      nwaves,u
                     lbhs      StageClear
 wvx                 rts
 wv2                 lda       <wavei              the camera reaching the next wave's spot
-                    cmpa      #NWaves
+                    cmpa      nwaves,u
                     bhs       wvx
                     bsr       WaveRec
                     ldd       <cam
@@ -183,7 +325,10 @@ sw1                 pshs      x
                     rts
 
 * WaveRec - X = wave number wavei's record
-WaveRec             leax      WaveTab,pcr
+WaveRec             ldx       stgp,u              this stage's table
+                    ldd       SR.Waves,x
+                    leax      StgTab,pcr
+                    leax      d,x
                     ldb       <wavei
                     beq       wr2
 wr1                 lda       2,x                 skip a record: cam, count, types
@@ -201,12 +346,16 @@ wr2                 rts
 *   right and odd ones from the left, two by two (brawler.js spawn)
 Spawn               cmpa      #TY.Skel
                     lbeq      NewSkel
+                    cmpa      #TY.SkelW
+                    lbeq      NewSkelW
+                    cmpa      #TY.Coy
+                    lbeq      NewCoy
                     lbra      NewDillo
 
-* Boot Hill's waves: the camera's spot, how many, what (brawler.js
-*   STAGES.boothill.waves; 'skel@' = a skeleton rising)
-NWaves              equ       5
-WaveTab             fdb       0
+* the waves: the camera's spot, how many, what (brawler.js STAGES.*.waves;
+*   Boot Hill's 'skel@' rise out of the ground, Main Street's skeletons
+*   walk in; $FF = the boss)
+WaveBH              fdb       0
                     fcb       3,TY.Skel,TY.Dillo,TY.Skel
                     fdb       360
                     fcb       4,TY.Skel,TY.Skel,TY.Dillo,TY.Skel
@@ -216,6 +365,16 @@ WaveTab             fdb       0
                     fcb       4,TY.Skel,TY.Skel,TY.Skel,TY.Skel
                     fdb       1600
                     fcb       $FF                 Two-Bit
+WaveMS              fdb       0
+                    fcb       3,TY.Coy,TY.Coy,TY.Dillo
+                    fdb       380
+                    fcb       4,TY.Coy,TY.SkelW,TY.Coy,TY.Dillo
+                    fdb       780
+                    fcb       4,TY.SkelW,TY.Coy,TY.SkelW,TY.Dillo
+                    fdb       1200
+                    fcb       4,TY.Coy,TY.SkelW,TY.Coy,TY.SkelW
+                    fdb       1660
+                    fcb       6,TY.SkelW,TY.Coy,TY.SkelW,TY.Coy,TY.Coy,TY.SkelW
 
 ********************************************************************
 * StageClear - the stage is won: he taunts

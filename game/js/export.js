@@ -20,47 +20,66 @@ T.runExport = function (A) {
   const CLUT_SPR = 0, CLUT_FLASH = 1, CLUT_GHOST = 2, CLUT_TILE = 3;   // the hardware CLUT plan (f256-plan.md)
 
   // ---------------------------------------------------------------- the art, built the way the brawler builds it
-  const night = T.buildNightLayers(VW, VH, FLOOR);
-  const layers = [
-    { name: 'FAR', img: night.far, rate: 0.25 },
-    { name: 'MID', img: night.mid, rate: 0.5 },
-    { name: 'STR', img: T.buildGraveyardStreet(VW, VH, FLOOR), rate: 1 },
+  // Each stage has its own tile sets and maps, loaded into the same blocks when the stage starts. One tile CLUT
+  // serves both (CLUT.bg holds every stage's colours).
+  const night = T.buildNightLayers(VW, VH, FLOOR), MS = T.buildMainStreet(VW, VH, FLOOR);
+  const STAGES = [
+    { key: 'BH', file: 'bh', W: 1920, layers: [
+      { name: 'FAR', img: night.far, rate: 0.25 }, { name: 'MID', img: night.mid, rate: 0.5 },
+      { name: 'STR', img: T.buildGraveyardStreet(VW, VH, FLOOR), rate: 1 }] },
+    { key: 'MS', file: 'ms', W: 2400, layers: [
+      { name: 'FAR', img: MS.far, rate: 0.25 }, { name: 'MID', img: MS.mid, rate: 0.5 }, { name: 'STR', img: MS.street, rate: 1 }] },
   ];
   const SKEL = T.buildSkeleton();
 
   // ---------------------------------------------------------------- tiles and maps
-  const tileKeys = new Map(), tileData = [new Uint8Array(256)];
-  tileKeys.set(String.fromCharCode(...tileData[0]), 0);
-  const maps = [];
-  for (const L of layers) {
-    const img = L.img, pw = img.width / TS;
-    const need = Math.ceil(((LEVEL_W - VW) * L.rate + VW) / TS) + 1;      // enough map to scroll the whole level
-    const cells = new Uint8Array(need * MAP_H * 2);
-    for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < need; tx++) {
-      const sx = (tx % pw) * TS, sy = ty * TS, t = new Uint8Array(256);
-      for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) t[y * TS + x] = img.idx[(sy + y) * img.width + sx + x] || 0;
-      const key = String.fromCharCode(...t);
-      let n = tileKeys.get(key);
-      if (n === undefined) {
-        if (tileData.length % 256 === 0) tileData.push(new Uint8Array(256));   // slot 0 of every set stays empty (MAME skips tile number 0)
-        n = tileData.length; tileKeys.set(key, n); tileData.push(t);
+  function packStage(st) {
+    const tileKeys = new Map(), tileData = [new Uint8Array(256)];
+    tileKeys.set(String.fromCharCode(...tileData[0]), 0);
+    const maps = [];
+    for (const L of st.layers) {
+      const img = L.img, pw = img.width / TS;
+      const need = Math.ceil(((st.W - VW) * L.rate + VW) / TS) + 1;      // enough map to scroll the whole level
+      const cells = new Uint8Array(need * MAP_H * 2);
+      for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < need; tx++) {
+        const sx = (tx % pw) * TS, sy = ty * TS, t = new Uint8Array(256);
+        for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) t[y * TS + x] = img.idx[(sy + y) * img.width + sx + x] || 0;
+        const key = String.fromCharCode(...t);
+        let n = tileKeys.get(key);
+        if (n === undefined) {
+          if (tileData.length % 256 === 0) tileData.push(new Uint8Array(256));   // slot 0 of every set stays empty (MAME skips tile number 0)
+          n = tileData.length; tileKeys.set(key, n); tileData.push(t);
+        }
+        const o = (ty * need + tx) * 2;
+        cells[o] = n & 255; cells[o + 1] = (n >> 8) | (CLUT_TILE << 3);
       }
-      const o = (ty * need + tx) * 2;
-      cells[o] = n & 255; cells[o + 1] = (n >> 8) | (CLUT_TILE << 3);
+      maps.push({ name: L.name, w: need, rate: L.rate, cells });
     }
-    maps.push({ name: L.name, w: need, rate: L.rate, cells });
+    const tiles = new Uint8Array(tileData.length * 256);
+    tileData.forEach((t, i) => tiles.set(t, i * 256));
+    const sets = Math.ceil(tileData.length / 256);
+    if (sets > 8) throw new Error(st.key + ': more than 8 tile sets');
+    const mapBytes = new Uint8Array(maps.reduce((s2, m) => s2 + m.cells.length, 0));
+    let p = 0;
+    for (const m of maps) { m.of = p; mapBytes.set(m.cells, p); p += m.cells.length; }
+    return Object.assign(st, { tiles, sets, n: tileData.length, maps, mapBytes });
   }
-  const tiles = new Uint8Array(tileData.length * 256);
-  tileData.forEach((t, i) => tiles.set(t, i * 256));
-  const sets = Math.ceil(tileData.length / 256);
-  if (sets > 8) throw new Error('more than 8 tile sets');
+  STAGES.forEach(packStage);
 
   // ---------------------------------------------------------------- sprites: frames cut into 32x32 cells
+  // Sprite banks: the shared cells (sprites.bin) stay loaded; each stage's own cells (spr_<stage>.bin) load at
+  // cell OVL_BASE (a block boundary) when the stage starts, so only one stage's are in memory at once.
   const cellData = [], cellKeys = new Map(), frameRecs = [], groups = [];
+  const banks = {};                                // stage key -> { cells: [], keys: Map }
+  let bank = null, OVL_BASE = 0;
   function addCell(bytes) {
     const key = String.fromCharCode(...bytes);
     let n = cellKeys.get(key);
-    if (n === undefined) { n = cellData.length; cellKeys.set(key, n); cellData.push(bytes); }
+    if (n !== undefined) return n;
+    if (!bank) { n = cellData.length; cellKeys.set(key, n); cellData.push(bytes); return n; }
+    const B = banks[bank] || (banks[bank] = { cells: [], keys: new Map() });
+    n = B.keys.get(key);
+    if (n === undefined) { n = OVL_BASE + B.cells.length; B.keys.set(key, n); B.cells.push(bytes); }
     return n;
   }
   function addFrame(cv, ox, oy, mirrored) {
@@ -78,13 +97,14 @@ T.runExport = function (A) {
   // a group = one character: its animations, every frame facing right, then every frame mirrored.
   // An animation may carry its own origin (ox, oy), else the group's.
   function addGroup(prefix, anims, ox, oy, mirror = true) {
+    if (bank && !OVL_BASE) throw new Error('a banked group before the shared ones are done');
     const list = [];
     for (const [name, frames, fps, loop, aox = ox, aoy = oy] of anims) list.push({ name, frames, fps, loop, ox: aox, oy: aoy });
     const first = frameRecs.length;
     let n = 0;
     for (const a of list) { a.first = n; for (const f of a.frames) { addFrame(f, a.ox, a.oy, false); n++; } }
     if (mirror) for (const a of list) for (const f of a.frames) addFrame(f, a.ox, a.oy, true);
-    groups.push({ prefix, first, n, list, mirror });
+    groups.push({ prefix, first, n, list, mirror, bank });
   }
   const H = T.HERO, S = T.SKEL;
   addGroup('HR', Object.values(HERO).map(a => [a.name, a.frames, a.fps, a.loop]), H.OX, H.OY);
@@ -111,10 +131,6 @@ T.runExport = function (A) {
   // sprint 3: the dillo, Two-Bit (the coyote art), and the props and pickups
   const E = T.ENEMY, B = T.BOSS, PROPS = T.buildProps(), PICK = T.buildPick(), HAT = T.buildHat();
   addGroup('DL', [['walk', DILLO.walk, 8, true], ['ball', DILLO.ball, 24, true]], E.OX, E.OY);
-  addGroup('TB', [['idle', COYOTE.idle, 3, true], ['walk', COYOTE.walk, 8, true], ['talk', COYOTE.talk, 6, true],
-    ['windup', [COYOTE.windup], 1, false], ['swing', [COYOTE.swing], 1, false], ['throw', [COYOTE.throw], 1, false],
-    ['dig', [COYOTE.dig], 1, false], ['pop', [COYOTE.pop], 1, false], ['daze', COYOTE.daze, 8, true],
-    ['hurt', [COYOTE.hurt], 1, false], ['ko', [COYOTE.ko], 1, false], ['down', [COYOTE.down], 1, false]], B.OX, B.OY);
   addGroup('PR', [['stone', [PROPS.headstone], 1, false, PROPS.headstone.ox, PROPS.headstone.oy], ['mound', [PROPS.mound], 1, false, 20, 11],
     ['hole', [PROPS.hole], 1, false, 20, 11], ['clod', [PROPS.clod], 1, false, 4, 4], ['digm', PROPS.digMound, 1, false, 16, 11],
     ['barrel', [BARREL], 1, false, T.BARREL.OX, T.BARREL.OY], ['hat', [HAT], 1, false, T.HAT.OX, T.HAT.OY],
@@ -137,12 +153,31 @@ T.runExport = function (A) {
     ['buried', 'I BURIED YOU MYSELF!', '#fff3c4', 1], ['dizzy', 'DIZZY!', '#ffd34a', 1], ['x', 'X', '#ffd34a', 1],
     ['press', 'PRESS JUMP', '#ffd34a', 2], ['tagline', 'HE DIED WITH HIS BOOTS ON', '#e8a070', 1],
     ['tagline2', 'NOW THE BOOTS WANT REVENGE', '#e8a070', 1],
+    ['mainst', 'MAIN STREET', '#ffd34a', 3], ['dusk', 'DUSK', '#e8a070', 1], ['msclear', 'MAIN STREET CLEAR!', '#ffd34a', 3],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
+
+  // the stage banks: Boot Hill's Two-Bit; Main Street's mangy gang (the coyote art in the mangy palette) and tumbleweed
+  OVL_BASE = Math.ceil(cellData.length / 8) * 8;
+  bank = 'BH';
+  addGroup('TB', [['idle', COYOTE.idle, 3, true], ['walk', COYOTE.walk, 8, true], ['talk', COYOTE.talk, 6, true],
+    ['windup', [COYOTE.windup], 1, false], ['swing', [COYOTE.swing], 1, false], ['throw', [COYOTE.throw], 1, false],
+    ['dig', [COYOTE.dig], 1, false], ['pop', [COYOTE.pop], 1, false], ['daze', COYOTE.daze, 8, true],
+    ['hurt', [COYOTE.hurt], 1, false], ['ko', [COYOTE.ko], 1, false], ['down', [COYOTE.down], 1, false]], B.OX, B.OY);
+  bank = 'MS';
+  const MANGY = T.buildCoyote('mangy'), TUMBLE = T.buildTumbleweed();
+  addGroup('CY', [['idle', MANGY.idle, 3, true], ['walk', MANGY.walk, 8, true], ['windup', [MANGY.windup], 1, false],
+    ['swing', [MANGY.swing], 1, false], ['hurt', [MANGY.hurt], 1, false], ['down', [MANGY.down], 1, false],
+    ['daze', MANGY.daze, 8, true], ['ko', [MANGY.ko], 1, false]], B.OX, B.OY);
+  addGroup('TW', [['roll', TUMBLE, 10, true]], 12, 22);
+  bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
-  const sprites = new Uint8Array(cellData.length * 1024);
+  const sprites = new Uint8Array(OVL_BASE * 1024);              // the shared cells, padded to the overlay's block
   cellData.forEach((b, i) => sprites.set(b, i * 1024));
+  const ovl = {};
+  for (const k in banks) { ovl[k] = new Uint8Array(banks[k].cells.length * 1024); banks[k].cells.forEach((b, i) => ovl[k].set(b, i * 1024)); }
+  const OVL_N = Math.max(...Object.values(banks).map(b => b.cells.length));
   const fsize = 2 + frameRecs.length * 2 + frameRecs.reduce((s, r) => s + 1 + r.length * 4, 0);
   const frames = new Uint8Array(fsize), dv = new DataView(frames.buffer);
   dv.setUint16(0, frameRecs.length);
@@ -166,13 +201,27 @@ T.runExport = function (A) {
   T.bossBar('A', 1, 2);                          // the HUD bar's colours into the sprite CLUT before it's packed
   const F = T.rgb('#e4e0ff');
   const files = {
-    'tiles.bin': tiles,
-    'maps.bin': (() => { const all = new Uint8Array(maps.reduce((s, m) => s + m.cells.length, 0)); let p = 0; for (const m of maps) { all.set(m.cells, p); p += m.cells.length; } return all; })(),
     'sprites.bin': sprites,
+    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS,
+    'tiles_bh.bin': STAGES[0].tiles, 'maps_bh.bin': STAGES[0].mapBytes,
+    'tiles_ms.bin': STAGES[1].tiles, 'maps_ms.bin': STAGES[1].mapBytes,
     'frames.bin': frames,
     'clut_spr.bin': clut(T.CLUT.spr.colors),
     'clut_tile.bin': clut(T.CLUT.bg.colors),
     'clut_flash.bin': clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
+    // Main Street's night falling (mainstreet.js shadeOf): 13 tile CLUTs, shade 0/20 .. 12/20 toward NIGHT; the
+    // lights (windows, lamps, the sun) keep their colour. 1K each, back to back.
+    'clut_dusk.bin': (() => {
+      const out = new Uint8Array(13 * 1024);
+      for (let st = 0; st <= 12; st++) out.set(clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * (1 - st / 20) + T.NIGHT[j] * st / 20))), st * 1024);
+      // the lights: unshaded in every step
+      T.CLUT.bg.colors.forEach((h, i) => {
+        if (!h || !T.MAIN_STREET_LIGHTS.has(h.toLowerCase())) return;
+        const [r, g, bl] = T.rgb(h);
+        for (let st = 0; st <= 12; st++) { const o = st * 1024 + i * 4; out[o] = bl; out[o + 1] = g; out[o + 2] = r; }
+      });
+      return out;
+    })(),
   };
   if (T.CLUT.spr.colors.length > 256 || T.CLUT.bg.colors.length > 256) throw new Error('CLUT overflow');
 
@@ -185,25 +234,29 @@ T.runExport = function (A) {
     '* screen and maps',
     `TS.Size  equ ${TS}           tile size`,
     `MAP.H    equ ${MAP_H}           map height in tiles`,
-    `LEVEL.W  equ ${LEVEL_W}         level width in pixels`,
+    `LEVEL.W  equ ${LEVEL_W}         Boot Hill's width (tskview)`,
     `FLOOR.Y  equ ${FLOOR}          screen y of the back of the floor`,
     `CLUT.Spr equ ${CLUT_SPR}`, `CLUT.Fls equ ${CLUT_FLASH}`, `CLUT.Gst equ ${CLUT_GHOST}`, `CLUT.Til equ ${CLUT_TILE}`,
     '',
-    '* tiles.bin',
-    `TIL.N    equ ${tileData.length}         unique tiles (tile 0 is empty)`,
-    `TIL.Sets equ ${sets}           tile sets of 256 tiles (64K each)`,
-    `TIL.Size equ ${hex(tiles.length, 6)}    bytes`,
-    '',
-    '* maps.bin: three maps back to back, 2 bytes a cell',
+    '* the stages: each has its own tiles_<s>.bin and maps_<s>.bin (three maps back to back, 2 bytes a cell),',
+    '* loaded into the same blocks; TIL.*, MAP.Size are the largest, for allocating them',
   ];
-  let mo = 0;
-  maps.forEach((m, i) => {
-    L.push(`MAP${i}.W  equ ${m.w}          ${m.name}: width in tiles, scrolls at ${m.rate}x`);
-    L.push(`MAP${i}.Of equ ${hex(mo)}        offset in maps.bin`);
-    mo += m.cells.length;
-  });
-  L.push(`MAP.Size equ ${hex(mo)}`, '');
-  L.push('* sprites.bin: 1K cells', `SPR.N    equ ${cellData.length}         cells`, `SPR.Size equ ${hex(sprites.length, 6)}    bytes`, '');
+  for (const st of STAGES) {
+    L.push(`${st.key}.W     equ ${st.W}         ${st.key}: level width in pixels`);
+    L.push(`${st.key}.TIL.N  equ ${st.n}`, `${st.key}.TIL.Sets equ ${st.sets}`, `${st.key}.TIL.Size equ ${hex(st.tiles.length, 6)}`);
+    st.maps.forEach((m, i) => {
+      L.push(`${st.key}.MAP${i}.W equ ${m.w}         ${m.name}: width in tiles, scrolls at ${m.rate}x`);
+      L.push(`${st.key}.MAP${i}.Of equ ${hex(m.of)}`);
+    });
+    L.push(`${st.key}.MAP.Size equ ${hex(st.mapBytes.length)}`, '');
+  }
+  L.push(`TIL.Sets equ ${Math.max(...STAGES.map(st => st.sets))}`, `TIL.Size equ ${hex(Math.max(...STAGES.map(st => st.tiles.length)), 6)}`,
+    `MAP.Size equ ${hex(Math.max(...STAGES.map(st => st.mapBytes.length)))}`, '');
+  L.push('* tskview shows Boot Hill', ...STAGES[0].maps.flatMap((m, i) => [`MAP${i}.W  equ ${m.w}`, `MAP${i}.Of equ ${hex(m.of)}`]), '');
+  L.push('* sprites.bin: the shared 1K cells, padded to SPR.Base; spr_<s>.bin: a stage\'s own, loaded at cell SPR.Base',
+    `SPR.N    equ ${cellData.length}         shared cells`, `SPR.Base equ ${OVL_BASE}         the first stage cell (a block boundary)`,
+    `SPR.Ovl  equ ${OVL_N}         the most stage cells`, `SPR.Size equ ${hex((OVL_BASE + OVL_N) * 1024, 6)}    bytes of sprite RAM in all`,
+    `SPR.ShSize equ ${hex(sprites.length, 6)}  sprites.bin`, '');
   L.push('* frames.bin', `FRM.N    equ ${frameRecs.length}         frames`, `FRM.Size equ ${hex(frames.length)}`, '');
   L.push('* animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)');
   L.push('* the mirrored (facing left) copy of frame f is f + <group>.Mir');
@@ -255,7 +308,8 @@ T.runExport = function (A) {
   const tabs = TB.join('\n') + '\n';
 
   // stats for the report
-  const report = { tiles: tileData.length, sets, maps: maps.map(m => ({ name: m.name, w: m.w })), cells: cellData.length, frames: frameRecs.length,
+  const report = { stages: STAGES.map(st => ({ key: st.key, tiles: st.n, sets: st.sets, maps: st.maps.map(m => ({ name: m.name, w: m.w })) })),
+    cells: cellData.length, ovl: Object.fromEntries(Object.entries(banks).map(([k, b]) => [k, b.cells.length])), frames: frameRecs.length,
     sprClut: T.CLUT.spr.colors.length - 1, tileClut: T.CLUT.bg.colors.length - 1, sizes: Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v.length])) };
 
   // hand everything to export.py through the DOM, base64-encoded

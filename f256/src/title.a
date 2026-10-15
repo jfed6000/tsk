@@ -56,7 +56,7 @@ TitleStep           ldd       <camf               the camera drifts along the hi
                     tst       <camdir             a pixel every other pass
                     bne       tts2
                     addd      #8
-                    cmpd      #CamMax*16
+                    cmpd      cammax,u
                     blo       tts3
                     inc       <camdir
                     bra       tts3

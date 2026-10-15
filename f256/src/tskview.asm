@@ -414,7 +414,7 @@ ds2                 lda       <tsn
                     lbcs      dsx
                     inc       <tsn
                     lda       <tsn
-                    cmpa      #TIL.Sets
+                    cmpa      #BH.TIL.Sets
                     blo       ds2
 * tile maps 0-2, all in one block at the offsets the exporter gave
                     ldy       #MAP0.Of
@@ -865,7 +865,7 @@ cu2                 clra
                     puls      u
                     inc       <tsn
                     lda       <tsn
-                    cmpa      #TIL.Sets
+                    cmpa      #BH.TIL.Sets
                     blo       cu2
                     tst       <gfxon              the display mode as it was
                     beq       cu3
@@ -951,11 +951,11 @@ SkelTab             fdb       SK.walk
 ********************************************************************
 * Names and messages
 ********************************************************************
-FTiles              fcc       /tiles.bin/
+FTiles              fcc       /tiles_bh.bin/
                     fcb       $0D
 FSprites            fcc       /sprites.bin/
                     fcb       $0D
-FMaps               fcc       /maps.bin/
+FMaps               fcc       /maps_bh.bin/
                     fcb       $0D
 FFrames             fcc       /frames.bin/
                     fcb       $0D

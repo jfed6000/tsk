@@ -4,34 +4,61 @@
 * screen and maps
 TS.Size  equ 16           tile size
 MAP.H    equ 15           map height in tiles
-LEVEL.W  equ 1920         level width in pixels
+LEVEL.W  equ 1920         Boot Hill's width (tskview)
 FLOOR.Y  equ 150          screen y of the back of the floor
 CLUT.Spr equ 0
 CLUT.Fls equ 1
 CLUT.Gst equ 2
 CLUT.Til equ 3
 
-* tiles.bin
-TIL.N    equ 576         unique tiles (tile 0 is empty)
-TIL.Sets equ 3           tile sets of 256 tiles (64K each)
-TIL.Size equ $024000    bytes
+* the stages: each has its own tiles_<s>.bin and maps_<s>.bin (three maps back to back, 2 bytes a cell),
+* loaded into the same blocks; TIL.*, MAP.Size are the largest, for allocating them
+BH.W     equ 1920         BH: level width in pixels
+BH.TIL.N  equ 576
+BH.TIL.Sets equ 3
+BH.TIL.Size equ $024000
+BH.MAP0.W equ 46         FAR: width in tiles, scrolls at 0.25x
+BH.MAP0.Of equ $0000
+BH.MAP1.W equ 71         MID: width in tiles, scrolls at 0.5x
+BH.MAP1.Of equ $0564
+BH.MAP2.W equ 121         STR: width in tiles, scrolls at 1x
+BH.MAP2.Of equ $0DB6
+BH.MAP.Size equ $1BE4
 
-* maps.bin: three maps back to back, 2 bytes a cell
-MAP0.W  equ 46          FAR: width in tiles, scrolls at 0.25x
-MAP0.Of equ $0000        offset in maps.bin
-MAP1.W  equ 71          MID: width in tiles, scrolls at 0.5x
-MAP1.Of equ $0564        offset in maps.bin
-MAP2.W  equ 121          STR: width in tiles, scrolls at 1x
-MAP2.Of equ $0DB6        offset in maps.bin
-MAP.Size equ $1BE4
+MS.W     equ 2400         MS: level width in pixels
+MS.TIL.N  equ 650
+MS.TIL.Sets equ 3
+MS.TIL.Size equ $028A00
+MS.MAP0.W equ 54         FAR: width in tiles, scrolls at 0.25x
+MS.MAP0.Of equ $0000
+MS.MAP1.W equ 86         MID: width in tiles, scrolls at 0.5x
+MS.MAP1.Of equ $0654
+MS.MAP2.W equ 151         STR: width in tiles, scrolls at 1x
+MS.MAP2.Of equ $1068
+MS.MAP.Size equ $221A
 
-* sprites.bin: 1K cells
-SPR.N    equ 836         cells
-SPR.Size equ $0D1000    bytes
+TIL.Sets equ 3
+TIL.Size equ $028A00
+MAP.Size equ $221A
+
+* tskview shows Boot Hill
+MAP0.W  equ 46
+MAP0.Of equ $0000
+MAP1.W  equ 71
+MAP1.Of equ $0564
+MAP2.W  equ 121
+MAP2.Of equ $0DB6
+
+* sprites.bin: the shared 1K cells, padded to SPR.Base; spr_<s>.bin: a stage's own, loaded at cell SPR.Base
+SPR.N    equ 732         shared cells
+SPR.Base equ 736         the first stage cell (a block boundary)
+SPR.Ovl  equ 113         the most stage cells
+SPR.Size equ $0D4400    bytes of sprite RAM in all
+SPR.ShSize equ $0B8000  sprites.bin
 
 * frames.bin
-FRM.N    equ 403         frames
-FRM.Size equ $148F
+FRM.N    equ 444         frames
+FRM.Size equ $1722
 
 * animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)
 * the mirrored (facing left) copy of frame f is f + <group>.Mir
@@ -164,201 +191,243 @@ DL.ball        equ 278
 DL.ball.N      equ 8
 DL.ball.T      equ 3
 
-TB.First equ 298
-TB.Mir equ 20
-TB.idle        equ 298
-TB.idle.N      equ 2
-TB.idle.T      equ 20
-TB.walk        equ 300
-TB.walk.N      equ 4
-TB.walk.T      equ 8
-TB.talk        equ 304
-TB.talk.N      equ 2
-TB.talk.T      equ 10
-TB.windup      equ 306
-TB.windup.N    equ 1
-TB.windup.T    equ 60
-TB.swing       equ 307
-TB.swing.N     equ 1
-TB.swing.T     equ 60
-TB.throw       equ 308
-TB.throw.N     equ 1
-TB.throw.T     equ 60
-TB.dig         equ 309
-TB.dig.N       equ 1
-TB.dig.T       equ 60
-TB.pop         equ 310
-TB.pop.N       equ 1
-TB.pop.T       equ 60
-TB.daze        equ 311
-TB.daze.N      equ 4
-TB.daze.T      equ 8
-TB.hurt        equ 315
-TB.hurt.N      equ 1
-TB.hurt.T      equ 60
-TB.ko          equ 316
-TB.ko.N        equ 1
-TB.ko.T        equ 60
-TB.down        equ 317
-TB.down.N      equ 1
-TB.down.T      equ 60
-
-PR.First equ 338
+PR.First equ 298
 PR.Mir equ 13
-PR.stone       equ 338
+PR.stone       equ 298
 PR.stone.N     equ 1
 PR.stone.T     equ 60
-PR.mound       equ 339
+PR.mound       equ 299
 PR.mound.N     equ 1
 PR.mound.T     equ 60
-PR.hole        equ 340
+PR.hole        equ 300
 PR.hole.N      equ 1
 PR.hole.T      equ 60
-PR.clod        equ 341
+PR.clod        equ 301
 PR.clod.N      equ 1
 PR.clod.T      equ 60
-PR.digm        equ 342
+PR.digm        equ 302
 PR.digm.N      equ 2
 PR.digm.T      equ 60
-PR.barrel      equ 344
+PR.barrel      equ 304
 PR.barrel.N    equ 1
 PR.barrel.T    equ 60
-PR.hat         equ 345
+PR.hat         equ 305
 PR.hat.N       equ 1
 PR.hat.T       equ 60
-PR.whip        equ 346
+PR.whip        equ 306
 PR.whip.N      equ 1
 PR.whip.T      equ 60
-PR.gun         equ 347
+PR.gun         equ 307
 PR.gun.N       equ 1
 PR.gun.T       equ 60
-PR.beans       equ 348
+PR.beans       equ 308
 PR.beans.N     equ 1
 PR.beans.T     equ 60
-PR.bullet      equ 349
+PR.bullet      equ 309
 PR.bullet.N    equ 1
 PR.bullet.T    equ 60
-PR.bicon       equ 350
+PR.bicon       equ 310
 PR.bicon.N     equ 1
 PR.bicon.T     equ 60
 
-TX.First equ 364
+TX.First equ 324
 TX.Mir equ 0
-TX.texas       equ 364
+TX.texas       equ 324
 TX.texas.N     equ 1
 TX.texas.T     equ 60
-TX.shitk       equ 365
+TX.shitk       equ 325
 TX.shitk.N     equ 1
 TX.shitk.T     equ 60
-TX.boothill    equ 366
+TX.boothill    equ 326
 TX.boothill.N  equ 1
 TX.boothill.T  equ 60
-TX.midnight    equ 367
+TX.midnight    equ 327
 TX.midnight.N  equ 1
 TX.midnight.T  equ 60
-TX.go          equ 368
+TX.go          equ 328
 TX.go.N        equ 1
 TX.go.T        equ 60
-TX.clear       equ 369
+TX.clear       equ 329
 TX.clear.N     equ 1
 TX.clear.T     equ 60
-TX.tbc         equ 370
+TX.tbc         equ 330
 TX.tbc.N       equ 1
 TX.tbc.T       equ 60
-TX.ride        equ 371
+TX.ride        equ 331
 TX.ride.N      equ 1
 TX.ride.T      equ 60
-TX.again       equ 372
+TX.again       equ 332
 TX.again.N     equ 1
 TX.again.T     equ 60
-TX.over        equ 373
+TX.over        equ 333
 TX.over.N      equ 1
 TX.over.T      equ 60
-TX.ko0         equ 374
+TX.ko0         equ 334
 TX.ko0.N       equ 1
 TX.ko0.T       equ 60
-TX.ko1         equ 375
+TX.ko1         equ 335
 TX.ko1.N       equ 1
 TX.ko1.T       equ 60
-TX.ko2         equ 376
+TX.ko2         equ 336
 TX.ko2.N       equ 1
 TX.ko2.T       equ 60
-TX.ko3         equ 377
+TX.ko3         equ 337
 TX.ko3.N       equ 1
 TX.ko3.T       equ 60
-TX.ko4         equ 378
+TX.ko4         equ 338
 TX.ko4.N       equ 1
 TX.ko4.T       equ 60
-TX.ko5         equ 379
+TX.ko5         equ 339
 TX.ko5.N       equ 1
 TX.ko5.T       equ 60
-TX.bone0       equ 380
+TX.bone0       equ 340
 TX.bone0.N     equ 1
 TX.bone0.T     equ 60
-TX.bone1       equ 381
+TX.bone1       equ 341
 TX.bone1.N     equ 1
 TX.bone1.T     equ 60
-TX.bone2       equ 382
+TX.bone2       equ 342
 TX.bone2.N     equ 1
 TX.bone2.T     equ 60
-TX.bone3       equ 383
+TX.bone3       equ 343
 TX.bone3.N     equ 1
 TX.bone3.T     equ 60
-TX.bone4       equ 384
+TX.bone4       equ 344
 TX.bone4.N     equ 1
 TX.bone4.T     equ 60
-TX.headsup     equ 385
+TX.headsup     equ 345
 TX.headsup.N   equ 1
 TX.headsup.T   equ 60
-TX.dagnab      equ 386
+TX.dagnab      equ 346
 TX.dagnab.N    equ 1
 TX.dagnab.T    equ 60
-TX.ouch        equ 387
+TX.ouch        equ 347
 TX.ouch.N      equ 1
 TX.ouch.T      equ 60
-TX.sixsh       equ 388
+TX.sixsh       equ 348
 TX.sixsh.N     equ 1
 TX.sixsh.T     equ 60
-TX.bwhip       equ 389
+TX.bwhip       equ 349
 TX.bwhip.N     equ 1
 TX.bwhip.T     equ 60
-TX.wbroke      equ 390
+TX.wbroke      equ 350
 TX.wbroke.N    equ 1
 TX.wbroke.T    equ 60
-TX.click       equ 391
+TX.click       equ 351
 TX.click.N     equ 1
 TX.click.T     equ 60
-TX.beans       equ 392
+TX.beans       equ 352
 TX.beans.N     equ 1
 TX.beans.T     equ 60
-TX.fore        equ 393
+TX.fore        equ 353
 TX.fore.N      equ 1
 TX.fore.T      equ 60
-TX.stomp       equ 394
+TX.stomp       equ 354
 TX.stomp.N     equ 1
 TX.stomp.T     equ 60
-TX.bossko      equ 395
+TX.bossko      equ 355
 TX.bossko.N    equ 1
 TX.bossko.T    equ 60
-TX.rise        equ 396
+TX.rise        equ 356
 TX.rise.N      equ 1
 TX.rise.T      equ 60
-TX.buried      equ 397
+TX.buried      equ 357
 TX.buried.N    equ 1
 TX.buried.T    equ 60
-TX.dizzy       equ 398
+TX.dizzy       equ 358
 TX.dizzy.N     equ 1
 TX.dizzy.T     equ 60
-TX.x           equ 399
+TX.x           equ 359
 TX.x.N         equ 1
 TX.x.T         equ 60
-TX.press       equ 400
+TX.press       equ 360
 TX.press.N     equ 1
 TX.press.T     equ 60
-TX.tagline     equ 401
+TX.tagline     equ 361
 TX.tagline.N   equ 1
 TX.tagline.T   equ 60
-TX.tagline2    equ 402
+TX.tagline2    equ 362
 TX.tagline2.N  equ 1
 TX.tagline2.T  equ 60
+TX.mainst      equ 363
+TX.mainst.N    equ 1
+TX.mainst.T    equ 60
+TX.dusk        equ 364
+TX.dusk.N      equ 1
+TX.dusk.T      equ 60
+TX.msclear     equ 365
+TX.msclear.N   equ 1
+TX.msclear.T   equ 60
+
+TB.First equ 366
+TB.Mir equ 20
+TB.idle        equ 366
+TB.idle.N      equ 2
+TB.idle.T      equ 20
+TB.walk        equ 368
+TB.walk.N      equ 4
+TB.walk.T      equ 8
+TB.talk        equ 372
+TB.talk.N      equ 2
+TB.talk.T      equ 10
+TB.windup      equ 374
+TB.windup.N    equ 1
+TB.windup.T    equ 60
+TB.swing       equ 375
+TB.swing.N     equ 1
+TB.swing.T     equ 60
+TB.throw       equ 376
+TB.throw.N     equ 1
+TB.throw.T     equ 60
+TB.dig         equ 377
+TB.dig.N       equ 1
+TB.dig.T       equ 60
+TB.pop         equ 378
+TB.pop.N       equ 1
+TB.pop.T       equ 60
+TB.daze        equ 379
+TB.daze.N      equ 4
+TB.daze.T      equ 8
+TB.hurt        equ 383
+TB.hurt.N      equ 1
+TB.hurt.T      equ 60
+TB.ko          equ 384
+TB.ko.N        equ 1
+TB.ko.T        equ 60
+TB.down        equ 385
+TB.down.N      equ 1
+TB.down.T      equ 60
+
+CY.First equ 406
+CY.Mir equ 15
+CY.idle        equ 406
+CY.idle.N      equ 2
+CY.idle.T      equ 20
+CY.walk        equ 408
+CY.walk.N      equ 4
+CY.walk.T      equ 8
+CY.windup      equ 412
+CY.windup.N    equ 1
+CY.windup.T    equ 60
+CY.swing       equ 413
+CY.swing.N     equ 1
+CY.swing.T     equ 60
+CY.hurt        equ 414
+CY.hurt.N      equ 1
+CY.hurt.T      equ 60
+CY.down        equ 415
+CY.down.N      equ 1
+CY.down.T      equ 60
+CY.daze        equ 416
+CY.daze.N      equ 4
+CY.daze.T      equ 8
+CY.ko          equ 420
+CY.ko.N        equ 1
+CY.ko.T        equ 60
+
+TW.First equ 436
+TW.Mir equ 4
+TW.roll        equ 436
+TW.roll.N      equ 4
+TW.roll.T      equ 6
 

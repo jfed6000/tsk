@@ -11,8 +11,11 @@ dp = set(re.findall(r'^(\w+)\s+rmb\b', data[:data.index('dpend')], re.M))
 bad = []
 for f in sorted(SRC.glob('*.a')):
     for n, line in enumerate(f.read_text().splitlines(), 1):
-        code = line.split('*')[0] if line.lstrip().startswith('*') else line
-        for m in re.finditer(r'<([A-Za-z_][\w.]*)', code):
+        if not line.strip() or line.lstrip().startswith('*'):
+            continue
+        tok = line.split()
+        operand = (tok[2] if len(tok) > 2 else '') if not line[0].isspace() else (tok[1] if len(tok) > 1 else '')
+        for m in re.finditer(r'<([A-Za-z_][\w.]*)', operand):
             name = m.group(1)
             if name.lower() not in {d.lower() for d in dp}:
                 bad.append(f'{f.name}:{n}: <{name} is not a direct-page variable')

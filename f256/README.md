@@ -31,9 +31,10 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 
 CLUT plan: 0 sprites, 1 hit flash (all white), 2 afterimage (ghost), 3 tiles.
 
-Boot Hill comes to 576 tiles (3 sets, 144K), 825 sprite cells (825K) and 400 frames: the hero's 74, the skeleton's
-19, the dillo's 12, Two-Bit's 20 and 44 effects (each in both directions), 13 props and pickups, and 36 text frames
-(no mirrors).
+Assets: Boot Hill 576 tiles and Main Street 650 (3 sets each); 732 shared sprite cells, plus each stage's own
+(Boot Hill 113, Main Street 88) loaded at cell `SPR.Base`; 444 frames; the sprite CLUT 143 of 255, the tile CLUT 96.
+Files are per stage where they differ: `tiles_bh.bin`/`tiles_ms.bin`, `maps_*`, `spr_*`, and `clut_dusk.bin`
+(Main Street's 13 shades of night).
 
 ## tsk: the game
 
@@ -45,6 +46,7 @@ make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
 make mamebot         # the autopilot playing the opening and the first waves in MAME
 make mameboss        # straight to Two-Bit (tsk kg) in MAME
 make mametitle       # the title screen in MAME; the MIDI it sent as mame/midi.mid
+make mamems          # Main Street (tsk mbg) in MAME
 make music           # compose, convert and render the music (game/music/*.mid, *.mp3)
 python3 tools/hostrun.py --args bg --passes 5000 --every 100 --watch phase,wavei,score --enemies --slow 80000
 ```
@@ -58,6 +60,7 @@ SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other lett
 | `b` | The autopilot plays |
 | `g` | Nothing hurts him |
 | `k` | Start at Two-Bit, skipping the opening and the waves |
+| `m` | Start on Main Street |
 
 | Key | Does |
 |---|---|
@@ -83,6 +86,9 @@ display list with his shadow.
 
 **Sprint 4** (2026-10-14): the title screen (with attract mode and a high score) and sound. Music and effects on the
 SAM2695: the title shuffle, Boot Hill's theme, the clear and game-over tags, sixteen effects.
+
+**Sprint 5** (2026-10-14): Main Street. It follows Boot Hill: per-stage art and sprite banks, mangy coyotes,
+skeletons walking in, night falling a step each wave, tumbleweeds, "Graveyard Boogie". Then TO BE CONTINUED.
 
 Verified on the host and in MAME; not yet run on the K2. Not yet ported: the grab and throw.
 

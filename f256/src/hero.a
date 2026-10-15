@@ -441,7 +441,7 @@ hm2                 std       <hz
                     bge       hm3
                     ldd       <tmp
 hm3                 std       <hx                 and to the level's end, or the screen's
-                    ldd       #(LEVEL.W-10)*16    while it's locked
+                    ldd       hxmax,u             (the stage's end) while it's locked
                     tst       <lock
                     beq       hm3a
                     ldd       <tmp

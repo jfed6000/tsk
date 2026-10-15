@@ -36,8 +36,9 @@ def export():
     (SRC / 'tskassets.d').write_text(data['defs'])
     (SRC / 'tsktabs.a').write_text(data['tabs'])
     r = data['report']
-    print(f"tiles {r['tiles']} in {r['sets']} set(s); maps " + ', '.join(f"{m['name']} {m['w']}x15" for m in r['maps']))
-    print(f"sprite cells {r['cells']} ({r['cells']} K), frames {r['frames']}; CLUTs: sprites {r['sprClut']}, tiles {r['tileClut']}")
+    for st in r['stages']:
+        print(f"{st['key']}: tiles {st['tiles']} in {st['sets']} set(s); maps " + ', '.join(f"{m['name']} {m['w']}x15" for m in st['maps']))
+    print(f"shared sprite cells {r['cells']}, stage cells {r['ovl']}; frames {r['frames']}; CLUTs: sprites {r['sprClut']}, tiles {r['tileClut']}")
     for k, v in r['sizes'].items():
         print(f'  {k:16} {v:8} bytes')
 
@@ -62,13 +63,11 @@ def previews():
     from PIL import Image
     D = defs()
     PREVIEW.mkdir(parents=True, exist_ok=True)
-    tiles = (ASSETS / 'tiles.bin').read_bytes()
-    maps = (ASSETS / 'maps.bin').read_bytes()
     tc = clut('clut_tile.bin')
 
-    # the three maps composited at scroll 0, and each map on its own, the way VICKY would draw them
+    # each stage's three maps composited, the way VICKY would draw them (Main Street also at its darkest)
     def draw_map(img, i, scroll):
-        w, off = D[f'MAP{i}.W'], D[f'MAP{i}.Of']
+        w, off = D[f'{sk}.MAP{i}.W'], D[f'{sk}.MAP{i}.Of']
         for ty in range(15):
             for tx in range(w):
                 o = off + (ty * w + tx) * 2
@@ -81,19 +80,30 @@ def previews():
                         p = tiles[n * 256 + y * 16 + x]
                         if p and 0 <= x0 + x < img.width:
                             img.putpixel((x0 + x, ty * 16 + y), tc[p])
-    for scroll in (0, 800):
-        img = Image.new('RGBA', (320, 240), (0, 0, 0, 255))
-        for i, rate in ((0, 0.25), (1, 0.5), (2, 1.0)):
-            draw_map(img, i, scroll * rate)
-        img.convert('RGB').resize((640, 480), Image.NEAREST).save(PREVIEW / f'layers_scroll{scroll}.png')
+    dusk = (ASSETS / 'clut_dusk.bin').read_bytes()
+    for sk, sf in (('BH', 'bh'), ('MS', 'ms')):
+        tiles = (ASSETS / f'tiles_{sf}.bin').read_bytes()
+        maps = (ASSETS / f'maps_{sf}.bin').read_bytes()
+        for scroll, shade in ((0, None), (800, None)) + (((1200, 12),) if sk == 'MS' else ()):
+            if shade is not None:
+                tc = [(dusk[shade * 1024 + i * 4 + 2], dusk[shade * 1024 + i * 4 + 1], dusk[shade * 1024 + i * 4], 255) for i in range(256)]
+            img = Image.new('RGBA', (320, 240), (0, 0, 0, 255))
+            for i, rate in ((0, 0.25), (1, 0.5), (2, 1.0)):
+                draw_map(img, i, scroll * rate)
+            img.convert('RGB').resize((640, 480), Image.NEAREST).save(PREVIEW / f'layers_{sf}_{scroll}{"_night" if shade else ""}.png')
+            tc = clut('clut_tile.bin')
 
     # every animation frame rebuilt from cells + frame table, facing right and mirrored
-    spr = (ASSETS / 'sprites.bin').read_bytes()
+    shared = (ASSETS / 'sprites.bin').read_bytes()
+    banks = {'TB': 'bh', 'CY': 'ms', 'TW': 'ms'}       # stage groups: their cells come from spr_<stage>.bin
     frm = (ASSETS / 'frames.bin').read_bytes()
     sc = clut('clut_spr.bin')
     nf = struct.unpack('>H', frm[:2])[0]
 
-    def draw_frame(img, f, ox, oy):
+    cur = [shared]
+
+    def draw_frame(img, f, ox, oy, spr=None):
+        spr = spr or cur[0]
         o = struct.unpack('>H', frm[2 + f * 2:4 + f * 2])[0]
         n = frm[o]
         for k in range(n):
@@ -108,6 +118,7 @@ def previews():
     prefixes = [k[:-6] for k in D if k.endswith('.First')]
     for n, prefix in enumerate(prefixes):           # every group: facing right, and below it mirrored (if it has mirrors)
         first, mir = D[f'{prefix}.First'], D[f'{prefix}.Mir']
+        cur[0] = shared + ((ASSETS / f'spr_{banks[prefix]}.bin').read_bytes() if prefix in banks else b'')
         last = D[f'{prefixes[n + 1]}.First'] if n + 1 < len(prefixes) else nf
         cnt, rows = (mir, 2) if mir else (last - first, 1)
         tx = prefix == 'TX'

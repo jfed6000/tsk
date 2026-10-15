@@ -10,7 +10,6 @@
 
 CTL.Spr             equ       %00000001+CLUT.Spr*2    enabled, the sprite CLUT, 32x32
 CamLead             equ       144                 the camera keeps him 0.45 of the way across
-CamMax              equ       LEVEL.W-320
 
 CamInit             ldd       #0
                     std       <camf
@@ -29,9 +28,9 @@ cm0                 ldd       <hx
                     subd      #CamLead*16
                     bcc       cm1
                     ldd       #0
-cm1                 cmpd      #CamMax*16
+cm1                 cmpd      cammax,u            (the stage's right-hand stop)
                     bls       cm2
-                    ldd       #CamMax*16
+                    ldd       cammax,u
 cm2                 subd      <camf
                     bls       cm5                 never back
                     lsra
@@ -98,7 +97,11 @@ dw0a
                     lbsr      DrawEb
                     lbsr      DrawPt
                     lbsr      DrawPick
+                    lda       sflags,u            Boot Hill: Ringo's grave; Main Street: a tumbleweed
+                    bita      #SG.Intro
+                    beq       dwg1
                     lbsr      DrawGrave
+dwg1                lbsr      DrawTw
                     lbsr      DrawCl
                     lbsr      SortDL
 * the HUD, titles and popups over everything, then everything else

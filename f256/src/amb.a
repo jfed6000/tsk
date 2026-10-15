@@ -1,0 +1,206 @@
+********************************************************************
+* amb.a - Main Street's ambience (brawler.js simulate: dark, tumble,
+*   motes): night falling a step each wave, a tumbleweed now and then,
+*   dust motes drifting in the low sun.
+*
+*   Night falling is a CLUT fade: clut_dusk.bin holds the tile CLUT at 13
+*   shades toward night (the exporter keeps the lit windows, lamps and the
+*   sun as they are), and every few passes the next shade is written over
+*   CLUT 3.  The browser eases toward each wave's darkness; here it steps.
+********************************************************************
+
+DuskEvery           equ       12                  passes a step: about 0.6 of the way a second, as the browser
+TwG                 equ       3                   the tumbleweed falls at half gravity
+
+* Amb - one pass (not in a hitstop).  Exit: carry = error in B
+Amb                 lda       sflags,u
+                    bita      #SG.Dusk
+                    lbeq      am9
+                    lbsr      Tumble
+                    lbsr      Motes
+* DuskStep - toward this wave's darkness, a shade every DuskEvery passes
+DuskStep            ldb       <wavei              the target: DarkTab[wave]
+                    cmpb      #5
+                    bls       ds1x
+                    ldb       #5
+ds1x                leax      DarkTab,pcr
+                    lda       b,x
+                    cmpa      dstep,u
+                    beq       am9
+                    dec       dclk,u
+                    bpl       am9
+                    ldb       #DuskEvery
+                    stb       dclk,u
+                    ldb       dstep,u
+                    cmpa      dstep,u
+                    bhi       ds2x
+                    decb
+                    bra       ds3x
+ds2x                incb
+ds3x                stb       dstep,u
+* DuskClut - CLUT 3 = shade dstep (blocks: shades 0-7 in the first, 8-12
+*   in the second, 1K each).  Exit: carry = error in B
+DuskClut            ldb       dstep,u
+                    lda       duskblk,u
+                    cmpb      #8
+                    blo       dc1x
+                    inca
+                    subb      #8
+dc1x                pshs      b
+                    tfr       a,b
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    pshs      u
+                    os9       F$MapBlk
+                    tfr       u,x
+                    puls      u
+                    puls      b
+                    bcs       dc9x
+                    pshs      x                   the window, to unmap
+                    lslb                          the shade's 1K: b * 4 pages
+                    lslb
+                    clra
+                    exg       a,b
+                    leax      d,x
+                    ldy       #CLUT.Til*256
+                    ldd       #256
+                    lbsr      ClutWrite
+                    puls      x
+                    pshs      cc,b
+                    pshs      u
+                    tfr       x,u
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      u
+                    puls      cc,b
+dc9x                rts
+am9                 andcc     #$FE
+                    rts
+
+* the darkness of each wave, in shades of twenty: 0, .12, .24, .36, .48, .6
+DarkTab             fcb       0,2,5,7,10,12
+
+* Tumble - a tumbleweed bowls through every 6-14 s, bouncing
+Tumble              tst       twst,u
+                    bne       tm2
+                    ldd       twt,u               waiting
+                    subd      #1
+                    std       twt,u
+                    bne       tm9
+                    inc       twst,u              in from the left, at 55-95 px/s
+                    ldd       <cam
+                    subd      #20
+                    lbsr      To124
+                    std       twx,u
+                    lda       #80
+                    lbsr      RandN
+                    ldb       #16
+                    mul
+                    std       twz,u
+                    ldd       #0
+                    std       twh,u
+                    std       twvh,u
+                    lda       #11
+                    lbsr      RandN
+                    adda      #15
+                    tfr       a,b
+                    clra
+                    std       twvx,u
+tm9                 rts
+tm2                 ldd       twx,u
+                    addd      twvx,u
+                    std       twx,u
+                    ldd       twvh,u              half gravity, and a bounce off the ground
+                    subd      #TwG
+                    std       twvh,u
+                    addd      twh,u
+                    std       twh,u
+                    bgt       tm3
+                    ldd       #0
+                    std       twh,u
+                    lda       #19                 up again at 90-160 px/s
+                    lbsr      RandN
+                    adda      #24
+                    tfr       a,b
+                    clra
+                    std       twvh,u
+tm3                 ldd       twx,u               off the right of the screen: gone a while
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #350
+                    blt       tm9
+                    clr       twst,u
+                    lda       #121                6 to 14 s
+                    lbsr      RandN
+                    ldb       #4
+                    mul
+                    addd      #360
+                    std       twt,u
+                    rts
+
+* Motes - dust in the low sun: about 2.5 a second, drifting right
+Motes               lbsr      Rand
+                    cmpa      #11                 (11/256 a pass ~ 2.6 a second)
+                    bhs       mo9
+                    lda       #255
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      <cam
+                    addd      #32
+                    lbsr      To124
+                    std       <sx
+                    lda       #80
+                    lbsr      RandN
+                    ldb       #16
+                    mul
+                    std       <sz
+                    lda       #90
+                    lbsr      RandN
+                    adda      #20
+                    ldb       #16
+                    mul
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       mo9
+                    ldd       #FX.bit
+                    std       PT.F,y
+                    lda       #240                4 s
+                    ldb       #PK.Bit             (no gravity)
+                    std       PT.L,y
+                    lda       #3
+                    lbsr      RandN
+                    adda      #2
+                    tfr       a,b
+                    clra
+                    std       PT.VX,y
+                    ldd       #-1
+                    std       PT.VH,y
+mo9                 rts
+
+* DrawTw - the tumbleweed and its shadow
+DrawTw              tst       twst,u
+                    beq       dw9x
+                    ldb       <ticks+1            rolling, ten frames a second
+                    lsrb
+                    lsrb
+                    lsrb
+                    andb      #3
+                    clra
+                    addd      #TW.roll
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #2
+                    sta       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       twx,u
+                    std       <ex
+                    ldd       twz,u
+                    std       <ez
+                    ldd       twh,u
+                    std       <eh
+                    lbra      Ent
+dw9x                rts

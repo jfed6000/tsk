@@ -612,6 +612,11 @@ EName               lda       EN.Ty,x
                     cmpa      #TY.Dillo
                     beq       enm0
                     leay      STwoBit,pcr
+                    cmpa      #TY.Boss
+                    beq       enm0
+                    lda       EN.Nm,x             a coyote: one of the gang's names
+                    leay      GangNames,pcr
+                    bra       enm2
 enm0                rts
 enm1                lda       EN.Nm,x             a skeleton: one of the dead names
                     leay      DeadNames,pcr
@@ -631,6 +636,9 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     ldb       #DlHp
                     cmpa      #TY.Dillo
                     beq       ex1
+                    ldb       #CyHp
+                    cmpa      #TY.Coy
+                    beq       ex1
                     ldb       #BossHp
 ex1                 puls      a,pc
 
@@ -640,6 +648,14 @@ SWhip               fcn       "WHIP "
 SCombo              fcn       " HIT COMBO!"
 SDillo              fcn       "DILLO"
 STwoBit             fcn       "TWO-BIT"
+GangNames           fcn       "DUSTY"
+                    fcn       "SCRUFF"
+                    fcn       "MANGY"
+                    fcn       "HOWLER"
+                    fcn       "LOBO"
+                    fcn       "SNARL"
+                    fcn       "CHIGGER"
+                    fcn       "SKUNK"
 DeadNames           fcn       "DEAD EYE"
                     fcn       "BONES"
                     fcn       "OL' RATTLER"
@@ -957,20 +973,34 @@ Titles              lda       <phase
                     lbeq      ti9
                     cmpa      #PH.Play
                     bne       ti3
-                    ldd       <titlet             the stage's name
-                    cmpd      #TitleLen
+                    ldd       <titlet             the stage's name: Boot Hill under the big title,
+                    cmpd      #TitleLen           the others on their own
                     bhs       ti2
+                    lda       sflags,u
+                    bita      #SG.Intro
+                    beq       ti1b
                     ldx       #TX.texas
                     ldd       #50
-                    bsr       Ttl
+                    lbsr      Ttl
                     ldx       #TX.shitk
                     ldd       #78
-                    bsr       Ttl
-                    ldx       #TX.boothill
+                    lbsr      Ttl
+                    ldx       stgp,u
+                    ldx       SR.Name,x
                     ldd       #114
-                    bsr       Ttl
-                    ldx       #TX.midnight
+                    lbsr      Ttl
+                    ldx       stgp,u
+                    ldx       SR.Sub,x
                     ldd       #132
+                    bsr       Ttl
+                    bra       ti2
+ti1b                ldx       stgp,u
+                    ldx       SR.Name,x
+                    ldd       #66
+                    bsr       Ttl
+                    ldx       stgp,u
+                    ldx       SR.Sub,x
+                    ldd       #88
                     bsr       Ttl
 ti2                 tst       <got                GO >>, blinking, once a wave's beaten
                     beq       ti9
@@ -988,7 +1018,8 @@ ti2                 tst       <got                GO >>, blinking, once a wave's
                     bra       Ttl2
 ti3                 cmpa      #PH.Clear
                     bne       ti4
-                    ldx       #TX.clear
+                    ldx       stgp,u              BOOT HILL CLEAR!, MAIN STREET CLEAR!
+                    ldx       SR.Clr,x
                     ldd       #70
                     bra       Ttl
 ti4                 cmpa      #PH.End

@@ -144,8 +144,27 @@ One program module, **`tsk`**, assembled from:
    - **Found and fixed:** a label rename in step 4 of sprint 3 had turned the direct-page variable `bh1` into a code
      label, so the whip's hit box wrote over a random variable. `tools/dpcheck.py` now fails the build on any `<name`
      that isn't a direct-page variable.
-5. **Main Street:** the exporter grows a stage parameter, coyotes, the night-falling CLUT fade.
-6. The grab and throw, the pad harness, co-op.
+5. ✓ **Main Street** *(sprint 5, 2026-10-14: `tsk` 20.4K, data 12.2K)*: the whole game, Boot Hill then Main Street,
+   then TO BE CONTINUED.
+   - **Per-stage art:** the exporter packs each stage's tiles and maps (`tiles_bh/ms.bin`, `maps_bh/ms.bin`), and
+     `stage.a`'s `LoadStage` reads them into the same blocks when a stage starts (the screen blank meanwhile).
+   - **Sprite banks:** the shared cells (hero, skeleton, dillo, effects, props, text: 732) stay loaded; each stage's
+     own (Boot Hill's Two-Bit 113, Main Street's mangy gang and tumbleweed 88) load at cell `SPR.Base`.
+   - **Memory:** at the most about 1.09 MB: shared sprites 736K, an overlay 113K, a stage's tiles 166K, maps,
+     dusk CLUTs, music, HUD cells. That's over port-guide's 1 MB line, flagged to the user; the K2 has 2 MB.
+   - **A stage table** (`StgTab`): width, maps, tile sets, flags (the opening, lightning, dusk), song, waves,
+     barrels, titles, files. `tsk m` starts on Main Street.
+   - **The mangy coyote** (`TY.Coy`): walks in, takes a spot 36 px beside you, winds up 0.42 s, swings (2 to you if
+     you're in front of it, within 44 px). 9 health, 300 points. Skeletons walk in on Main Street rather than
+     rise.
+   - **Night falls** a step each wave: 13 tile CLUTs from the exporter (the lights kept lit), stepped over CLUT 3.
+     Tumbleweeds and dust motes in the low sun (`amb.a`).
+   - **Music:** Main Street plays "Graveyard Boogie".
+   - **Cost:** the worst pass in a whole game is now 77K cycles. Two-Bit's KO takes his gang down one a pass;
+     particle allocation is round robin and gives up at once when the table's full.
+   - **Fixed along the way:** the stage titles fetched the stage record through Y, which is the sprite-record
+     pointer while drawing, so at Main Street's clear the record clearing wrote zeros over the program.
+6. The grab and throw, the pad harness, co-op, a Main Street boss.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

@@ -171,7 +171,7 @@ T.runBrawler = function (A) {
     phase = S.intro && !params.has('nointro') && !keep ? 'intro' : 'play'; phaseT = 0;
     intro.hatOn = false;
     if (phase === 'intro') { player.x = 96; player.z = 34; }
-    music(name === 'boothill' ? 'boothill' : 'title');
+    music(name === 'boothill' ? 'boothill' : name === 'mainstreet' ? 'boogie' : 'title');
   }
 
   // ---------------------------------------------------------------- spawning

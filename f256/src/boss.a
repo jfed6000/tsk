@@ -186,7 +186,9 @@ whb2b                clr       EB.St,y
                     lda       #70
                     ldy       #TX.bossko
                     lbsr      WordE
-                    lbra      GangDown            and every one of them goes down with him
+                    lda       #1                  and every one of them goes down with him, one a
+                    sta       gdown,u             pass (BKo: all at once is too much for one tick)
+                    rts
 whb3                 lda       <bst                staggered
                     cmpa      #BS.Appr
                     beq       whb4
@@ -213,29 +215,32 @@ whb5                 tst       <bsum               half his health: he raises th
                     ldx       <bslot
 whb9                 rts
 
-* GangDown - Two-Bit's KO takes everybody else down, knocked away from
-*   him.  Exit: X = him
+* GangDown - the next of the gang still standing goes down, knocked away
+*   from him; none left, and it's done (gdown cleared).  Exit: X = him
 GangDown            leax      en,u
                     lda       #NEn
                     sta       <aloop
-wgd1                 lda       EN.St,x
-                    beq       wgd2
+gd1                 lda       EN.St,x
+                    beq       gd2
                     cmpa      #ES.Ko
-                    beq       wgd2
+                    beq       gd2
                     lda       EN.Ty,x
                     cmpa      #TY.Boss
-                    beq       wgd2
+                    beq       gd2
                     clr       EN.Hp,x
                     clr       <hdir
                     ldy       <bslot
                     ldd       EN.X,x
                     cmpd      EN.X,y
-                    bge       wgd1a
+                    bge       gd1a
                     inc       <hdir
-wgd1a                lbsr      KO
-wgd2                 leax      EN.Size,x
+gd1a                lbsr      KO
+                    ldx       <bslot
+                    rts
+gd2                 leax      EN.Size,x
                     dec       <aloop
-                    bne       wgd1
+                    bne       gd1
+                    clr       gdown,u
                     ldx       <bslot
                     rts
 
@@ -607,8 +612,14 @@ BDaze               lbsr      EStop
                     lbsr      BSet
                     lbra      BMove
 
-* KO'd: up and away (0.6 g); after 2 s he's gone, and the wave's done
-BKo                 ldd       EN.VH,x
+* KO'd: up and away (0.6 g), the gang going down one a pass; after 2 s
+*   he's gone, and the wave's done
+BKo                 tst       gdown,u
+                    beq       wbk0
+                    pshs      x
+                    lbsr      GangDown
+                    puls      x
+wbk0                ldd       EN.VH,x
                     subd      #3
                     std       EN.VH,x
                     addd      EN.H,x

@@ -52,6 +52,7 @@ name                fcs       /tsk/
                     use       boss.a
                     use       snd.a
                     use       title.a
+                    use       amb.a
                     use       draw.a
                     use       tsktabs.a
 

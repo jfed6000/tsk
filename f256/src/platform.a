@@ -32,8 +32,11 @@ st0b                cmpa      #'g
                     bne       st0c
                     orb       #4
 st0c                cmpa      #'k                 k = straight to Two-Bit
-                    bne       st0
+                    bne       st0e
                     orb       #8
+st0e                cmpa      #'m                 m = start on Main Street
+                    bne       st0
+                    orb       #16
                     bra       st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
@@ -56,9 +59,14 @@ st1b                lsrb
                     bcc       st1c
                     inc       <god
 st1c                lsrb
-                    bcc       st2
+                    bcc       st1d
                     inc       <skipb
-st2                 leax      recs+NRecs*8,u
+st1d                lsrb
+                    bcc       st2
+                    inc       stgarg,u
+st2                 leax      pt+NPt*PT.Size,u    (NewPt's wrap)
+                    stx       ptend,u
+                    leax      recs+NRecs*8,u
                     stx       <recend
                     lda       #FX_TXT             fallback if the mode cannot be read
                     sta       <mcrlo
@@ -92,6 +100,7 @@ st3                 lbsr      WSigSet             tell us when our terminal is h
                     lda       <demo               the demo, the autopilot or k: straight in;
                     ora       <bot                else the title
                     ora       <skipb
+                    ora       stgarg,u
                     beq       st4
                     lbsr      GameInit
                     bra       st5
@@ -123,6 +132,8 @@ mn1                 lbsr      Stage               the clocks, the phase, the her
                     lbsr      Items
                     lbsr      HBullets
                     lbsr      Clods
+                    lbsr      Amb                 Main Street: night falling, tumbleweeds, motes
+                    lbcs      Fail
                     lbsr      Pops
                     lbsr      Camera
                     tst       <shake
@@ -343,6 +354,11 @@ Alloc               ldx       #NTilBlk
                     bcs       alx
                     tfr       x,d
                     stb       <sprblk
+                    ldx       #2                  Main Street's dusk CLUTs (13K)
+                    lbsr      GfxAlloc
+                    bcs       alx
+                    tfr       x,d
+                    stb       duskblk,u
                     ldx       #MU.N               the music: a block a song
                     lbsr      GfxAlloc
                     bcs       alx
@@ -382,24 +398,18 @@ gf1                 rts
 ********************************************************************
 * LoadAll - every asset file.  Exit: carry = error in B
 ********************************************************************
-LoadAll             lda       <tilblk
-                    ldb       #NTilBlk
-                    ldy       #0
-                    leax      FTiles,pcr
-                    lbsr      LoadFile
-                    lbcs      lax
-                    lda       <sprblk
-                    ldb       #NSprBlk
+LoadAll             lda       <sprblk             the shared sprites (a stage's own load with it:
+                    ldb       #SPR.Base/8         LoadStage, as do its tiles and maps)
                     ldy       #0
                     leax      FSprites,pcr
                     lbsr      LoadFile
-                    bcs       lax
-                    lda       <mapblk
-                    ldb       #NMapBlk
+                    lbcs      lax
+                    lda       duskblk,u           Main Street's 13 shades of night
+                    ldb       #2
                     ldy       #0
-                    leax      FMaps,pcr
+                    leax      FDusk,pcr
                     lbsr      LoadFile
-                    bcs       lax
+                    lbcs      lax
                     leax      FFrames,pcr
                     leay      frames,u
                     ldd       #FRM.Size
@@ -568,46 +578,6 @@ ds1                 std       ,x++
                     sta       <regd
                     lbsr      PushRecs            all off (the data area was cleared)
                     lbcs      dsx
-* tile sets: set k is the 64K at tilblk + 8k (linear, CFG 0)
-                    clr       <tsn
-ds2                 lda       <tsn
-                    lsla
-                    lsla
-                    lsla
-                    adda      <tilblk
-                    tfr       a,b
-                    clra
-                    tfr       d,x                 R$X = the block
-                    clra
-                    ldb       <tsn
-                    tfr       d,y                 R$Y = CFG 0 : set k
-                    pshs      u
-                    ldu       #0                  R$U = offset 0
-                    clra
-                    ldb       #SS.TsSet
-                    os9       I$SetStt
-                    puls      u
-                    lbcs      dsx
-                    inc       <tsn
-                    lda       <tsn
-                    cmpa      #TIL.Sets
-                    blo       ds2
-* tile maps 0-2, all in one block at the offsets the exporter gave
-                    ldy       #MAP0.Of
-                    ldd       #MAP0.W
-                    ldx       #0
-                    lbsr      OneMap
-                    bcs       dsx
-                    ldy       #MAP1.Of
-                    ldd       #MAP1.W
-                    ldx       #1
-                    lbsr      OneMap
-                    bcs       dsx
-                    ldy       #MAP2.Of
-                    ldd       #MAP2.W
-                    ldx       #2
-                    lbsr      OneMap
-                    bcs       dsx
 * layers: 0 is in front.  The street (map 2) leads, the sky (map 0) trails.
                     ldx       #0
                     ldy       #6
@@ -634,6 +604,76 @@ ds2                 lda       <tsn
                     sta       <gfxon
                     clrb
 dsx                 rts
+
+********************************************************************
+* StageGfx - the stage's tile sets and maps (after LoadStage reads them):
+*   set k is the 64K at tilblk + 8k; maps 0-2 at the record's offsets
+*   in the map blocks.  Exit: carry = error in B
+********************************************************************
+StageGfx            clr       <tsn
+sg1x                lda       <tsn
+                    ldx       stgp,u
+                    cmpa      SR.Sets,x
+                    bhs       sg2x                (a set this stage doesn't use: off)
+                    lsla
+                    lsla
+                    lsla
+                    adda      <tilblk
+                    tfr       a,b
+                    clra
+                    tfr       d,x                 R$X = the block
+                    bra       sg3x
+sg2x                ldx       #0
+sg3x                clra
+                    ldb       <tsn
+                    tfr       d,y                 R$Y = CFG 0 : set k
+                    pshs      u
+                    ldu       #0                  R$U = offset 0
+                    clra
+                    ldb       #SS.TsSet
+                    os9       I$SetStt
+                    puls      u
+                    bcs       sg9x
+                    inc       <tsn
+                    lda       <tsn
+                    cmpa      #TIL.Sets
+                    blo       sg1x
+                    clr       <tsn                the three maps
+sg4x                ldx       stgp,u
+                    ldb       <tsn
+                    lslb
+                    lslb
+                    abx
+                    ldy       SR.Map+2,x          its offset
+                    ldd       SR.Map,x            its width
+                    ldx       #0
+                    pshs      d
+                    ldb       <tsn
+                    abx
+                    puls      d
+                    lbsr      OneMap
+                    bcs       sg9x
+                    inc       <tsn
+                    lda       <tsn
+                    cmpa      #3
+                    blo       sg4x
+                    leax      tclut,u             the night colours back (after Main Street's dusk)
+                    ldy       #CLUT.Til*256
+                    ldd       #256
+                    lbsr      ClutWrite
+sg9x                rts
+
+* MapsOff - the three tile maps off (the stage changing, or the exit)
+MapsOff             lbsr      ClearTmRec
+                    leax      tmrec,u
+                    ldy       #0
+                    lbsr      SendRec
+                    leax      tmrec,u
+                    ldy       #1
+                    lbsr      SendRec
+                    leax      tmrec,u
+                    ldy       #2
+                    lbra      SendRec
 
 * OneMap - X = map number, Y = offset in mapblk, D = width in tiles
 OneMap              pshs      x,d                 ,s = width, 2,s = map number
@@ -691,6 +731,9 @@ Scrl                pshs      u
 Weather             ldd       <ticks
                     addd      #1
                     std       <ticks
+                    lda       sflags,u            lightning: Boot Hill's
+                    bita      #SG.Light
+                    beq       we1
                     ldd       <nbolt              lightning every 7 to 16 s
                     subd      #1
                     std       <nbolt
@@ -811,6 +854,10 @@ cu3                 lda       #NTilBlk            and only then free the blocks
                     lda       #MU.N
                     ldb       <musblk
                     lbsr      GfxFree
+                    lda       #2
+                    ldb       duskblk,u
+                    lbsr      GfxFree
+                    clr       duskblk,u
                     clr       <musblk
                     clr       <tilblk
                     clr       <sprblk
@@ -827,11 +874,9 @@ WriteLn             pshs      d,x,y,u
 ********************************************************************
 * Names and messages
 ********************************************************************
-FTiles              fcc       /tiles.bin/
-                    fcb       $0D
 FSprites            fcc       /sprites.bin/
                     fcb       $0D
-FMaps               fcc       /maps.bin/
+FDusk               fcc       /clut_dusk.bin/
                     fcb       $0D
 FFrames             fcc       /frames.bin/
                     fcb       $0D

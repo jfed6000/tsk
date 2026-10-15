@@ -6,7 +6,7 @@
 *   dropWeapon.
 ********************************************************************
 
-NBr                 equ       5                   barrels on the stage
+NBr                 equ       7                   barrels on a stage, at most
 NIt                 equ       6                   items lying about
 NHb                 equ       3                   his bullets in the air
 
@@ -42,11 +42,14 @@ WhipDur             equ       HR.whip.N*HR.whip.T+3
 ShootDur            equ       HR.shoot.N*HR.shoot.T+3
 
 * PickInit - the stage's barrels standing again
-PickInit            leax      br,u
-                    leay      BarTab,pcr
-                    lda       #NBr
+PickInit            leax      br,u                this stage's barrels
+                    ldy       stgp,u
+                    lda       SR.NBar,y
                     sta       <tmpn
-kpi1                 lda       #1
+                    ldd       SR.Bars,y
+                    leay      StgTab,pcr
+                    leay      d,y
+pi1                 lda       #1
                     sta       BR.St,x
                     ldd       ,y++                x
                     lslb
@@ -66,11 +69,11 @@ kpi1                 lda       #1
                     sta       BR.It,x
                     leax      BR.Size,x
                     dec       <tmpn
-                    bne       kpi1
+                    bne       pi1
                     rts
 
-* Boot Hill's barrels: x, z, what's in it (brawler.js STAGES.boothill.barrels)
-BarTab              fdb       300
+* the barrels: x, z, what's in it (brawler.js STAGES.*.barrels)
+BarBH               fdb       300
                     fcb       64,IT.Beans
                     fdb       700
                     fcb       20,WP.Whip
@@ -80,6 +83,20 @@ BarTab              fdb       300
                     fcb       30,WP.Gun
                     fdb       1560
                     fcb       50,IT.Beans
+BarMS               fdb       250
+                    fcb       20,IT.Beans
+                    fdb       560
+                    fcb       60,WP.Whip
+                    fdb       960
+                    fcb       10,IT.Beans
+                    fdb       1330
+                    fcb       50,WP.Gun
+                    fdb       1520
+                    fcb       15,WP.Whip
+                    fdb       1800
+                    fcb       66,WP.Gun
+                    fdb       1900
+                    fcb       20,IT.Beans
 
 ********************************************************************
 * Items - one pass: they fall and settle; beans are eaten walking over

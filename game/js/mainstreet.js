@@ -164,6 +164,7 @@ T.buildMainStreet = function (VW, VH, FLOOR) {
 
 // a layer darkened toward night by k (0..1), leaving the light sources alone; cached per step
 const NIGHT = T.rgb('#120a22');
+T.NIGHT = NIGHT;
 T.shadeOf = function (cv, k) {
   if (k <= 0) return cv;
   const step = Math.round(k * 20);

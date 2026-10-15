@@ -47,6 +47,12 @@ CTL.Fls             equ       %00000001+CLUT.Fls*2    the hit flash: all white
 * the skeleton, per pass (browser: per second)
 SkHp                equ       7
 DlHp                equ       4
+CyHp                equ       9                   the mangy coyote
+CySpd               equ       15                  58 px/s
+CyTall              equ       44
+CyWindT             equ       25                  0.42 s
+CyStrikeT           equ       15                  0.25 s: the swing
+CyHitT              equ       12                  it hurts in the first 0.2 s
 DlSpd               equ       19                  72 px/s
 DlEnter             equ       16                  60 px/s
 DlRoll              equ       51                  190 px/s
@@ -314,17 +320,48 @@ nk0                 lda       #SF.Dig             clawing up out of the ground
                     lda       #6                  the ground breaks
                     lbra      Puff
 
-* NewDillo - B = i: the i-th of a gang walks in, even ones from the
-*   right, odd ones from the left, 18 px apart two by two
-NewDillo            pshs      b
+* NewDillo, NewCoy, NewSkelW - B = i: the i-th of a gang walks in, even
+*   ones from the right, odd ones from the left, 18 px apart two by two
+NewDillo            lda       #TY.Dillo
+                    sta       <tmpk
+                    lda       #DlHp
+                    sta       <tmpf
+                    bra       NewWalk
+NewCoy              lda       #TY.Coy
+                    sta       <tmpk
+                    lda       #CyHp
+                    sta       <tmpf
+                    bsr       NewWalk
+                    lbcs      nd9
+                    lda       #8                  one of the gang's names
+                    lbsr      RandN
+                    sta       EN.Nm,x
+                    rts
+NewSkelW            clr       <tmpk               a skeleton that walks in (Main Street's)
+                    lda       #SkHp
+                    sta       <tmpf
+                    bsr       NewWalk
+                    bcs       nd9
+                    lda       #8                  one of the dead names
+                    lbsr      RandN
+                    sta       EN.Nm,x
+                    lda       #6
+                    sta       EN.Am,x
+                    lda       #1
+                    sta       EN.Sk,x
+                    rts
+
+* NewWalk - B = i, tmpk = the type, tmpf = its health: a slot, walking in.
+*   Exit: X = it, carry set if there's no room
+NewWalk             pshs      b
                     lbsr      NewSlot
                     puls      b
                     bcs       nd9
-                    lda       #TY.Dillo
+                    lda       <tmpk
                     sta       EN.Ty,x
                     lda       #ES.Enter
                     sta       EN.St,x
-                    lda       #DlHp
+                    lda       <tmpf
                     sta       EN.Hp,x
                     lsrb                          i >> 1: how far back in the line
                     pshs      b,cc                the carry: odd = from the left
@@ -363,12 +400,13 @@ nd2                 puls      d
                     ldb       #16
                     mul
                     std       EN.Z,x
-                    lda       #84                 0.6 to 2 s before it may roll
+                    lda       #84                 0.6 to 2 s before it may attack
                     lbsr      RandN
                     adda      #36
                     sta       EN.Cd,x
                     lbsr      Rand
                     sta       EN.An,x
+                    andcc     #$FE
 nd9                 rts
 
 ********************************************************************
@@ -700,7 +738,12 @@ ee1                 std       EN.VX,x
                     lbsr      SetE
                     lbra      EnMove
 
-DAppr               ldd       #28*16              its spot: 28 px beside him (80 while two
+DAppr               ldy       #28*16              its spot: 28 px beside him (a coyote 36; 80 while two
+                    lda       EN.Ty,x
+                    cmpa      #TY.Coy
+                    bne       da00
+                    ldy       #36*16
+da00                tfr       y,d
                     pshs      d                   others are at him), on its side of him
                     lda       <attackers
                     cmpa      #2
@@ -720,8 +763,12 @@ da2                 puls      d
 da3                 addd      <hx
                     subd      EN.X,x
                     std       <tdx
-                    ldd       #DlSpd
-                    std       <tcap
+                    ldy       #DlSpd
+                    lda       EN.Ty,x
+                    cmpa      #TY.Coy
+                    bne       da01
+                    ldy       #CySpd
+da01                sty       <tcap
                     ldd       <tdx
                     lbsr      Toward
                     std       EN.VX,x
@@ -756,14 +803,24 @@ da3                 addd      <hx
 
 EWind               lbsr      EStop
                     lda       EN.T,x
-                    cmpa      #WindT
+                    ldb       EN.Ty,x             (a coyote's wind-up is longer)
+                    cmpb      #TY.Coy
+                    bne       ew0
+                    cmpa      #CyWindT
                     lbls      EnMove
+                    bra       ew1
+ew0                 cmpa      #WindT
+                    lbls      EnMove
+ew1
                     lda       #ES.Strike
                     lbsr      SetE
                     clr       EN.Am,x             (a dillo's EN.Am: 1 = it's hit him this roll)
                     lbra      EnMove
 
-EStrike             ldd       #DlRoll             rolling at him
+EStrike             lda       EN.Ty,x
+                    cmpa      #TY.Coy
+                    lbeq      CStrike
+                    ldd       #DlRoll             rolling at him
                     lbsr      ByFace
                     std       EN.VX,x
                     ldd       #0
@@ -817,6 +874,45 @@ ERecov              ldd       EN.VX,x             it skids to a stop
                     sta       EN.Cd,x
                     lbra      EnMove
 
+* CStrike - the coyote swings: 2 to him if he's in front of it, within
+*   44 px, in its lane and low enough, in the first 0.2 s
+CStrike             lbsr      EStop
+                    tst       EN.Am,x
+                    bne       cs9
+                    lda       EN.T,x
+                    cmpa      #CyHitT
+                    bhs       cs9
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       cs9
+                    ldd       <hh
+                    cmpd      #24*16
+                    bge       cs9
+                    ldd       <hx                 in front of it
+                    subd      EN.X,x
+                    tst       EN.Fc,x
+                    beq       cs1
+                    lbsr      NegD
+cs1                 cmpd      #0
+                    ble       cs9
+                    cmpd      #44*16
+                    bhs       cs9
+                    inc       EN.Am,x
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #2
+                    pshs      x
+                    lbsr      HurtHero
+                    puls      x
+cs9                 lda       EN.T,x
+                    cmpa      #CyStrikeT
+                    lbls      EnMove
+                    lda       #ES.Recov
+                    lbsr      SetE
+                    lbra      EnMove
+
 * EKo - a dillo kicked into the next county: up, over, and down through
 *   the floor out of sight, then the slot is free
 EKo                 ldd       EN.VH,x
@@ -846,7 +942,7 @@ ETall               ldb       #SkTall
                     ldb       #DlTall
                     cmpa      #TY.Dillo
                     beq       et1
-                    ldb       #BossTall
+                    ldb       #BossTall           (a coyote's the same: 44)
 et1                 clra
                     addd      <tmp
                     rts
@@ -1056,7 +1152,12 @@ KO                  lda       #SF.Ko
                     std       EN.VH,x
                     ldd       #0
                     std       EN.VZ,x
-                    ldd       #150
+                    ldy       #150                (a dillo 150, a coyote 300)
+                    lda       EN.Ty,x
+                    cmpa      #TY.Coy
+                    bne       ko00
+                    ldy       #300
+ko00                tfr       y,d
                     lbsr      ScoreAt
                     lbra      KoWord
 ko0                 lda       #SF.Bones
@@ -1713,16 +1814,31 @@ eu9                 leax      EB.Size,x
 ********************************************************************
 * NewPt - a free particle at sx, sz, sh, standing still.
 *   Exit: Y = it, carry set if there's none (the caller sets PT.L)
-NewPt               leay      pt,u
-                    ldb       #NPt
+NewPt               tst       ptfull,u            full this pass: no use looking again
+                    bne       np9
+                    ldy       ptnx,u              round robin: from after the last one handed out
+                    bne       np0                 (a KO asks for eleven at once)
+                    leay      pt,u
+np0                 ldb       #NPt
 np1                 tst       PT.L,y
                     beq       np2
                     leay      PT.Size,y
-                    decb
+                    cmpy      ptend,u
+                    blo       np1a
+                    leay      pt,u
+np1a                decb
                     bne       np1
-                    coma
+                    inc       ptfull,u
+np9                 coma
                     rts
-np2                 ldd       <sx
+np2                 pshs      x                   the next search starts after it (X kept)
+                    leax      PT.Size,y
+                    cmpx      ptend,u
+                    blo       np2a
+                    leax      pt,u
+np2a                stx       ptnx,u
+                    puls      x
+                    ldd       <sx
                     std       PT.X,y
                     ldd       <sz
                     std       PT.Z,y
@@ -1776,7 +1892,7 @@ sq4                 dec       <kcnt
 Puff                sta       <kcnt
                     ldd       #2*16
                     std       <sh
-pf1                 bsr       NewPt
+pf1                 lbsr      NewPt
                     bcs       pf2
                     lda       #3
                     lbsr      RandN
@@ -1800,7 +1916,8 @@ pf2                 dec       <kcnt
                     rts
 
 * Parts - one pass for every particle: move, fall (the chunks), bounce
-Parts               leay      pt,u
+Parts               clr       ptfull,u            (some may free up this pass)
+                    leay      pt,u
                     lda       #NPt
                     sta       <ploop
 pp1                 lda       PT.L,y
@@ -1894,6 +2011,8 @@ de9                 leax      EN.Size,x
 EnFrame             lda       EN.Ty,x
                     cmpa      #TY.Boss
                     lbeq      BossFrame
+                    cmpa      #TY.Coy
+                    lbeq      CyFrame
                     tsta
                     lbne      DlFrame
                     lda       EN.St,x
@@ -1922,6 +2041,11 @@ EfTab               fdb       EfIdle-EfTab
                     fdb       EfHurt-EfTab
                     fdb       EfHeap-EfTab
                     fdb       EfGetup-EfTab
+                    fdb       EfIdle-EfTab        (the dillo's states: a skeleton's never in them)
+                    fdb       EfIdle-EfTab
+                    fdb       EfIdle-EfTab
+                    fdb       EfAppr-EfTab        walking in (Main Street's)
+                    fdb       EfHurt-EfTab
 EfAppr              ldd       EN.VX,x             moving: walk; else stand
                     lbsr      AbsD
                     pshs      d
@@ -2013,6 +2137,65 @@ df4                 tst       EN.Fc,x
 df5                 tfr       a,b
                     clra
                     addd      #DL.First
+                    rts
+
+* CyFrame - X = a coyote -> D = its frame (brawler.js enemyImg, the gang):
+*   walking or standing, the wind-up, the swing, hurt, down, dazed
+*   getting up, the KO
+CyFrame             lda       EN.St,x
+                    cmpa      #ES.Wind
+                    bne       cf1
+                    lda       #CY.windup-CY.First
+                    bra       cf9
+cf1                 cmpa      #ES.Strike
+                    bne       cf2
+                    lda       #CY.swing-CY.First
+                    bra       cf9
+cf2                 cmpa      #ES.Stag
+                    beq       cf3
+                    cmpa      #ES.Air
+                    bne       cf4
+cf3                 lda       #CY.hurt-CY.First
+                    bra       cf9
+cf4                 cmpa      #ES.Down
+                    bne       cf5
+                    lda       #CY.down-CY.First
+                    bra       cf9
+cf5                 cmpa      #ES.Getup
+                    bne       cf6
+                    lda       EN.An,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #CY.daze-CY.First
+                    bra       cf9
+cf6                 cmpa      #ES.Ko
+                    bne       cf7
+                    lda       #CY.ko-CY.First
+                    bra       cf9
+cf7                 cmpa      #ES.Recov
+                    beq       cf8
+                    ldd       EN.VX,x             moving: walking; standing: idle
+                    bne       cf7a
+                    ldd       EN.VZ,x
+                    beq       cf8
+cf7a                lda       EN.An,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #CY.walk-CY.First
+                    bra       cf9
+cf8                 lda       EN.An,x
+                    ldb       #30
+                    lbsr      Div
+                    anda      #1
+                    adda      #CY.idle-CY.First
+cf9                 tst       EN.Fc,x
+                    beq       cf9a
+                    adda      #CY.Mir
+cf9a                tfr       a,b
+                    clra
+                    addd      #CY.First
                     rts
 
 DrawSl              leax      sl,u

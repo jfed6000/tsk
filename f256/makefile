@@ -7,6 +7,7 @@
 #   make mame                    run the game's demo (tsk d) in the Wildbits MAME (wbjr2) headless, snapshots in mame/snap
 #   make mamebot                 the autopilot fighting the skeletons (tsk b), a snapshot every 6 frames
 #   make mameboss                Boot Hill's last waves and Two-Bit (tsk bg), a snapshot every 12 frames
+#   make mamems                  Main Street (tsk mbg) in MAME, a snapshot every 8 frames
 #   make mametitle               the title screen and its music in MAME: the MIDI the 6809 sends, as mame/midi.mid
 #   make mameview                the same for tskview
 #   make host                    the demo on the host 6809 (tools/hostrun.py): the hero's state, pass by pass
@@ -20,8 +21,8 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --pragma=nosymbolcase,condundefzero,dollarnotlocal \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
-ASSETFILES  = tiles.bin sprites.bin maps.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin
-TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/snd.a src/title.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
+ASSETFILES  = sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin clut_dusk.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin
+TSKSRC      = src/tsk.asm src/data.a src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/snd.a src/title.a src/amb.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
 BUDGET      = 40192
 
 all: tsk tskview
@@ -60,6 +61,9 @@ mamebot: tsk tskview
 mameboss: tsk tskview
 	LUA=tools/tskboss.lua tools/mame.sh
 
+mamems: tsk tskview
+	LUA=tools/tskms.lua tools/mame.sh
+
 mametitle: tsk tskview
 	TSKMIDILOG=$(CURDIR)/mame/midi.log LUA=tools/tskmidi.lua tools/mame.sh
 	python3 tools/midicap.py --log mame/midi.log --out mame/midi.mid
@@ -73,4 +77,4 @@ host: tsk
 clean:
 	rm -f tsk tsk.list tsk.map tskview tskview.list tskview.map
 
-.PHONY: all music assets install mame mamebot mameboss mametitle mameview host clean
+.PHONY: all music assets install mame mamebot mameboss mametitle mamems mameview host clean
