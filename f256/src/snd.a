@@ -15,8 +15,8 @@
 *
 *   Everything goes out through one routine, MidiFlush, once a frame:
 *   by default straight into the MIDI FIFO at $FF30 (whose bytes also
-*   feed the 2695), the way Joust drives the VS1053; built with
-*   MidiPath=1 it writes to /mi instead.
+*   feed the 2695), the way Joust drives the VS1053 - decided by the
+*   user on 2026-10-14; built with MidiPath=1 it writes to /mi instead.
 ********************************************************************
 
                     ifndef    MidiPath

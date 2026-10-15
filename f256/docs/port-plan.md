@@ -132,9 +132,9 @@ One program module, **`tsk`**, assembled from:
      with a queue for note-offs and delayed notes. The hero's sounds come from `SetS` (a per-state table); the rest
      sit where brawler.js calls `sfx()`.
    - **Output:** one routine, `MidiFlush`, once a frame, writes straight into the MIDI FIFO at $FF30 (whose bytes
-     also feed the 2695), checking the FIFO's fill. `MidiPath=1` builds write to `/mi` instead; **the Level 2 boot
-     has no `/mi` yet** (MIDrv is in `level1/wildbits/modules`), so direct is the default. An open question for the
-     user.
+     also feed the 2695), checking the FIFO's fill. **Decided (user, 2026-10-14): "I think direct is ok for sound."**
+     It's an absolute-I/O exception like Joust's VS1053. `MidiPath=1` builds write to `/mi` instead (the Level 2 boot
+     has no `/mi`; MIDrv is in `level1/wildbits/modules`), kept but unused.
    - **Verified:** the host 6809 plays all 759 notes of Boot Hill's theme exactly, through the loop, against a
      reference player. In MAME a Lua tap on $FF31 caught all 671 notes of the title theme at a constant offset, and
      `make mametitle` turns that capture into `mame/midi.mid` to render and hear.
