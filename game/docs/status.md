@@ -61,7 +61,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
   speed (230 px/s), aim time 0.55 s, Two-Bit's 36 HP.
 - **Music and the title screen (2026-10-14):** the songs are in `game/music/` (composed by `f256/tools/compose.py`,
   rendered to MP3). The browser now opens on a title screen and plays them (M mutes the music). On the F256 they play
-  on the SAM2695, verified in MAME by capturing the MIDI. Nobody has heard the SAM2695 itself yet.
+  on the SAM2695, verified in MAME by capturing the MIDI. The user hears it on the K2 when testing (confirmed 2026-10-15).
 - On the F256, `tsk` plays the whole game (Boot Hill, then Main Street) in MAME and on the host 6809 (P4 sprint 5).
   Main Street's music is "Graveyard Boogie" in the browser and on the F256. Sprint 2 ran on the K2
   ("game looks awesome", 2026-10-14); sprint 3 hasn't yet. Not yet ported: the grab and throw, sound, Main Street.
