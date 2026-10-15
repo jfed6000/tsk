@@ -6,7 +6,7 @@
 *   dropWeapon.
 ********************************************************************
 
-NBr                 equ       7                   barrels on a stage, at most
+NBr                 equ       10                  barrels (and Ghost Town's tables) on a stage, at most
 NIt                 equ       6                   items lying about
 NHb                 equ       3                   his bullets in the air
 
@@ -83,6 +83,27 @@ BarBH               fdb       300
                     fcb       30,WP.Gun
                     fdb       1560
                     fcb       50,IT.Beans
+* Ghost Town: barrels on the street, card tables in the saloon (the item's top bit: a table)
+BarGT               fdb       240
+                    fcb       20,IT.Beans
+                    fdb       520
+                    fcb       60,WP.Whip
+                    fdb       880
+                    fcb       30,IT.Beans
+                    fdb       1000
+                    fcb       62,WP.Gun
+                    fdb       1300
+                    fcb       24,$80
+                    fdb       1420
+                    fcb       58,$80+IT.Beans
+                    fdb       1560
+                    fcb       34,$80+WP.Whip
+                    fdb       1640
+                    fcb       66,$80
+                    fdb       1780
+                    fcb       20,$80+WP.Gun
+                    fdb       1880
+                    fcb       50,$80+IT.Beans
 BarMS               fdb       250
                     fcb       20,IT.Beans
                     fdb       560
@@ -333,6 +354,7 @@ kbk2                 dec       <kcnt
                     ldd       #43
                     std       <tdx
                     lda       BR.It,y
+                    anda      #$7F                (the top bit: it's a table)
                     clrb
                     pshs      y
                     lbsr      NewItem
@@ -630,8 +652,11 @@ DrawPick            leax      br,u                barrels
 kdq1                 tst       BR.St,x
                     beq       kdq2
                     pshs      x
-                    ldd       #PR.barrel
-                    std       <efrm
+                    ldd       #PR.barrel          (or a card table: Ghost Town's, BR.It's top bit)
+                    tst       BR.It,x
+                    bpl       kdq1a
+                    ldd       #GP.table
+kdq1a               std       <efrm
                     lda       #CTL.Spr
                     sta       <ectl
                     lda       #2

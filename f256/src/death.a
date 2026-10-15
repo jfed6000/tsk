@@ -35,8 +35,9 @@ Die                 lbsr      Release             (whoever he held goes free)
                     lbsr      Blowback            everyone near him blown back
                     ldx       <bslot              Dillon curled or rolling: he uncurls, to wait
                     beq       xdi0
-                    tst       bkind,u
-                    beq       xdi0
+                    lda       bkind,u
+                    cmpa      #1
+                    bne       xdi0
                     lda       <bst
                     cmpa      #DS.Curl
                     beq       xdi00

@@ -38,8 +38,11 @@ st0e                cmpa      #'m                 m = start on Main Street
                     bne       st0f
                     orb       #16
 st0f                cmpa      #'f                 f = frail: any hit kills (the death scene)
-                    bne       st0
+                    bne       st0h
                     orb       #32
+st0h                cmpa      #'h                 h = start in Ghost Town (haunted)
+                    bne       st0
+                    orb       #64
                     bra       st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
@@ -68,8 +71,12 @@ st1d                lsrb
                     bcc       st1e
                     inc       stgarg,u
 st1e                lsrb
-                    bcc       st2
+                    bcc       st1g
                     inc       frail,u
+st1g                lsrb
+                    bcc       st2
+                    lda       #2                  (tsk h: Ghost Town)
+                    sta       stgarg,u
 st2                 lda       #$FF                no stage's art loaded yet
                     sta       ldstg,u
                     leax      pt+NPt*PT.Size,u    (NewPt's wrap)

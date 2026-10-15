@@ -206,7 +206,22 @@ One program module, **`tsk`**, assembled from:
      `midi2tsk.py` checks); every other window gets a whole block. The budget is now **32,768** (data 2 blocks,
      the music window, one service window, the module the 4 blocks between); `make` enforces it. Shrinking the
      data area to 8K would raise it toward port-guide's 40,192.
-9. The pad harness, co-op.
+9. ✓ **Ghost Town** *(2026-10-15: `tsk` 26.9K, data 15.1K)*: the whole browser game now runs on the F256, Boot
+   Hill → Main Street → Ghost Town → TO BE CONTINUED. `tsk h` starts there.
+   - **Assets:** a third stage (`tiles_gt.bin` 1,027 tiles in 5 sets, `maps_gt.bin`, `spr_gt.bin` 211 cells: the
+     rattler, Doc Gila and his cards, the signs, tables). The outlaw coyotes and the tumbleweed moved into the
+     shared cells, as both Main Street and Ghost Town have them. Peak memory about 1.55 MB.
+   - **The rattler** (`TY.Rat`, `ghost.a`): the dillo/coyote states with its own numbers: 70 px off, a 0.6 s coil
+     with a rattle (`SF.Rattle`), a 270 px/s lunge low along the street, a second stretched out.
+   - **The hanging signs:** four, creak within 34 px, drop 0.35 s later; 2 to him, 3 (knocked down) to an outlaw.
+   - **Card tables:** barrels with the item's top bit set (`NBr` now 10).
+   - **Doc Gila** (`bkind` 2): his state numbers match Dillon's where boss.a's shared code tests them (approach
+     1, recover 4, stagger 5, dizzy 8, KO 9), so the hit, stagger, dizzy and KO paths are shared; only the
+     summon (two rattlers), the HUD and the Dillon-only checks are three-way. Cards are enemy bullets with
+     `EB.St` 2. His table (`gtab`...) breaks in three kicks, or a side kick slides it into him (`TableHit`,
+     `TableStep`). `make mamegila` runs `tsk hkg`.
+   - **Cost:** the worst pass in a Main Street → Ghost Town run is 92K cycles (of about 105K a frame).
+10. The pad harness, co-op, the next stages.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

@@ -51,6 +51,14 @@ TY.Dillo            equ       1
 TY.Boss             equ       2
 TY.Coy              equ       3                   the mangy coyote (Main Street)
 TY.SkelW            equ       4                   (a wave's code only: a skeleton that walks in, not rises)
+TY.Rat              equ       5                   the rattler henchman (Ghost Town)
+
+* a hanging sign (ghost.a): hanging, creaking, falling, down
+SN.St               equ       0
+SN.T                equ       1
+SN.H                equ       2                   its height (12.4)
+SN.VH               equ       4
+SN.Size             equ       6
 
 * the hero's weapon (hwep)
 WP.None             equ       0
@@ -322,6 +330,16 @@ ddmg                rmb       1                   the damage he's taken dizzy (1
 frail               rmb       1                   1 = any hit kills (tsk f)
 hheld               rmb       2                   the outlaw he's holding by the collar, 0 = nobody (grab.a)
 hknees              rmb       1                   knees landed on it
+gtab                rmb       1                   1 = Doc Gila's card table is up (ghost.a)
+gcov                rmb       1                   1 = he's behind it
+gvol                rmb       1                   volleys dealt from behind it
+gthp                rmb       1                   kicks left in it
+gthit               rmb       1                   the hero's attack that last kicked it
+gtx                 rmb       2                   the table: x, z (12.4)
+gtz                 rmb       2
+gtvx                rmb       2                   sliding (side-kicked), 0 = standing
+sgn                 rmb       4*SN.Size           Ghost Town's hanging signs
+sgsav               rmb       2                   (Signs: the sign being looked at)
 dying               rmb       1                   1 = the death scene's playing (death.a)
 dtime               rmb       1                   its passes
 dhat                rmb       1                   its hat: 0 none yet, 1 drifting, 2 in his hand, 3 the hop

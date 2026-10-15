@@ -22,13 +22,15 @@ T.runExport = function (A) {
   // ---------------------------------------------------------------- the art, built the way the brawler builds it
   // Each stage has its own tile sets and maps, loaded into the same blocks when the stage starts. One tile CLUT
   // serves both (CLUT.bg holds every stage's colours).
-  const night = T.buildNightLayers(VW, VH, FLOOR), MS = T.buildMainStreet(VW, VH, FLOOR);
+  const night = T.buildNightLayers(VW, VH, FLOOR), MS = T.buildMainStreet(VW, VH, FLOOR), GT = T.buildGhostTown(VW, VH, FLOOR);
   const STAGES = [
     { key: 'BH', file: 'bh', W: 1920, layers: [
       { name: 'FAR', img: night.far, rate: 0.25 }, { name: 'MID', img: night.mid, rate: 0.5 },
       { name: 'STR', img: T.buildGraveyardStreet(VW, VH, FLOOR), rate: 1 }] },
     { key: 'MS', file: 'ms', W: 2400, layers: [
       { name: 'FAR', img: MS.far, rate: 0.25 }, { name: 'MID', img: MS.mid, rate: 0.5 }, { name: 'STR', img: MS.street, rate: 1 }] },
+    { key: 'GT', file: 'gt', W: T.GHOST.W, layers: [
+      { name: 'FAR', img: GT.far, rate: 0.25 }, { name: 'MID', img: GT.mid, rate: 0.5 }, { name: 'STR', img: GT.street, rate: 1 }] },
   ];
   const SKEL = T.buildSkeleton();
 
@@ -156,10 +158,19 @@ T.runExport = function (A) {
     ['tagline2', 'NOW THE BOOTS WANT REVENGE', '#e8a070', 1],
     ['mainst', 'MAIN STREET', '#ffd34a', 3], ['dusk', 'DUSK', '#e8a070', 1], ['msclear', 'MAIN STREET CLEAR!', '#ffd34a', 3],
     ['mytown', "THIS HERE'S MY TOWN!", '#fff3c4', 1], ['rollout', 'ROLL OUT, BOYS!', '#ff9d3c', 1], ['backatya', 'BACK AT YA!', '#ffd34a', 1],
+    ['ghostt', 'GHOST TOWN', '#ffd34a', 3], ['moonrise', 'MOONRISE', '#e8a070', 1], ['gtclear', 'GHOST TOWN CLEAR!', '#ffd34a', 3],
+    ['weep', "READ 'EM AND WEEP, BOOTS!", '#fff3c4', 1], ['dealin', "DEAL 'EM IN!", '#ff9d3c', 1], ['anteup', 'ANTE UP!', '#ffd34a', 1],
+    ['busted', 'BUSTED!', '#ffd34a', 1], ['chomp', 'CHOMP!', '#ff6b4a', 1], ['timber', 'TIMBER!', '#ffd34a', 1],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
 
   // the stage banks: Boot Hill's Two-Bit; Main Street's mangy gang (the coyote art in the mangy palette) and tumbleweed
+  // shared by Main Street and Ghost Town: the outlaw coyotes (the coyote art in the mangy palette), the tumbleweed
+  const MANGY = T.buildCoyote('mangy'), TUMBLE = T.buildTumbleweed();
+  addGroup('CY', [['idle', MANGY.idle, 3, true], ['walk', MANGY.walk, 8, true], ['windup', [MANGY.windup], 1, false],
+    ['swing', [MANGY.swing], 1, false], ['hurt', [MANGY.hurt], 1, false], ['down', [MANGY.down], 1, false],
+    ['daze', MANGY.daze, 8, true], ['ko', [MANGY.ko], 1, false]], B.OX, B.OY);
+  addGroup('TW', [['roll', TUMBLE, 10, true]], 12, 22);
   OVL_BASE = Math.ceil(cellData.length / 8) * 8;
   bank = 'BH';
   addGroup('TB', [['idle', COYOTE.idle, 3, true], ['walk', COYOTE.walk, 8, true], ['talk', COYOTE.talk, 6, true],
@@ -167,15 +178,22 @@ T.runExport = function (A) {
     ['dig', [COYOTE.dig], 1, false], ['pop', [COYOTE.pop], 1, false], ['daze', COYOTE.daze, 8, true],
     ['hurt', [COYOTE.hurt], 1, false], ['ko', [COYOTE.ko], 1, false], ['down', [COYOTE.down], 1, false]], B.OX, B.OY);
   bank = 'MS';
-  const MANGY = T.buildCoyote('mangy'), TUMBLE = T.buildTumbleweed();
-  addGroup('CY', [['idle', MANGY.idle, 3, true], ['walk', MANGY.walk, 8, true], ['windup', [MANGY.windup], 1, false],
-    ['swing', [MANGY.swing], 1, false], ['hurt', [MANGY.hurt], 1, false], ['down', [MANGY.down], 1, false],
-    ['daze', MANGY.daze, 8, true], ['ko', [MANGY.ko], 1, false]], B.OX, B.OY);
-  addGroup('TW', [['roll', TUMBLE, 10, true]], 12, 22);
   const DLN = T.buildDillon();                     // Big Shell Dillon, Main Street's boss
   addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
     ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
     ['ball', DLN.ball, 20, true], ['hurt', [DLN.hurt], 1, false], ['daze', DLN.daze, 8, true], ['ko', [DLN.ko], 1, false]], B.OX, B.OY);
+  bank = 'GT';                                     // Ghost Town: the rattler, Doc Gila and his cards, the signs and tables
+  const RAT = T.buildRattler(), GIL = T.buildGila(), GPR = T.buildGhostProps();
+  addGroup('RT', [['walk', RAT.walk, 8, true], ['coil', RAT.coil, 14, true], ['lunge', [RAT.lunge], 1, false],
+    ['recover', [RAT.recover], 1, false], ['hurt', [RAT.hurt], 1, false], ['down', [RAT.down], 1, false], ['ko', [RAT.ko], 1, false]], B.OX, B.OY);
+  addGroup('GL', [['idle', GIL.idle, 3, true], ['walk', GIL.walk, 7, true], ['talk', GIL.talk, 6, true], ['deal', [GIL.deal], 1, false],
+    ['flick', [GIL.flick], 1, false], ['jaws', [GIL.jaws], 1, false], ['bite', [GIL.bite], 1, false], ['duck', [GIL.duck], 1, false],
+    ['hurt', [GIL.hurt], 1, false], ['daze', GIL.daze, 8, true], ['ko', [GIL.ko], 1, false],
+    ['card', GIL.card, 16, true, 6, 6]], B.OX, B.OY);
+  const SIGNS = ['BARBER', 'DENTIST', 'WHISKEY', 'GUNS'].map(nm => GPR.sign(nm));   // (brawler.js STAGES.ghosttown.signs)
+  addGroup('GP', [...SIGNS.flatMap((g, i) => [['sign' + i, [g.up], 1, false, g.up.ox, 0], ['signd' + i, [g.down], 1, false, g.down.ox, 24]]),
+    ['table', [GPR.table], 1, false, GPR.table.ox, GPR.table.oy], ['flipped', [GPR.flipped], 1, false, GPR.flipped.ox, GPR.flipped.oy],
+    ['plank', [GPR.plank], 1, false, GPR.plank.ox, GPR.plank.oy]], 16, 16, false);
   bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
@@ -208,9 +226,10 @@ T.runExport = function (A) {
   const F = T.rgb('#e4e0ff');
   const files = {
     'sprites.bin': sprites,
-    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS,
+    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT,
     'tiles_bh.bin': STAGES[0].tiles, 'maps_bh.bin': STAGES[0].mapBytes,
     'tiles_ms.bin': STAGES[1].tiles, 'maps_ms.bin': STAGES[1].mapBytes,
+    'tiles_gt.bin': STAGES[2].tiles, 'maps_gt.bin': STAGES[2].mapBytes,
     'frames.bin': frames,
     'clut_spr.bin': clut(T.CLUT.spr.colors),
     'clut_tile.bin': clut(T.CLUT.bg.colors),

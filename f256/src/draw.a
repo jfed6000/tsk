@@ -96,6 +96,8 @@ dw0a
                     lbsr      DrawEb
                     lbsr      DrawPt
                     lbsr      DrawPick
+                    lbsr      DrawSigns           Ghost Town's signs and Doc Gila's table (ghost.a)
+                    lbsr      DrawTable
                     lda       sflags,u            Boot Hill: Ringo's grave; Main Street: a tumbleweed
                     bita      #SG.Intro
                     beq       dwg1

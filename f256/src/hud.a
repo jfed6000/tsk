@@ -611,14 +611,21 @@ EName               lda       EN.Ty,x
                     leay      SDillo,pcr
                     cmpa      #TY.Dillo
                     beq       enm0
-                    leay      STwoBit,pcr
-                    tst       bkind,u
+                    leay      STwoBit,pcr         (the boss: by bkind)
+                    ldb       bkind,u
                     beq       enm00
                     leay      SDillon,pcr
-enm00               equ       *
-                    cmpa      #TY.Boss
+                    decb
+                    beq       enm00
+                    leay      SGila,pcr
+enm00               cmpa      #TY.Boss
                     beq       enm0
-                    lda       EN.Nm,x             a coyote: one of the gang's names
+                    cmpa      #TY.Rat
+                    bne       enm00a
+                    lda       EN.Nm,x             a rattler: one of the snake names
+                    leay      SnakeNames,pcr
+                    bra       enm2
+enm00a              lda       EN.Nm,x             a coyote: one of the gang's names
                     leay      GangNames,pcr
                     bra       enm2
 enm0                rts
@@ -643,10 +650,16 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     ldb       #CyHp
                     cmpa      #TY.Coy
                     beq       ex1
+                    ldb       #RtHp
+                    cmpa      #TY.Rat
+                    beq       ex1
                     ldb       #BossHp
-                    tst       bkind,u
+                    lda       bkind,u
                     beq       ex1
                     ldb       #DlnHp
+                    deca
+                    beq       ex1
+                    ldb       #GilaHp
 ex1                 puls      a,pc
 
 SName               fcn       "SHITKICKERS"
@@ -656,6 +669,15 @@ SCombo              fcn       " HIT COMBO!"
 SDillo              fcn       "DILLO"
 STwoBit             fcn       "TWO-BIT"
 SDillon             fcn       "BIG SHELL DILLON"
+SGila               fcn       "DOC GILA"
+SnakeNames          fcn       "SIDEWINDER"
+                    fcn       "SLIM"
+                    fcn       "FANGS"
+                    fcn       "HISS"
+                    fcn       "COPPERHEAD"
+                    fcn       "SLITHER"
+                    fcn       "NOODLE"
+                    fcn       "DIAMOND JIM"
 GangNames           fcn       "DUSTY"
                     fcn       "SCRUFF"
                     fcn       "MANGY"
@@ -1132,6 +1154,9 @@ EHgt                ldb       EN.Ty,x
                     beq       eg9
                     lda       #DlTall
                     cmpb      #TY.Dillo
+                    beq       eg9
+                    lda       #22                 a rattler
+                    cmpb      #TY.Rat
                     beq       eg9
                     lda       #BossTall
 eg9                 rts

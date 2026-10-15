@@ -247,9 +247,20 @@ whb5                 tst       <bsum               half his health: he raises th
                     cmpa      ,s+
                     bhs       whb9
                     inc       <bsum
-                    tst       bkind,u
-                    beq       whs0
-                    lda       #70                 Dillon: his Outlaw Dillos roll in, one each side
+                    lda       bkind,u
+                    lbeq      whs0
+                    cmpa      #2
+                    bne       whs1
+                    lda       #70                 Doc Gila: deals two rattlers in, one each side
+                    ldy       #TX.dealin
+                    lbsr      WordE
+                    clrb
+                    lbsr      NewRat
+                    ldb       #1
+                    lbsr      NewRat
+                    ldx       <bslot
+                    bra       whb9
+whs1                lda       #70                 Dillon: his Outlaw Dillos roll in, one each side
                     ldy       #TX.rollout
                     lbsr      WordE
                     clrb
@@ -304,7 +315,10 @@ BossStep            stx       <bslot
                     tst       EN.Hp,x
                     beq       wbs0
                     lbra      EStop
-wbs0                tst       bkind,u
+wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila
+                    cmpa      #2
+                    lbeq      GilaStep
+                    tsta
                     lbne      DillonStep
                     lda       <bst
                     leay      BsTab,pcr
@@ -970,7 +984,10 @@ wch2                 leax      CL.Size,x
 * Drawing
 ********************************************************************
 * BossFrame - X = him -> D = his frame (brawler.js bossImg)
-BossFrame           tst       bkind,u
+BossFrame           lda       bkind,u
+                    cmpa      #2
+                    lbeq      GilaFrame
+                    tsta
                     lbne      DlnFrame
                     lda       <bst
                     leay      BfTab,pcr

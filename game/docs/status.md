@@ -82,8 +82,8 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 1. **Playtest** both stages, ideally on an SNES-style pad, and tune.
 2. **Two-player co-op** (two SNES pads, `SS.Joy` reads both): a second pair of boots.
 3. **P4** (`f256/docs/port-plan.md`): sprints 1-5 done. The whole browser game now runs on the F256: the title,
-   Boot Hill, Main Street, the music. Big Shell Dillon, the death scene and the grab/knee/throw are in (2026-10-15): the F256 has every browser move. Next: Ghost Town, pads.
+   Boot Hill, Main Street, the music. Big Shell Dillon, the death scene, the grab/knee/throw and Ghost Town are in (2026-10-15): the whole browser game runs on the F256. Next: pads, the next stages.
 4. A per-stage sprite CLUT (118 colours already, all enemies in one).
-5. **Ghost Town on the F256** (after the user's playtest): its tiles and sprite bank, the rattler, the signs and tables, Doc Gila, "Dead Man's Hand" (4.8K, fits the music window). Watch the module budget (24.0K of 32,768) and sprite RAM.
+5. ✓ Ghost Town on the F256 (2026-10-15): `tsk` 26.9K of 32,768, data 15.1K, peak memory about 1.55 MB.
 6. The next stages from `story.md`: the Cattle Drive, the Train Heist, the Mission, High Noon.
 6. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).

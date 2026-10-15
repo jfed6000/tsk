@@ -39,7 +39,7 @@ Files are per stage where they differ: `tiles_bh.bin`/`tiles_ms.bin`, `maps_*`, 
 ## tsk: the game
 
 ```
-make                 # tsk (24.0K of the 32,768-byte budget; data area 13.7K) and tskview
+make                 # tsk (26.9K of the 32,768-byte budget; data area 15.1K) and tskview
 make install DSK=/absolute/path/to/image.dsk
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
@@ -48,7 +48,8 @@ make mameboss        # straight to Two-Bit (tsk kg) in MAME
 make mametitle       # the title screen in MAME; the MIDI it sent as mame/midi.mid
 make mamems          # Main Street (tsk mbg) in MAME
 make mamedillon      # straight to Big Shell Dillon (tsk mkbg) in MAME
-make mamedeath       # the death scene: Dillon against a frail hero (tsk mkf), three deaths and game over
+make mamedeath       # the death scene: Dillon against a frail hero (tsk mkf), four deaths and game over
+make mamegila        # straight to Doc Gila (tsk hkg) in MAME
 make music           # compose, convert and render the music (game/music/*.mid, *.mp3)
 python3 tools/hostrun.py --args bg --passes 5000 --every 100 --watch phase,wavei,score --enemies --slow 80000
 ```
@@ -61,8 +62,9 @@ SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other lett
 | `d` | The scripted demo |
 | `b` | The autopilot plays |
 | `g` | Nothing hurts him |
-| `k` | Start at the stage's boss (Two-Bit; with `m`, Big Shell Dillon), skipping the opening and the waves |
+| `k` | Start at the stage's boss (Two-Bit; with `m` Big Shell Dillon, with `h` Doc Gila), skipping the opening and the waves |
 | `m` | Start on Main Street |
+| `h` | Start in Ghost Town (haunted) |
 | `f` | Frail: any hit kills (to see the death scene) |
 
 | Key | Does |

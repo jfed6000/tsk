@@ -52,6 +52,8 @@ SF.Thunder          equ       12
 SF.Check            equ       13
 SF.Hurt             equ       14
 SF.Shell            equ       15
+SF.Rattle           equ       16
+SF.Card             equ       17
 
 ********************************************************************
 * SndInit - after the music is loaded: the effect channels' instruments
@@ -381,6 +383,8 @@ SfxTab              fdb       FxWhoosh-SfxTab
                     fdb       FxCheck-SfxTab
                     fdb       FxHurt-SfxTab
                     fdb       FxShell-SfxTab
+                    fdb       FxRattle-SfxTab
+                    fdb       FxCard-SfxTab
 * delay, status, note, velocity, length
 FxWhoosh            fcb       0,$9D,96,100,5      a breath, high and short
                     fcb       $FF
@@ -434,4 +438,15 @@ FxHurt              fcb       0,$99,58,120,0      the vibraslap, and a tom
                     fcb       $FF
 FxShell             fcb       0,$99,53,110,0      ride bell and triangle: a bullet kicked away
                     fcb       0,$99,81,100,0
+                    fcb       $FF
+FxRattle            fcb       0,$99,70,110,0      maracas and cabasa, fast: a rattler coiling
+                    fcb       2,$99,69,100,0
+                    fcb       4,$99,70,104,0
+                    fcb       6,$99,69,96,0
+                    fcb       8,$99,70,100,0
+                    fcb       10,$99,69,90,0
+                    fcb       12,$99,70,84,0
+                    fcb       $FF
+FxCard              fcb       0,$99,39,70,0       a soft clap and a high woodblock: a card flicked
+                    fcb       0,$99,76,84,0
                     fcb       $FF

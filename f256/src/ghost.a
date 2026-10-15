@@ -1,0 +1,1088 @@
+********************************************************************
+* ghost.a - Ghost Town (brawler.js STAGES.ghosttown): the rattler
+*   henchman, the hanging signs that fall, and Doc Gila, the Gila monster
+*   card sharp, with his cards and his card table.
+********************************************************************
+
+* ---------------------------------------------------------------- the rattler
+* It walks in (ES.Enter), keeps 70 px off in your lane (DAppr), coils
+*   with a rattle (ES.Wind, 0.6 s), lunges low and long (ES.Strike: 270
+*   px/s for 0.28 s, 2 if it meets you on the ground), then lies stretched
+*   out a second (ES.Recov) - jump the lunge, then kick it.
+RtHp                equ       7
+RtSpd               equ       17                  64 px/s
+RtWindT             equ       36
+RtLunge             equ       72                  270 px/s
+RtLungeT            equ       17
+RtStrikeT           equ       21
+RtRecT              equ       60
+
+NewRat              lda       #TY.Rat
+                    sta       <tmpk
+                    lda       #RtHp
+                    sta       <tmpf
+                    lbsr      NewWalk
+                    bcs       gnr9x
+                    lda       #8                  one of the snake names
+                    lbsr      RandN
+                    sta       EN.Nm,x
+gnr9x                rts
+
+* RStrike - X = a rattler, lunging
+RStrike             ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #RtLungeT
+                    bhs       grs1x
+                    ldd       #RtLunge
+                    lbsr      ByFace
+                    std       EN.VX,x
+                    bra       grs2x
+grs1x                ldd       #0
+                    std       EN.VX,x
+grs2x                tst       EN.Am,x             once a lunge
+                    bne       grs8x
+                    lda       EN.T,x
+                    cmpa      #RtLungeT+1
+                    bhs       grs8x
+                    ldd       EN.Z,x              in his lane, on the ground, at its head
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       grs8x
+                    ldd       <hh
+                    cmpd      #14*16
+                    bge       grs8x
+                    ldd       #16*16              its head: 16 px ahead
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       grs8x
+                    inc       EN.Am,x
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #2
+                    pshs      x
+                    lbsr      HurtHero
+                    puls      x
+grs8x                lda       EN.T,x
+                    cmpa      #RtStrikeT
+                    lbls      EnMove
+                    lda       #ES.Recov
+                    lbsr      SetE
+                    lbra      EnMove
+
+* RtFrame - X = a rattler -> D = its frame
+RtFrame             lda       EN.St,x
+                    cmpa      #ES.Wind
+                    bne       grf1x
+                    lda       EN.An,x             coiled, the rattle going
+                    lsra
+                    lsra
+                    anda      #1
+                    adda      #RT.coil-RT.First
+                    bra       grf9x
+grf1x                cmpa      #ES.Strike
+                    bne       grf2x
+                    lda       #RT.lunge-RT.First
+                    bra       grf9x
+grf2x                cmpa      #ES.Recov
+                    bne       grf3x
+                    lda       #RT.recover-RT.First
+                    bra       grf9x
+grf3x                cmpa      #ES.Down
+                    beq       grf4x
+                    cmpa      #ES.Getup
+                    bne       grf5x
+grf4x                lda       #RT.down-RT.First
+                    bra       grf9x
+grf5x                cmpa      #ES.Ko
+                    bne       grf6x
+                    lda       #RT.ko-RT.First
+                    bra       grf9x
+grf6x                cmpa      #ES.Stag
+                    beq       grf7x
+                    cmpa      #ES.Air
+                    beq       grf7x
+                    cmpa      #ES.Held
+                    beq       grf7x
+                    cmpa      #ES.Thrown
+                    bne       grf8x
+grf7x                lda       #RT.hurt-RT.First
+                    bra       grf9x
+grf8x                lda       EN.An,x             slithering, 8 frames a second
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #RT.walk-RT.First
+grf9x                tst       EN.Fc,x
+                    beq       grf9y
+                    adda      #RT.Mir
+grf9y                tfr       a,b
+                    clra
+                    addd      #RT.First
+                    rts
+
+* ---------------------------------------------------------------- the hanging signs
+* One creaks as you come within 34 px, drops 0.35 s later, and whoever's
+*   under it when it lands takes it: 2 to you, 3 to an outlaw (knocked
+*   down).  Then it lies there broken.  z 10, hung 63 px up.
+NSign               equ       4
+SignZ               equ       10
+SignH               equ       FLOOR.Y+SignZ-97
+SgS.Hang            equ       0
+SgS.Creak           equ       1
+SgS.Fall            equ       2
+SgS.Down            equ       3
+
+* SignInit - the stage's signs up again (only Ghost Town has any)
+SignInit            leax      sgn,u
+                    lda       #NSign
+                    sta       <tmpn
+gsi1x                clr       SN.St,x
+                    clr       SN.T,x
+                    ldd       #SignH*16
+                    std       SN.H,x
+                    ldd       #0
+                    std       SN.VH,x
+                    leax      SN.Size,x
+                    dec       <tmpn
+                    bne       gsi1x
+                    rts
+
+* SignX - B = a sign: D = its x (12.4)
+SignX               leay      SignTab,pcr
+                    lslb
+                    ldd       b,y
+                    lbra      To124
+SignTab             fdb       200,470,760,980     (brawler.js STAGES.ghosttown.signs)
+
+* Signs - one pass
+Signs               lda       stgn,u
+                    cmpa      #2
+                    lbne      gsg9x
+                    leax      sgn,u
+                    clr       <tmpi
+gsg1x                lda       SN.St,x
+                    cmpa      #SgS.Hang           someone near: it creaks
+                    bne       gsg2x
+                    tst       <phase
+                    lbne      gsg8x
+                    ldb       <tmpi
+                    pshs      x
+                    bsr       SignX
+                    puls      x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #34*16
+                    lbhs      gsg8x
+                    lda       #SgS.Creak
+                    sta       SN.St,x
+                    clr       SN.T,x
+                    lda       #SF.Shell
+                    lbsr      Sfx
+                    lbra      gsg8x
+gsg2x                cmpa      #SgS.Creak
+                    bne       gsg3x
+                    inc       SN.T,x
+                    lda       SN.T,x
+                    cmpa      #21
+                    lblo      gsg8x
+                    lda       #SgS.Fall
+                    sta       SN.St,x
+                    lbra      gsg8x
+gsg3x                cmpa      #SgS.Fall
+                    lbne      gsg8x
+                    ldd       SN.VH,x
+                    subd      #Grav
+                    std       SN.VH,x
+                    addd      SN.H,x
+                    std       SN.H,x
+                    cmpd      #24*16
+                    lbgt      gsg8x
+                    lda       #SgS.Down           it lands
+                    sta       SN.St,x
+                    ldd       #0
+                    std       SN.H,x
+                    stx       sgsav,u
+                    lda       #SF.Break
+                    lbsr      Sfx
+                    lda       #8
+                    lbsr      Shk
+                    ldb       <tmpi
+                    lbsr      SignX
+                    std       <sx
+                    std       <tdx
+                    ldd       #SignZ*16
+                    std       <sz
+                    lda       #5
+                    lbsr      Puff
+                    clr       <tmpf               (1 = it hit someone)
+                    ldd       <hx                 him, under it
+                    subd      <tdx
+                    lbsr      AbsD
+                    cmpd      #22*16
+                    bhs       gsg4x
+                    ldd       <hz
+                    subd      #SignZ*16
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       gsg4x
+                    ldd       <hh
+                    cmpd      #20*16
+                    bge       gsg4x
+                    lda       #2
+                    lbsr      HurtHero
+                    sta       <tmpf
+gsg4x                leax      en,u                the posse, under it
+                    lda       #NEn
+                    sta       <aloop
+gsg5x                lda       EN.St,x
+                    lbsr      Hitbl
+                    bcs       gsg6x
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    beq       gsg6x
+                    ldd       EN.X,x
+                    subd      <tdx
+                    lbsr      AbsD
+                    cmpd      #22*16
+                    bhs       gsg6x
+                    ldd       EN.X,x              knocked away from it
+                    cmpd      <tdx
+                    clra
+                    bge       gsg5z
+                    inca
+gsg5z                sta       <hdir
+                    ldd       EN.Z,x
+                    subd      #SignZ*16
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       gsg6x
+                    lda       #3
+                    ldb       #1
+                    pshs      x
+                    lbsr      HitE
+                    puls      x
+                    lda       #1
+                    sta       <tmpf
+gsg6x                leax      EN.Size,x
+                    dec       <aloop
+                    bne       gsg5x
+                    tst       <tmpf
+                    beq       gsg7x
+                    ldd       <tdx                "TIMBER!"
+                    std       <sx
+                    lda       #40
+                    lbsr      PopSxz
+                    ldd       #TX.timber
+                    lbsr      PopWord
+gsg7x                ldx       sgsav,u
+gsg8x                leax      SN.Size,x
+                    inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #NSign
+                    lblo      gsg1x
+gsg9x                rts
+
+* DrawSigns - each sign: hanging (jiggling while it creaks), falling (its
+*   shadow below), or broken on the street
+DrawSigns           lda       stgn,u
+                    cmpa      #2
+                    bne       gds9x
+                    leax      sgn,u
+                    clr       <tmpi
+gds1x                pshs      x
+                    ldb       <tmpi
+                    lbsr      SignX
+                    std       <ex
+                    ldx       ,s
+                    lda       SN.St,x
+                    cmpa      #SgS.Creak          the creak: a pixel to and fro
+                    bne       gds2x
+                    ldb       SN.T,x
+                    andb      #2
+                    beq       gds1z
+                    ldd       <ex
+                    addd      #16
+                    std       <ex
+gds1z                lda       SN.St,x
+gds2x                ldb       <tmpi               the frame: GP.sign0 + 2 i (+1 broken)
+                    lslb
+                    cmpa      #SgS.Down
+                    bne       gds3x
+                    incb
+gds3x                clra
+                    addd      #GP.sign0
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk               a shadow while it falls
+                    ldb       SN.St,x
+                    cmpb      #SgS.Fall
+                    bne       gds4x
+                    lda       #2
+                    sta       <eshk
+gds4x                lda       #1
+                    sta       <ekey
+                    ldd       #SignZ*16
+                    std       <ez
+                    ldd       SN.H,x
+                    std       <eh
+                    lbsr      Ent
+                    puls      x
+                    leax      SN.Size,x
+                    inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #NSign
+                    blo       gds1x
+gds9x                rts
+
+* ---------------------------------------------------------------- Doc Gila
+* He shares the boss machinery with Two-Bit and Dillon (boss.a, bkind 2).
+*   His state numbers line up with Dillon's where the shared code tests
+*   them: 1 approach, 4 recover, 5 stagger, 8 dizzy, 9 KO.
+GS.Intro            equ       0                   "READ 'EM AND WEEP, BOOTS!"
+GS.Appr             equ       1
+GS.Deal             equ       2                   winding up a throw
+GS.Flick            equ       3                   the fan of cards flies
+GS.Recov            equ       4
+GS.Stag             equ       5
+GS.Cover            equ       6                   behind the table (not hittable)
+GS.CDeal            equ       7                   dealing from behind it (not hittable)
+GS.Daze             equ       8
+GS.Ko               equ       9
+GS.Jaws             equ       10                  the bite's wind-up
+GS.Bite             equ       11
+GS.CFlick           equ       12                  cards from behind the table (not hittable)
+GilaHp              equ       44
+CardV               equ       56                  210 px/s
+TableV              equ       80                  a side-kicked table: 300 px/s
+
+StartGila           lda       #SF.Card
+                    lbsr      Sfx
+                    lbsr      NewSlot
+                    bcs       gsgl9x
+                    stx       <bslot
+                    lda       #2
+                    sta       bkind,u
+                    lda       #TY.Boss
+                    sta       EN.Ty,x
+                    lda       #ES.BossX
+                    sta       EN.St,x
+                    lda       #GilaHp
+                    sta       EN.Hp,x
+                    lda       #1
+                    sta       EN.Fc,x
+                    ldd       <cam
+                    addd      #250
+                    lbsr      To124
+                    std       EN.X,x
+                    std       <sx
+                    ldd       #40*16
+                    std       EN.Z,x
+                    std       <sz
+                    clr       <bst
+                    clr       <bn
+                    clr       <bsaid
+                    clr       <bsum
+                    clr       gtab,u
+                    clr       gcov,u
+                    lda       #4
+                    lbsr      Puff
+gsgl9x               rts
+
+* GSet - A = his state: its clock from 0; hittable unless he's talking,
+*   behind his table or KO'd
+GSet                ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.BossX
+                    cmpa      #GS.Intro
+                    beq       ggst1x
+                    cmpa      #GS.Cover
+                    beq       ggst1x
+                    cmpa      #GS.CDeal
+                    beq       ggst1x
+                    cmpa      #GS.CFlick
+                    beq       ggst1x
+                    cmpa      #GS.Ko
+                    beq       ggst1x
+                    ldb       #ES.Boss
+ggst1x               stb       EN.St,x
+                    rts
+
+* GilaStep - X = him: one pass
+GilaStep            stx       <bslot
+                    lbsr      TableStep
+                    ldx       <bslot
+                    lda       <bst
+                    leay      GsTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+GsTab               fdb       GIntro-GsTab
+                    fdb       GAppr-GsTab
+                    fdb       GDeal-GsTab
+                    fdb       GFlick-GsTab
+                    fdb       GRecov-GsTab
+                    fdb       GStag-GsTab
+                    fdb       GCover-GsTab
+                    fdb       GDeal-GsTab         (from behind the table)
+                    fdb       GDaze-GsTab
+                    fdb       GKo-GsTab
+                    fdb       GJaws-GsTab
+                    fdb       GBite-GsTab
+                    fdb       GFlick-GsTab        (from behind the table)
+
+GIntro              lbsr      FaceHero
+                    lbsr      EStop
+                    tst       <bsaid
+                    bne       ggi1x
+                    lda       EN.T,x
+                    cmpa      #18
+                    blo       ggi1x
+                    inc       <bsaid
+                    lda       #72
+                    ldy       #TX.weep
+                    lbsr      WordE
+ggi1x                lda       EN.T,x
+                    cmpa      #144
+                    lbls      DMove
+                    lda       #GS.Appr
+                    lbsr      GSet
+                    lbra      DMove
+
+* to 80 px his side of you; then the next move: every third the table,
+*   up close the bite, else the cards
+GAppr               lbsr      FaceHero
+                    ldd       #80*16
+                    tst       EN.Fc,x
+                    beq       gga1x
+                    lbsr      NegD
+gga1x                pshs      d
+                    ldd       <hx
+                    subd      ,s++
+                    subd      EN.X,x
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #4*16
+                    bls       gga2x
+                    ldd       #12
+                    tst       <tdx
+                    bpl       gga3x
+                    ldd       #-12
+                    bra       gga3x
+gga2x                ldd       #0
+gga3x                std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bls       gga4x
+                    ldd       #10
+                    tst       <tdz
+                    bpl       gga5x
+                    ldd       #-10
+                    bra       gga5x
+gga4x                ldd       #0
+gga5x                std       EN.VZ,x
+                    clr       <tmpf               close: within 56 px and 10 of his lane
+                    ldd       <hx
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #56*16
+                    bhs       gga6x
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       gga6x
+                    inc       <tmpf
+gga6x                lda       EN.T,x              time to move?
+                    cmpa      #78
+                    bhi       gga8x
+                    tst       <tmpf
+                    beq       gga7x
+                    cmpa      #24
+                    bhi       gga8x
+gga7x                cmpa      #30
+                    lbls      DMove
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    lbhs      DMove
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #6*16
+                    lbhs      DMove
+gga8x                lbsr      EStop
+                    inc       <bn
+                    lda       <bn
+                    ldb       #3
+                    lbsr      Div
+                    ldb       #3
+                    mul
+                    cmpb      <bn
+                    bne       gga9x
+                    lbsr      FlipTable           every third: the card table
+                    lbra      DMove
+gga9x                lda       #GS.Jaws
+                    tst       <tmpf
+                    bne       gga9y
+                    lda       #GS.Deal
+gga9y                lbsr      GSet
+                    lbra      DMove
+
+GDeal               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #30
+                    lbls      DMove
+                    lbsr      Flick
+                    ldx       <bslot
+                    lda       #GS.Flick
+                    tst       gcov,u
+                    beq       ggd1x
+                    lda       #GS.CFlick
+ggd1x                lbsr      GSet
+                    lbra      DMove
+
+GFlick              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #24
+                    lbls      DMove
+                    lda       #GS.Recov
+                    tst       gcov,u
+                    beq       ggf1x
+                    tst       gtab,u
+                    beq       ggf1x
+                    lda       #GS.Cover
+ggf1x                lbsr      GSet
+                    lbra      DMove
+
+GJaws               lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #27
+                    lbls      DMove
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #GS.Bite
+                    lbsr      GSet
+                    clr       <bhit
+                    lbra      DMove
+
+* the bite: a lunge, and 3 if you're in front of him, close, in his lane
+GBite               ldd       #0
+                    std       EN.VZ,x
+                    ldy       #0
+                    lda       EN.T,x
+                    cmpa      #11
+                    bhs       ggb1x
+                    ldd       #43
+                    lbsr      ByFace
+                    tfr       d,y
+ggb1x                sty       EN.VX,x
+                    tst       <bhit
+                    bne       ggb5x
+                    lda       EN.T,x
+                    cmpa      #13
+                    bhs       ggb5x
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       ggb5x
+                    ldd       <hh
+                    cmpd      #26*16
+                    bge       ggb5x
+                    ldd       <hx
+                    subd      EN.X,x
+                    tst       EN.Fc,x
+                    beq       ggb2x
+                    lbsr      NegD
+ggb2x                cmpd      #0
+                    ble       ggb5x
+                    cmpd      #48*16
+                    bhs       ggb5x
+                    inc       <bhit
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    tsta
+                    beq       ggb4x
+                    ldx       #TX.chomp
+                    lda       #62
+                    lbsr      WordH
+ggb4x                ldx       <bslot
+ggb5x                lda       EN.T,x
+                    cmpa      #24
+                    lbls      DMove
+                    lda       #GS.Recov
+                    lbsr      GSet
+                    lbra      DMove
+
+GRecov              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #48
+                    lbls      DMove
+                    lda       #GS.Appr
+                    lbsr      GSet
+                    lbra      DMove
+
+GStag               ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #18
+                    lbls      DMove
+                    lda       #GS.Appr
+                    lbsr      GSet
+                    lbra      DMove
+
+* behind the table: two volleys over it, then he kicks it away
+GCover              lbsr      EStop
+                    tst       gtab,u
+                    bne       ggc1x
+                    clr       gcov,u              the table's gone: he's open
+                    lda       #GS.Stag
+                    lbsr      GSet
+                    lbra      DMove
+ggc1x                lda       EN.T,x
+                    cmpa      #54
+                    lbls      DMove
+                    lda       gvol,u
+                    cmpa      #2
+                    bhs       ggc2x
+                    inc       gvol,u
+                    lda       #GS.CDeal
+                    lbsr      GSet
+                    lbra      DMove
+ggc2x                lda       EN.T,x              (two dealt: a last wait, then done)
+                    cmpa      #60
+                    lbls      DMove
+                    lbsr      BreakTable
+                    ldx       <bslot
+                    clr       gcov,u
+                    lda       #GS.Appr
+                    lbsr      GSet
+                    lbra      DMove
+
+GDaze               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #132
+                    lbls      DMove
+                    lda       #GS.Appr
+                    lbsr      GSet
+                    lbra      DMove
+
+GKo                 lbra      BKo
+
+* Flick - three cards across the lanes: his, and 16 px either side
+Flick               lda       #SF.Card
+                    lbsr      Sfx
+                    ldd       #-16*16
+                    std       <tdz
+gfl1x                ldx       <bslot
+                    ldd       EN.Z,x              its lane, kept on the street
+                    addd      <tdz
+                    bpl       gfl2x
+                    ldd       #0
+gfl2x                cmpd      #ZMax*16
+                    ble       gfl3x
+                    ldd       #ZMax*16
+gfl3x                std       <sz
+                    leay      eb,u                a free slot
+                    ldb       #NEb
+gfl4x                tst       EB.St,y
+                    beq       gfl5x
+                    leay      EB.Size,y
+                    decb
+                    bne       gfl4x
+                    bra       gfl6x
+gfl5x                lda       #2                  (2: a card, not a bullet)
+                    sta       EB.St,y
+                    ldd       <sz
+                    std       EB.Z,y
+                    ldd       #16*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       EB.X,y
+                    ldd       #CardV
+                    lbsr      ByFace
+                    std       EB.VX,y
+gfl6x                ldd       <tdz
+                    addd      #16*16
+                    std       <tdz
+                    cmpd      #16*16
+                    ble       gfl1x
+                    rts
+
+* ---------------------------------------------------------------- his card table
+* FlipTable - X = him: the table on its side 22 px in front of him, and
+*   he's behind it
+FlipTable           lda       #1
+                    sta       gtab,u
+                    sta       gcov,u
+                    clr       gvol,u
+                    clr       gtvx,u
+                    clr       gtvx+1,u
+                    lda       #3
+                    sta       gthp,u
+                    ldd       #22*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       gtx,u
+                    std       <sx
+                    ldd       EN.Z,x
+                    addd      #16
+                    std       gtz,u
+                    std       <sz
+                    lda       #SF.Break
+                    lbsr      Sfx
+                    lda       #6
+                    lbsr      Shk
+                    lda       #4
+                    lbsr      Puff
+                    lda       #GS.Cover
+                    lbra      GSet
+
+* BreakTable - the table in planks
+BreakTable          tst       gtab,u
+                    beq       gbt9x
+                    clr       gtab,u
+                    lda       #SF.Break
+                    lbsr      Sfx
+                    ldd       gtx,u
+                    std       <sx
+                    ldd       gtz,u
+                    std       <sz
+                    lda       #8
+                    sta       <kcnt
+gbt1x                lda       #18
+                    lbsr      RandN
+                    adda      #6
+                    ldb       #16
+                    mul
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       gbt2x
+                    ldd       #GP.plank
+                    std       PT.F,y
+                    lda       #60
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #27
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #40
+                    lbsr      RandN
+                    adda      #27
+                    tfr       a,b
+                    clra
+                    std       PT.VH,y
+gbt2x                dec       <kcnt
+                    bne       gbt1x
+gbt9x                rts
+
+* TableStep - a side-kicked table sliding: into whoever it meets; into him,
+*   BUSTED (4, and he's dizzy)
+TableStep           tst       gtab,u
+                    lbeq      gts9x
+                    ldd       gtvx,u
+                    lbeq      gts9x
+                    addd      gtx,u
+                    std       gtx,u
+                    clr       <hdir               the way it's going
+                    tst       gtvx,u
+                    bpl       gts1x
+                    inc       <hdir
+gts1x                leax      en,u                the posse
+                    lda       #NEn
+                    sta       <aloop
+gts2x                lda       EN.St,x
+                    lbsr      Hitbl
+                    bcs       gts3x
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    beq       gts3x
+                    ldd       EN.Z,x
+                    subd      gtz,u
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       gts3x
+                    ldd       EN.X,x
+                    subd      gtx,u
+                    lbsr      AbsD
+                    cmpd      #18*16
+                    bhs       gts3x
+                    lda       #3
+                    ldb       #1
+                    pshs      x
+                    lbsr      HitE
+                    puls      x
+gts3x                leax      EN.Size,x
+                    dec       <aloop
+                    bne       gts2x
+                    ldx       <bslot              into him?
+                    ldd       EN.X,x
+                    subd      gtx,u
+                    lbsr      AbsD
+                    cmpd      #18*16
+                    bhs       gts5x
+                    lbsr      BreakTable
+                    clr       gcov,u
+                    lda       #12
+                    lbsr      Shk
+                    lda       #5
+                    sta       <hitstop
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+                    ldx       <bslot
+                    lda       #4
+                    ldb       #1
+                    lbsr      HitE
+                    ldx       <bslot
+                    lda       <bst
+                    cmpa      #GS.Ko
+                    beq       gts9x
+                    lda       #GS.Daze
+                    lbsr      GSet
+                    lda       #62
+                    ldy       #TX.busted
+                    lbra      WordE
+gts5x                ldd       gtx,u               off the screen: gone
+                    lbsr      Asr4
+                    subd      <cam
+                    cmpd      #-30
+                    blt       gts6x
+                    cmpd      #350
+                    ble       gts9x
+gts6x                lbra      BreakTable
+gts9x                rts
+
+* TableHit - his attack box (bx0, bx1, bh0, pixels) against the table: a
+*   side kick (or the flying kick) slides it, anything else breaks it in
+*   three.  X is kept.
+TableHit            tst       gtab,u
+                    lbeq      gth9x
+                    ldd       gtvx,u
+                    lbne      gth9x
+                    lda       gthit,u             (once an attack)
+                    cmpa      <hatk
+                    lbeq      gth9x
+                    ldd       gtz,u
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    lbhs      gth9x
+                    ldd       gtx,u
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #16
+                    cmpd      <bx0
+                    ble       gth9x
+                    ldd       <tmp
+                    subd      #16
+                    cmpd      <bx1
+                    bge       gth9x
+                    ldd       <bh0
+                    cmpd      #30
+                    bge       gth9x
+                    pshs      x
+                    lda       <hatk
+                    sta       gthit,u
+                    ldd       gtx,u
+                    std       <sx
+                    ldd       gtz,u
+                    std       <sz
+                    ldd       #16*16
+                    std       <sh
+                    lda       #1
+                    lbsr      Spark
+                    lda       #SF.Hit
+                    lbsr      Sfx
+                    lda       #3
+                    sta       <hitstop
+                    lda       <hst                a side kick or the flying kick: it slides
+                    cmpa      #ST.Side
+                    beq       gth2x
+                    cmpa      #ST.JKick
+                    beq       gth2x
+                    dec       gthp,u              else it breaks, in three
+                    bne       gth8x
+                    lbsr      BreakTable
+                    clr       gcov,u
+                    bra       gth8x
+gth2x                ldd       #TableV
+                    tst       <hface
+                    beq       gth3x
+                    lbsr      NegD
+gth3x                std       gtvx,u
+                    ldd       gtx,u
+                    std       <sx
+                    lda       #40
+                    lbsr      PopSxz
+                    ldd       #TX.anteup
+                    lbsr      PopWord
+gth8x                puls      x
+gth9x                rts
+
+* DrawTable - the table, if it's up
+DrawTable           tst       gtab,u
+                    beq       gdt9x
+                    ldd       #GP.flipped
+                    std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    lda       #1
+                    sta       <eshk
+                    sta       <ekey
+                    ldd       gtx,u
+                    std       <ex
+                    ldd       gtz,u
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbra      Ent
+gdt9x                rts
+
+* GilaFrame - X = him -> D = his frame
+GilaFrame           lda       <bst
+                    leay      GfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+GfTab               fdb       GfTalk-GfTab
+                    fdb       GfAppr-GfTab
+                    fdb       GfDeal-GfTab
+                    fdb       GfFlick-GfTab
+                    fdb       GfIdle-GfTab
+                    fdb       GfHurt-GfTab
+                    fdb       GfDuck-GfTab
+                    fdb       GfDuck-GfTab        (dealing from cover: ducked)
+                    fdb       GfDaze-GfTab
+                    fdb       GfKo-GfTab
+                    fdb       GfJaws-GfTab
+                    fdb       GfBite-GfTab
+                    fdb       GfDuck-GfTab
+GfTalk              lda       EN.T,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #GL.talk-GL.First
+                    bra       ggfx
+GfAppr              ldd       EN.VX,x
+                    bne       ggfa1
+                    ldd       EN.VZ,x
+                    bne       ggfa1
+GfIdle              lda       EN.An,x
+                    ldb       #20
+                    lbsr      Div
+                    anda      #1
+                    adda      #GL.idle-GL.First
+                    bra       ggfx
+ggfa1                lda       EN.An,x
+                    ldb       #9
+                    lbsr      Div
+                    anda      #3
+                    adda      #GL.walk-GL.First
+                    bra       ggfx
+GfDeal              lda       #GL.deal-GL.First
+                    bra       ggfx
+GfFlick             lda       #GL.flick-GL.First
+                    bra       ggfx
+GfHurt              lda       #GL.hurt-GL.First
+                    bra       ggfx
+GfDuck              lda       #GL.duck-GL.First
+                    bra       ggfx
+GfJaws              lda       #GL.jaws-GL.First
+                    bra       ggfx
+GfBite              lda       #GL.bite-GL.First
+                    bra       ggfx
+GfDaze              lda       EN.T,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #GL.daze-GL.First
+                    bra       ggfx
+GfKo                lda       #GL.ko-GL.First
+ggfx                 tst       EN.Fc,x
+                    beq       ggfx1
+                    adda      #GL.Mir
+ggfx1                tfr       a,b
+                    clra
+                    addd      #GL.First
+                    rts
+
+* BotGila - the autopilot at his table: round to its far side, side kick
+*   it into him.  Exit: carry clear and B = the input if it's dealing with
+*   it
+BotGila             lda       bkind,u
+                    cmpa      #2
+                    lbne      gbg9x
+                    tst       gtab,u
+                    lbeq      gbg9x
+                    ldd       gtvx,u
+                    bne       gbg9x
+                    ldx       <bslot
+                    beq       gbg9x
+                    clr       <tmpf               its far side: away from him
+                    ldd       #24*16
+                    std       <tdx
+                    ldd       gtx,u
+                    cmpd      EN.X,x
+                    bge       gbg1x
+                    ldd       #-24*16
+                    std       <tdx
+                    inc       <tmpf               (he's to the right: kick right, facing 0)
+gbg1x                ldd       gtx,u
+                    addd      <tdx
+                    subd      <hx
+                    std       <tdx                how far to go
+                    clrb
+                    ldx       gtz,u
+                    cmpx      <hz                 (lane: up or down)
+                    beq       gbg2x
+                    pshs      b
+                    ldd       gtz,u
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    puls      b
+                    bls       gbg2x
+                    ldb       #IN.Down
+                    ldx       gtz,u
+                    cmpx      <hz
+                    bgt       gbg2x
+                    ldb       #IN.Up
+gbg2x                stb       <binp
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #5*16
+                    bls       gbg3x
+                    ldb       #IN.Right
+                    tst       <tdx
+                    bpl       gbg2y
+                    ldb       #IN.Left
+gbg2y                orb       <binp
+                    andcc     #$FE
+                    rts
+gbg3x                ldb       <binp               there: face him and side kick
+                    tst       <bott
+                    bne       gbg4x
+                    lda       <tmpf
+                    eora      #1
+                    sta       <hface
+                    orb       #IN.Side
+                    lda       #30
+                    sta       <bott
+gbg4x                andcc     #$FE
+                    rts
+gbg9x                comb
+                    rts

@@ -748,12 +748,15 @@ ee1                 std       EN.VX,x
                     lbsr      SetE
                     lbra      EnMove
 
-DAppr               ldy       #28*16              its spot: 28 px beside him (a coyote 36; 80 while two
+DAppr               ldy       #28*16              its spot: 28 px beside him (a coyote 36, a rattler 70; 80 while two
                     lda       EN.Ty,x
                     cmpa      #TY.Coy
                     bne       da00
                     ldy       #36*16
-da00                tfr       y,d
+da00                cmpa      #TY.Rat
+                    bne       da00a
+                    ldy       #70*16
+da00a               tfr       y,d
                     pshs      d                   others are at him), on its side of him
                     lda       <attackers
                     cmpa      #2
@@ -778,7 +781,10 @@ da3                 addd      <hx
                     cmpa      #TY.Coy
                     bne       da01
                     ldy       #CySpd
-da01                sty       <tcap
+da01                cmpa      #TY.Rat
+                    bne       da01a
+                    ldy       #RtSpd
+da01a               sty       <tcap
                     ldd       <tdx
                     lbsr      Toward
                     std       EN.VX,x
@@ -809,6 +815,11 @@ da01                sty       <tcap
                     lda       #ES.Wind
                     lbsr      SetE
                     lbsr      EStop
+                    lda       EN.Ty,x             a rattler rattles
+                    cmpa      #TY.Rat
+                    lbne      EnMove
+                    lda       #SF.Rattle
+                    lbsr      Sfx
                     lbra      EnMove
 
 EWind               lbsr      EStop
@@ -819,7 +830,12 @@ EWind               lbsr      EStop
                     cmpa      #CyWindT
                     lbls      EnMove
                     bra       ew1
-ew0                 cmpa      #WindT
+ew0                 cmpb      #TY.Rat
+                    bne       ew0a
+                    cmpa      #RtWindT
+                    lbls      EnMove
+                    bra       ew1
+ew0a                cmpa      #WindT
                     lbls      EnMove
 ew1
                     lda       #ES.Strike
@@ -830,6 +846,8 @@ ew1
 EStrike             lda       EN.Ty,x
                     cmpa      #TY.Coy
                     lbeq      CStrike
+                    cmpa      #TY.Rat
+                    lbeq      RStrike
                     ldd       #DlRoll             rolling at him
                     lbsr      ByFace
                     std       EN.VX,x
@@ -874,7 +892,14 @@ ERecov              ldd       EN.VX,x             it skids to a stop
                     ldd       #0
                     std       EN.VZ,x
                     lda       EN.T,x
-                    cmpa      #RecovT
+                    ldb       #RecovT             (a rattler lies stretched out longer)
+                    pshs      b
+                    ldb       EN.Ty,x
+                    cmpb      #TY.Rat
+                    bne       er0
+                    ldb       #RtRecT
+                    stb       ,s
+er0                 cmpa      ,s+
                     lbls      EnMove
                     lda       #ES.Appr
                     lbsr      SetE
@@ -951,6 +976,9 @@ ETall               ldb       #SkTall
                     beq       et1
                     ldb       #DlTall
                     cmpa      #TY.Dillo
+                    beq       et1
+                    ldb       #22                 a rattler
+                    cmpa      #TY.Rat
                     beq       et1
                     ldb       #BossTall           (a coyote's the same: 44)
 et1                 clra
@@ -1162,12 +1190,15 @@ KO                  lda       #SF.Ko
                     std       EN.VH,x
                     ldd       #0
                     std       EN.VZ,x
-                    ldy       #150                (a dillo 150, a coyote 300)
+                    ldy       #150                (a dillo 150, a coyote 300, a rattler 250)
                     lda       EN.Ty,x
                     cmpa      #TY.Coy
                     bne       ko00
                     ldy       #300
-ko00                tfr       y,d
+ko00                cmpa      #TY.Rat
+                    bne       ko00a
+                    ldy       #250
+ko00a               tfr       y,d
                     lbsr      ScoreAt
                     lbra      KoWord
 ko0                 lda       #SF.Bones
@@ -1458,6 +1489,7 @@ ha2                 addd      <hxp
                     lbsr      BarHit              a barrel in the way breaks
                     lbsr      ClodHit             a clod in the way is knocked down
                     lbsr      ShellHit            Dillon's rolling shell kicked back
+                    lbsr      TableHit            Doc Gila's card table (ghost.a)
 * the posse
                     leax      en,u
                     lda       #NEn
@@ -2022,6 +2054,8 @@ EnFrame             lda       EN.Ty,x
                     lbeq      BossFrame
                     cmpa      #TY.Coy
                     lbeq      CyFrame
+                    cmpa      #TY.Rat
+                    lbeq      RtFrame
                     tsta
                     lbne      DlFrame
                     lda       EN.St,x
@@ -2266,7 +2300,16 @@ db1                 tst       EB.St,x
                     tst       EB.VX,x
                     bpl       db2
                     addd      #FX.Mir
-db2                 std       <efrm
+db2                 ldb       EB.St,x             (2: Doc Gila's card, spinning)
+                    cmpb      #2
+                    bne       db2a
+                    ldb       <phaset+1
+                    lsrb
+                    lsrb
+                    andb      #3
+                    clra
+                    addd      #GL.card
+db2a                std       <efrm
                     lda       #CTL.Spr
                     sta       <ectl
                     lda       #2
@@ -2610,6 +2653,9 @@ bt9                 rts
 * BotMound - the autopilot keeps off Two-Bit's mound.  Exit: carry clear
 *   and B = the input if it's running from it
 BotMound            lbsr      BotShell            Dillon's shell first
+                    bcs       bm0a
+                    rts
+bm0a                lbsr      BotGila             Doc Gila's table
                     bcs       bm00
                     rts
 bm00                tst       bkind,u             (the mound is Two-Bit's)

@@ -439,8 +439,9 @@ ShellHit            ldy       <bslot
                     lda       EN.Ty,y
                     cmpa      #TY.Boss
                     lbne      sh9x
-                    tst       bkind,u
-                    lbeq      sh9x
+                    lda       bkind,u             (Dillon's)
+                    cmpa      #1
+                    lbne      sh9x
                     lda       <bst
                     cmpa      #DS.Roll
                     bne       sh9x
@@ -570,8 +571,9 @@ BotShell            ldx       <bslot
                     lda       EN.Ty,x
                     cmpa      #TY.Boss
                     bne       bh9x
-                    tst       bkind,u
-                    beq       bh9x
+                    lda       bkind,u             (Dillon's)
+                    cmpa      #1
+                    bne       bh9x
                     lda       <bst
                     cmpa      #DS.Roll
                     bne       bh9x

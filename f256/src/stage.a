@@ -92,6 +92,7 @@ gi1a                sta       EN.Id,x
                     lbsr      HeroInit
                     lbsr      CamInit
                     lbsr      PickInit
+                    lbsr      SignInit            (Ghost Town's signs, ghost.a)
                     ldd       #0
                     std       <phaset
                     std       <titlet
@@ -221,12 +222,26 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BarMS-StgTab
                     fdb       TX.mainst,TX.dusk,TX.msclear
                     fdb       FileMS-StgTab
+                    fdb       GT.W                Ghost Town at moonrise: Doc Gila's
+                    fdb       GT.MAP0.W,GT.MAP0.Of,GT.MAP1.W,GT.MAP1.Of,GT.MAP2.W,GT.MAP2.Of
+                    fcb       GT.TIL.Sets,0,MU.deadman,6
+                    fdb       WaveGT-StgTab
+                    fcb       10
+                    fdb       BarGT-StgTab
+                    fdb       TX.ghostt,TX.moonrise,TX.gtclear
+                    fdb       FileGT-StgTab
 
 FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
                     fcc       /maps_bh.bin/
                     fcb       $0D
                     fcc       /spr_bh.bin/
+                    fcb       $0D
+FileGT              fcc       /tiles_gt.bin/
+                    fcb       $0D
+                    fcc       /maps_gt.bin/
+                    fcb       $0D
+                    fcc       /spr_gt.bin/
                     fcb       $0D
 FileMS              fcc       /tiles_ms.bin/
                     fcb       $0D
@@ -258,6 +273,7 @@ sg1                 lda       <phase
                     cmpa      #PH.Play
                     bne       sg2
                     lbsr      Hero
+                    lbsr      Signs               Ghost Town's hanging signs (ghost.a)
                     tst       dying,u             (no wave while he's down)
                     bne       sgx
                     lbra      Waves
@@ -267,8 +283,9 @@ sg2                 cmpa      #PH.Clear
                     ldd       <phaset
                     cmpd      #ClearT
                     blo       sgx
-                    lda       stgn,u             Boot Hill won: on to Main Street (health back up 6,
-                    bne       sg3                 lives and score kept, the weapon left behind)
+                    lda       stgn,u             a stage won: on to the next (health back up 6,
+                    cmpa      #2                  lives and score kept, the weapon left behind);
+                    bhs       sg3                 Ghost Town's the last for now
                     lda       <hhp
                     adda      #6
                     cmpa      #MaxHp
@@ -277,7 +294,8 @@ sg2                 cmpa      #PH.Clear
 sg2a                sta       <hhp
                     clr       <hwep
                     clr       <hammo
-                    lda       #1
+                    lda       stgn,u
+                    inca
                     lbra      StageInit
 sg3                 lbsr      HiScore             TO BE CONTINUED: the title theme again
                     lda       #MU.title
@@ -345,11 +363,13 @@ StartWave           ldd       ,x++
                     lda       #1
                     sta       <lock
                     lda       ,x+                 how many ($FF = the boss)
-                    cmpa      #$FF                (then which: 0 Two-Bit, 1 Big Shell Dillon)
+                    cmpa      #$FF                (then which: 0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila)
                     bne       swb9
-                    tst       ,x
+                    ldb       ,x
                     lbeq      StartBoss
-                    lbra      StartDillon
+                    decb
+                    lbeq      StartDillon
+                    lbra      StartGila
 swb9                equ       *
                     sta       <tmpn
                     clr       <tmpi               i
@@ -390,6 +410,8 @@ Spawn               cmpa      #TY.Skel
                     lbeq      NewSkelW
                     cmpa      #TY.Coy
                     lbeq      NewCoy
+                    cmpa      #TY.Rat
+                    lbeq      NewRat
                     lbra      NewDillo
 
 * the waves: the camera's spot, how many, what (brawler.js STAGES.*.waves;
@@ -417,6 +439,18 @@ WaveMS              fdb       0
                     fcb       6,TY.SkelW,TY.Coy,TY.SkelW,TY.Coy,TY.Coy,TY.SkelW
                     fdb       1700
                     fcb       $FF,1               Big Shell Dillon
+WaveGT              fdb       0                   Ghost Town: the street, then the saloon
+                    fcb       3,TY.Rat,TY.Coy,TY.SkelW
+                    fdb       360
+                    fcb       4,TY.Rat,TY.Coy,TY.Rat,TY.SkelW
+                    fdb       720
+                    fcb       4,TY.SkelW,TY.Rat,TY.Coy,TY.SkelW
+                    fdb       1060
+                    fcb       4,TY.Coy,TY.Rat,TY.Coy,TY.Rat
+                    fdb       1360
+                    fcb       6,TY.Rat,TY.SkelW,TY.Coy,TY.Rat,TY.Coy,TY.SkelW
+                    fdb       1712
+                    fcb       $FF,2               Doc Gila
 
 ********************************************************************
 * StageClear - the stage is won: he taunts
