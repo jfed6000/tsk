@@ -49,6 +49,7 @@ right side kicks, top tips the hat.
 
 - `?stage=mainstreet`, `?stage=ghosttown`, `?stage=cattledrive`, `?stage=train` or `?stage=desert`: start on another stage (the desert is the original test floor)
 - `?noduck` (with `?bot`): the autopilot doesn't duck the train's tunnels (to see the knock)
+- `?hug` (with `?bot`): at Sting, the autopilot walks into his middle and kicks (to see the guard and the shove)
 - `?nointro`: skip the title screen and the Boot Hill opening (`?stage`, `?bot` and `?god` skip the title too)
 - Music: `music/*.mp3`, rendered from `music/*.mid` (`f256/tools/compose.py`, `render.py`); M mutes it. The title screen
   keeps a high score in localStorage.
