@@ -50,15 +50,15 @@ MAP2.W  equ 121
 MAP2.Of equ $0DB6
 
 * sprites.bin: the shared 1K cells, padded to SPR.Base; spr_<s>.bin: a stage's own, loaded at cell SPR.Base
-SPR.N    equ 732         shared cells
-SPR.Base equ 736         the first stage cell (a block boundary)
-SPR.Ovl  equ 113         the most stage cells
-SPR.Size equ $0D4400    bytes of sprite RAM in all
-SPR.ShSize equ $0B8000  sprites.bin
+SPR.N    equ 739         shared cells
+SPR.Base equ 744         the first stage cell (a block boundary)
+SPR.Ovl  equ 238         the most stage cells
+SPR.Size equ $0F5800    bytes of sprite RAM in all
+SPR.ShSize equ $0BA000  sprites.bin
 
 * frames.bin
-FRM.N    equ 444         frames
-FRM.Size equ $16C6
+FRM.N    equ 497         frames
+FRM.Size equ $1A5D
 
 * animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)
 * the mirrored (facing left) copy of frame f is f + <group>.Mir
@@ -358,76 +358,118 @@ TX.dusk.T      equ 60
 TX.msclear     equ 365
 TX.msclear.N   equ 1
 TX.msclear.T   equ 60
+TX.mytown      equ 366
+TX.mytown.N    equ 1
+TX.mytown.T    equ 60
+TX.rollout     equ 367
+TX.rollout.N   equ 1
+TX.rollout.T   equ 60
+TX.backatya    equ 368
+TX.backatya.N  equ 1
+TX.backatya.T  equ 60
 
-TB.First equ 366
+TB.First equ 369
 TB.Mir equ 20
-TB.idle        equ 366
+TB.idle        equ 369
 TB.idle.N      equ 2
 TB.idle.T      equ 20
-TB.walk        equ 368
+TB.walk        equ 371
 TB.walk.N      equ 4
 TB.walk.T      equ 8
-TB.talk        equ 372
+TB.talk        equ 375
 TB.talk.N      equ 2
 TB.talk.T      equ 10
-TB.windup      equ 374
+TB.windup      equ 377
 TB.windup.N    equ 1
 TB.windup.T    equ 60
-TB.swing       equ 375
+TB.swing       equ 378
 TB.swing.N     equ 1
 TB.swing.T     equ 60
-TB.throw       equ 376
+TB.throw       equ 379
 TB.throw.N     equ 1
 TB.throw.T     equ 60
-TB.dig         equ 377
+TB.dig         equ 380
 TB.dig.N       equ 1
 TB.dig.T       equ 60
-TB.pop         equ 378
+TB.pop         equ 381
 TB.pop.N       equ 1
 TB.pop.T       equ 60
-TB.daze        equ 379
+TB.daze        equ 382
 TB.daze.N      equ 4
 TB.daze.T      equ 8
-TB.hurt        equ 383
+TB.hurt        equ 386
 TB.hurt.N      equ 1
 TB.hurt.T      equ 60
-TB.ko          equ 384
+TB.ko          equ 387
 TB.ko.N        equ 1
 TB.ko.T        equ 60
-TB.down        equ 385
+TB.down        equ 388
 TB.down.N      equ 1
 TB.down.T      equ 60
 
-CY.First equ 406
+CY.First equ 409
 CY.Mir equ 15
-CY.idle        equ 406
+CY.idle        equ 409
 CY.idle.N      equ 2
 CY.idle.T      equ 20
-CY.walk        equ 408
+CY.walk        equ 411
 CY.walk.N      equ 4
 CY.walk.T      equ 8
-CY.windup      equ 412
+CY.windup      equ 415
 CY.windup.N    equ 1
 CY.windup.T    equ 60
-CY.swing       equ 413
+CY.swing       equ 416
 CY.swing.N     equ 1
 CY.swing.T     equ 60
-CY.hurt        equ 414
+CY.hurt        equ 417
 CY.hurt.N      equ 1
 CY.hurt.T      equ 60
-CY.down        equ 415
+CY.down        equ 418
 CY.down.N      equ 1
 CY.down.T      equ 60
-CY.daze        equ 416
+CY.daze        equ 419
 CY.daze.N      equ 4
 CY.daze.T      equ 8
-CY.ko          equ 420
+CY.ko          equ 423
 CY.ko.N        equ 1
 CY.ko.T        equ 60
 
-TW.First equ 436
+TW.First equ 439
 TW.Mir equ 4
-TW.roll        equ 436
+TW.roll        equ 439
 TW.roll.N      equ 4
 TW.roll.T      equ 6
+
+BD.First equ 447
+BD.Mir equ 25
+BD.idle        equ 447
+BD.idle.N      equ 2
+BD.idle.T      equ 20
+BD.walk        equ 449
+BD.walk.N      equ 4
+BD.walk.T      equ 9
+BD.talk        equ 453
+BD.talk.N      equ 2
+BD.talk.T      equ 10
+BD.windup      equ 455
+BD.windup.N    equ 1
+BD.windup.T    equ 60
+BD.swipe       equ 456
+BD.swipe.N     equ 1
+BD.swipe.T     equ 60
+BD.curl        equ 457
+BD.curl.N      equ 1
+BD.curl.T      equ 60
+BD.ball        equ 458
+BD.ball.N      equ 8
+BD.ball.T      equ 3
+BD.hurt        equ 466
+BD.hurt.N      equ 1
+BD.hurt.T      equ 60
+BD.daze        equ 467
+BD.daze.N      equ 4
+BD.daze.T      equ 8
+BD.ko          equ 471
+BD.ko.N        equ 1
+BD.ko.T        equ 60
 

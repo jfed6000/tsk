@@ -45,7 +45,8 @@ CL.VH               equ       11
 CL.Size             equ       13
 
 * StartBoss - the last wave: Two-Bit digs up out of the street
-StartBoss           lda       #SF.Dig
+StartBoss           clr       bkind,u             Two-Bit
+                    lda       #SF.Dig
                     lbsr      Sfx
                     lbsr      NewSlot
                     bcs       wsb9
@@ -113,7 +114,12 @@ wbs2x                stb       EN.St,x
 HitBoss             lda       #SF.HitBig
                     lbsr      Sfx
                     lda       <bst
-                    cmpa      #BS.Daze
+                    ldb       bkind,u             (dizzy: Two-Bit's BS.Daze, Dillon's DS.Daze)
+                    beq       whb0
+                    cmpa      #DS.Daze
+                    bra       whb00
+whb0                cmpa      #BS.Daze
+whb00               equ       *
                     bne       whb1
                     lda       <dmg                x 1.5, rounded up
                     inca
@@ -123,6 +129,20 @@ HitBoss             lda       #SF.HitBig
 whb1                 ldb       EN.Hp,x
                     subb      <dmg
                     stb       EN.Hp,x
+                    ble       whb1x               (the KO's below)
+                    tst       bkind,u             Dillon dizzy: 14 damage and he shakes it off
+                    beq       whb1x
+                    lda       <bst
+                    cmpa      #DS.Daze
+                    bne       whb1x
+                    lda       ddmg,u
+                    adda      <dmg
+                    sta       ddmg,u
+                    cmpa      #14
+                    blo       whb1x
+                    lda       #DS.Appr
+                    lbsr      DSet
+whb1x               equ       *
                     lda       #7
                     sta       EN.Fl,x
                     ldd       #-6*16              the spark
@@ -152,8 +172,14 @@ whb1                 ldb       EN.Hp,x
                     bgt       whb3
 * KO'd
                     clr       EN.Hp,x
-                    lda       #BS.Ko
+                    tst       bkind,u
+                    beq       whk0
+                    lda       #DS.Ko
+                    lbsr      DSet
+                    bra       whk1
+whk0                lda       #BS.Ko
                     lbsr      BSet
+whk1                equ       *
                     ldd       #48
                     lbsr      ByDir
                     std       EN.VX,x
@@ -189,7 +215,18 @@ whb2b                clr       EB.St,y
                     lda       #1                  and every one of them goes down with him, one a
                     sta       gdown,u             pass (BKo: all at once is too much for one tick)
                     rts
-whb3                 lda       <bst                staggered
+whb3                 tst       bkind,u             Dillon: his shell shrugs off hits while he walks;
+                    beq       whb3a               only a whiff (recovering) leaves him open
+                    lda       <bst
+                    cmpa      #DS.Recov
+                    bne       whb5
+                    lda       #DS.Stag
+                    lbsr      DSet
+                    ldd       #19
+                    lbsr      ByDir
+                    std       EN.VX,x
+                    bra       whb5
+whb3a               lda       <bst                staggered
                     cmpa      #BS.Appr
                     beq       whb4
                     cmpa      #BS.Recov
@@ -204,10 +241,24 @@ whb4                 lda       #BS.Stag
 whb5                 tst       <bsum               half his health: he raises the dead
                     bne       whb9
                     lda       EN.Hp,x
-                    cmpa      #BossHp/2
+                    lbsr      EMax                (B = his full health; A kept)
+                    lsrb
+                    pshs      b
+                    cmpa      ,s+
                     bhs       whb9
                     inc       <bsum
-                    lda       #66
+                    tst       bkind,u
+                    beq       whs0
+                    lda       #70                 Dillon: his Outlaw Dillos roll in, one each side
+                    ldy       #TX.rollout
+                    lbsr      WordE
+                    clrb
+                    lbsr      NewDillo
+                    ldb       #1
+                    lbsr      NewDillo
+                    ldx       <bslot
+                    bra       whb9
+whs0                lda       #66
                     ldy       #TX.rise
                     lbsr      WordE
                     lbsr      NewSkel
@@ -248,6 +299,8 @@ gd2                 leax      EN.Size,x
 * BossStep - X = him: one pass (brawler.js updateBoss)
 ********************************************************************
 BossStep            stx       <bslot
+                    tst       bkind,u
+                    lbne      DillonStep
                     lda       <bst
                     leay      BsTab,pcr
                     lsla
@@ -912,7 +965,9 @@ wch2                 leax      CL.Size,x
 * Drawing
 ********************************************************************
 * BossFrame - X = him -> D = his frame (brawler.js bossImg)
-BossFrame           lda       <bst
+BossFrame           tst       bkind,u
+                    lbne      DlnFrame
+                    lda       <bst
                     leay      BfTab,pcr
                     lsla
                     ldd       a,y
@@ -982,7 +1037,11 @@ bfx1                tfr       a,b
 
 * DrawBoss - X = him: the mound while he's under the street, else
 *   himself.  Exit: carry set if DrawEn should draw him itself
-DrawBoss            lda       <bst
+DrawBoss            tst       bkind,u             (Dillon has no mound)
+                    beq       wdb0
+                    comb
+                    rts
+wdb0                lda       <bst
                     cmpa      #BS.Under
                     beq       wdb1x
                     cmpa      #BS.Rumble

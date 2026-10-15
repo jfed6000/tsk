@@ -50,6 +50,7 @@ name                fcs       /tsk/
                     use       pickup.a
                     use       intro.a
                     use       boss.a
+                    use       dillon.a
                     use       snd.a
                     use       title.a
                     use       amb.a

@@ -169,7 +169,18 @@ One program module, **`tsk`**, assembled from:
      particle allocation is round robin and gives up at once when the table's full.
    - **Fixed along the way:** the stage titles fetched the stage record through Y, which is the sprite-record
      pointer while drawing, so at Main Street's clear the record clearing wrote zeros over the program.
-6. The grab and throw, the pad harness, co-op, a Main Street boss.
+6. ✓ **Big Shell Dillon** *(2026-10-15: `tsk` 22.0K, data 13.1K)*: Main Street's boss (`dillon.a`), the last wave
+   (`$FF,1`; Two-Bit's is `$FF,0`). He shares Two-Bit's slot and machinery; `bkind` says which. Claw swipe up close
+   (3); every third move, and his first, he curls and rolls down your lane (3 on contact), bouncing off the screen's
+   edges twice. Kick the rolling shell (`ShellHit`, from the hero's attack check) and it goes back 1.3x as fast;
+   into the edge he crashes, dizzy for 2.2 s (half again damage) until he's taken 14. His shell shrugs off hits
+   while he walks; only a whiff staggers him. At half health two Outlaw Dillos roll in. 40 health.
+   - `tsk k` now jumps to the boss of whichever stage: `tsk mk` is Dillon. `make mamedillon` runs `tsk mkbg`.
+   - **Memory:** his 125 cells go in Main Street's bank, so the overlay is now 238 cells and the peak about
+     1.27 MB (was 1.14).
+   - **Fixed along the way:** the stage start cleared every table, the enemies' slot ids with it, so no enemy's
+     name or bar had shown in the HUD since sprint 5. The ids are set again after the clear.
+7. The grab and throw, the pad harness, co-op.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

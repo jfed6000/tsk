@@ -314,7 +314,11 @@ stgarg              rmb       1                   tsk m: start at Main Street
 ldstg               rmb       1                   the stage whose art is loaded ($FF = none)
 ptnx                rmb       2                   NewPt: where the next search starts (0 = the first)
 ptend               rmb       2                   the end of the particle table (set at start-up)
-gdown               rmb       1                   1 = Two-Bit's down: his gang follows, one a pass
+gdown               rmb       1                   1 = the boss is down: his gang follows, one a pass
+bkind               rmb       1                   the boss: 0 Two-Bit, 1 Big Shell Dillon
+dbnc                rmb       1                   Dillon's roll: bounces off the edges
+ddefl               rmb       1                   1 = his shell's been kicked back
+ddmg                rmb       1                   the damage he's taken dizzy (14: he shakes it off)
 ptfull              rmb       1                   1 = NewPt found the particles full this pass
 recs                rmb       NRecs*8             our sprite table, registered with the driver
 dl                  rmb       NDL*DL.Size         the display list

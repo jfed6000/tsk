@@ -1449,6 +1449,7 @@ ha2                 addd      <hxp
                     sta       <hdir
                     lbsr      BarHit              a barrel in the way breaks
                     lbsr      ClodHit             a clod in the way is knocked down
+                    lbsr      ShellHit            Dillon's rolling shell kicked back
 * the posse
                     leax      en,u
                     lda       #NEn
@@ -2562,7 +2563,12 @@ bt9                 rts
 
 * BotMound - the autopilot keeps off Two-Bit's mound.  Exit: carry clear
 *   and B = the input if it's running from it
-BotMound            ldx       <bslot
+BotMound            lbsr      BotShell            Dillon's shell first
+                    bcs       bm00
+                    rts
+bm00                tst       bkind,u             (the mound is Two-Bit's)
+                    bne       bm9x
+                    ldx       <bslot
                     beq       bm9x
                     tst       EN.St,x
                     beq       bm9x

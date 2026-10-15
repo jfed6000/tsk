@@ -154,6 +154,7 @@ T.runExport = function (A) {
     ['press', 'PRESS JUMP', '#ffd34a', 2], ['tagline', 'HE DIED WITH HIS BOOTS ON', '#e8a070', 1],
     ['tagline2', 'NOW THE BOOTS WANT REVENGE', '#e8a070', 1],
     ['mainst', 'MAIN STREET', '#ffd34a', 3], ['dusk', 'DUSK', '#e8a070', 1], ['msclear', 'MAIN STREET CLEAR!', '#ffd34a', 3],
+    ['mytown', "THIS HERE'S MY TOWN!", '#fff3c4', 1], ['rollout', 'ROLL OUT, BOYS!', '#ff9d3c', 1], ['backatya', 'BACK AT YA!', '#ffd34a', 1],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
 
@@ -170,6 +171,10 @@ T.runExport = function (A) {
     ['swing', [MANGY.swing], 1, false], ['hurt', [MANGY.hurt], 1, false], ['down', [MANGY.down], 1, false],
     ['daze', MANGY.daze, 8, true], ['ko', [MANGY.ko], 1, false]], B.OX, B.OY);
   addGroup('TW', [['roll', TUMBLE, 10, true]], 12, 22);
+  const DLN = T.buildDillon();                     // Big Shell Dillon, Main Street's boss
+  addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
+    ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
+    ['ball', DLN.ball, 20, true], ['hurt', [DLN.hurt], 1, false], ['daze', DLN.daze, 8, true], ['ko', [DLN.ko], 1, false]], B.OX, B.OY);
   bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 

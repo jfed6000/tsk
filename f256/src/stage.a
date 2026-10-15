@@ -82,6 +82,13 @@ si00                leax      en,u                every table: enemies, skulls, 
 gi1                 clr       ,x+
                     leay      -1,y
                     bne       gi1
+                    leax      en,u                each slot's id again (the clear took them: no HUD bars)
+                    lda       #1
+gi1a                sta       EN.Id,x
+                    leax      EN.Size,x
+                    inca
+                    cmpa      #NEn
+                    bls       gi1a
                     lbsr      HeroInit
                     lbsr      CamInit
                     lbsr      PickInit
@@ -106,20 +113,26 @@ gi1                 clr       ,x+
                     ldx       stgp,u              its music (after the clear above: the MIDI buffer's in it)
                     lda       SR.Mus,x
                     lbsr      Music
+                    tst       <skipb              (tsk k: straight to the stage's boss)
+                    bne       gi4
                     lda       sflags,u
                     bita      #SG.Intro
                     beq       gi3
-                    tst       <skipb              (tsk k: straight to Two-Bit)
-                    lbeq      IntroInit           Boot Hill begins in the grave
-                    lda       #4
+                    lbra      IntroInit           Boot Hill begins in the grave
+gi4                 lda       nwaves,u            the last wave: the boss's
+                    deca
                     sta       <wavei
                     lda       #1
                     sta       <hatop
-                    ldd       #1600
+                    lbsr      WaveRec
+                    ldd       ,x                  its spot
                     std       <cam
+                    pshs      d
                     lbsr      To124
                     std       <camf
-                    ldd       #1680*16
+                    puls      d
+                    addd      #80
+                    lbsr      To124
                     std       <hx
                     ldd       #40*16
                     std       <hz
@@ -202,7 +215,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       FileBH-StgTab
                     fdb       MS.W                Main Street at dusk
                     fdb       MS.MAP0.W,MS.MAP0.Of,MS.MAP1.W,MS.MAP1.Of,MS.MAP2.W,MS.MAP2.Of
-                    fcb       MS.TIL.Sets,SG.Dusk,MU.boogie,5
+                    fcb       MS.TIL.Sets,SG.Dusk,MU.boogie,6
                     fdb       WaveMS-StgTab
                     fcb       7
                     fdb       BarMS-StgTab
@@ -327,8 +340,12 @@ StartWave           ldd       ,x++
                     lda       #1
                     sta       <lock
                     lda       ,x+                 how many ($FF = the boss)
-                    cmpa      #$FF
-                    lbeq      StartBoss           Two-Bit
+                    cmpa      #$FF                (then which: 0 Two-Bit, 1 Big Shell Dillon)
+                    bne       swb9
+                    tst       ,x
+                    lbeq      StartBoss
+                    lbra      StartDillon
+swb9                equ       *
                     sta       <tmpn
                     clr       <tmpi               i
 sw1                 pshs      x
@@ -382,7 +399,7 @@ WaveBH              fdb       0
                     fdb       1160
                     fcb       4,TY.Skel,TY.Skel,TY.Skel,TY.Skel
                     fdb       1600
-                    fcb       $FF                 Two-Bit
+                    fcb       $FF,0               Two-Bit
 WaveMS              fdb       0
                     fcb       3,TY.Coy,TY.Coy,TY.Dillo
                     fdb       380
@@ -393,6 +410,8 @@ WaveMS              fdb       0
                     fcb       4,TY.Coy,TY.SkelW,TY.Coy,TY.SkelW
                     fdb       1660
                     fcb       6,TY.SkelW,TY.Coy,TY.SkelW,TY.Coy,TY.Coy,TY.SkelW
+                    fdb       1700
+                    fcb       $FF,1               Big Shell Dillon
 
 ********************************************************************
 * StageClear - the stage is won: he taunts

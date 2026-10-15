@@ -95,7 +95,7 @@ def previews():
 
     # every animation frame rebuilt from cells + frame table, facing right and mirrored
     shared = (ASSETS / 'sprites.bin').read_bytes()
-    banks = {'TB': 'bh', 'CY': 'ms', 'TW': 'ms'}       # stage groups: their cells come from spr_<stage>.bin
+    banks = {'TB': 'bh', 'CY': 'ms', 'TW': 'ms', 'BD': 'ms'}       # stage groups: their cells come from spr_<stage>.bin
     frm = (ASSETS / 'frames.bin').read_bytes()
     sc = clut('clut_spr.bin')
     nf = struct.unpack('>H', frm[:2])[0]

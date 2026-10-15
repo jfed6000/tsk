@@ -59,6 +59,7 @@ T.runBrawler = function (A) {
   const MANGY = T.buildCoyote('mangy');
   const PROPS = T.buildProps();
   const TUMBLE = T.buildTumbleweed();
+  const DILLON = T.buildDillon();
   const PICK = T.buildPick();
 
   // ---------------------------------------------------------------- the stages
@@ -91,6 +92,7 @@ T.runBrawler = function (A) {
         { cam: 780, gang: ['skel', 'coyote', 'skel', 'dillo'] },
         { cam: 1200, gang: ['coyote', 'skel', 'coyote', 'skel'] },
         { cam: 1660, gang: ['skel', 'coyote', 'skel', 'coyote', 'coyote', 'skel'] },
+        { cam: 1700, boss: 'dillon' },
       ],
       barrels: [[250, 20, 'beans'], [560, 60, 'whip'], [960, 10, 'beans'], [1330, 50, 'gun'], [1520, 15, 'whip'], [1800, 66, 'gun'], [1900, 20, 'beans']],
     },
@@ -193,7 +195,7 @@ T.runBrawler = function (A) {
   function startWave() {
     const w = S.waves[waveI];
     lock = w.cam;
-    if (w.boss) { startBoss(); return; }
+    if (w.boss) { startBoss(w.boss); return; }
     w.gang.forEach((type, i) => spawn(type, i % 2 ? -1 : 1, i >> 1));
   }
 
@@ -222,7 +224,7 @@ T.runBrawler = function (A) {
   function bolt() { flashT = 0.16; sfx('thunder'); }
 
   // ---------------------------------------------------------------- hit boxes in (x, height) space, plus a lane check
-  const eHeight = e => ({ coyote: 44, dillo: 16, skel: 46, twobit: 44 }[e.type]);
+  const eHeight = e => ({ coyote: 44, dillo: 16, skel: 46, twobit: 44, dillon: 48 }[e.type]);
   const inLane = (a, b, tol = LANE) => Math.abs(a.z - b.z) < tol;
   function heroHitBox() {
     const p = player, a = HERO[p.anim], hb = a.hits && a.hits[p.frame];
@@ -232,12 +234,12 @@ T.runBrawler = function (A) {
     return { x0, x1: x0 + hw, h0: p.h - hy - hh, h1: p.h - hy };
   }
   const hits = (b, e) => b.x0 < e.x + 11 && b.x1 > e.x - 11 && b.h0 < e.h + eHeight(e) && b.h1 > e.h;
-  const hittable = e => !['down', 'getup', 'ko', 'held', 'enter', 'rise', 'under', 'rumble', 'dig', 'intro'].includes(e.state) && !(e.state === 'air' && e.thrown);
+  const hittable = e => !['down', 'getup', 'ko', 'held', 'enter', 'rise', 'under', 'rumble', 'dig', 'intro', 'curl', 'roll'].includes(e.state) && !(e.state === 'air' && e.thrown);
   const allFoes = () => (boss ? enemies.concat([boss]) : enemies);
 
   // light hits stagger; knockdowns launch; out of health = kicked into the next county (or back to the grave)
   function hitE(e, dmg, knock, dir = player.face) {
-    if (e.type === 'twobit') return hitBoss(dmg, dir);
+    if (e.type === 'twobit' || e.type === 'dillon') return hitBoss(dmg, dir);
     e.hp -= dmg; e.flash = 0.1; lastHit = e; lastHitT = 2.2;
     spark(e.x - dir * 6, e.z, e.h + eHeight(e) * 0.6, dmg >= 2);
     if (e.hp <= 0) return koE(e, dir);
@@ -442,6 +444,7 @@ T.runBrawler = function (A) {
       else if (kind === 'jumpkick') hitE(e, 3, true);
     }
     for (const br of barrels) if (br.alive && !p.hitSet.has(br) && inLane(br, p) && b.x0 < br.x + 9 && b.x1 > br.x - 9) { p.hitSet.add(br); breakBarrel(br); }
+    kickShell(b);
     for (const s of skulls) if (s.state === 'ground' && !p.hitSet.has(s) && inLane(s, p) && b.x0 < s.x + 6 && b.x1 > s.x - 6 && b.h0 < 14) {
       p.hitSet.add(s); s.state = 'kicked'; s.vx = p.face * 330; s.vh = 70; s.h = 6;      // kick the skull down the lane
       sfx('hit'); spark(s.x, s.z, 6, true); popup(s.x, FLOOR + s.z - 20, 'FORE!', '#ffd34a', 1);
@@ -591,7 +594,13 @@ T.runBrawler = function (A) {
   // ---------------------------------------------------------------- Two-Bit, the gravedigger, as a brawler boss
   // approach -> (close) wind up + shovel swing | (far) fling three clods at you | (every third) dig in, tunnel through
   // the dirt toward you and burst up underneath, which leaves him dizzy. At half health he raises two of the dead.
-  function startBoss() {
+  function startBoss(kind) {
+    if (kind === 'dillon') {                       // Big Shell Dillon rolls in from the right
+      boss = { type: 'dillon', name: 'BIG SHELL DILLON', x: lock + 260, z: 40, h: 0, vx: 0, vz: 0, vh: 0, face: -1, hp: 40, max: 40,
+        state: 'intro', t: 0, n: 2, flash: 0, said: false, summoned: false, anim: 0, bounces: 0, deflected: false };   // n 2: he opens with the roll
+      sfx('land'); puff(boss.x, boss.z, 6);
+      return;
+    }
     boss = { type: 'twobit', name: 'TWO-BIT', x: lock + 250, z: 40, h: 0, vx: 0, vz: 0, vh: 0, face: -1, hp: BOSS_HP, max: BOSS_HP,
       state: 'intro', t: 0, n: 0, flash: 0, mx: 0, mz: 0, said: false, summoned: false, anim: 0 };
     sfx('dig'); dirt(boss.x, boss.z, 10);
@@ -600,6 +609,7 @@ T.runBrawler = function (A) {
   function hitBoss(dmg, dir) {
     const b = boss;
     if (b.state === 'daze') dmg = Math.ceil(dmg * 1.5);
+    if (b.type === 'dillon' && b.state === 'daze' && (b.dazeDmg = (b.dazeDmg || 0) + dmg) >= 14 && b.hp > dmg) bSet('approach');   // he shakes it off
     b.hp -= dmg; b.flash = 0.12; lastHit = b; lastHitT = 99;
     spark(b.x - dir * 6, b.z, 28, true); sfx('hit'); hitstop = 0.06; shake = Math.max(shake, 3); score += dmg * 50;
     if (b.hp <= 0) {
@@ -609,15 +619,18 @@ T.runBrawler = function (A) {
       for (const e of enemies) if (e.state !== 'ko') { e.hp = 0; koE(e, Math.sign(e.x - b.x) || 1); }
       return;
     }
-    if (['approach', 'recover', 'throw'].includes(b.state)) { bSet('stagger'); b.vx = dir * 70; }
-    if (!b.summoned && b.hp < BOSS_HP / 2) {                         // he calls up the dead
-      b.summoned = true; popup(b.x, FLOOR + b.z - 66, 'RISE, BOYS!', '#ff9d3c', 1, 1.6);
-      spawn('skel@', 1, 0); spawn('skel@', -1, 0);
+    // staggered; Big Shell Dillon's armour shrugs off hits while he walks: only a whiff leaves him open
+    if ((b.type === 'dillon' ? ['recover'] : ['approach', 'recover', 'throw']).includes(b.state)) { bSet('stagger'); b.vx = dir * 70; }
+    if (!b.summoned && b.hp < b.max / 2) {                           // half health: he calls in his own
+      b.summoned = true;
+      if (b.type === 'dillon') { popup(b.x, FLOOR + b.z - 70, 'ROLL OUT, BOYS!', '#ff9d3c', 1, 1.6); spawn('dillo', 1, 0); spawn('dillo', -1, 0); }
+      else { popup(b.x, FLOOR + b.z - 66, 'RISE, BOYS!', '#ff9d3c', 1, 1.6); spawn('skel@', 1, 0); spawn('skel@', -1, 0); }
     }
   }
   function updateBoss(dt) {
     const b = boss, p = player;
     if (!b) return;
+    if (b.type === 'dillon') return updateDillon(dt);
     b.t += dt; b.flash -= dt; b.anim += dt;
     const dx = p.x - b.x, dz = p.z - b.z, toward = Math.sign(dx) || b.face;
     switch (b.state) {
@@ -797,7 +810,81 @@ T.runBrawler = function (A) {
     return ['strike', 'air', 'ko', 'down'].includes(e.state) ? DILLO.ball[(e.anim * 24 | 0) % 8] : e.state === 'windup' ? DILLO.ball[0]
       : e.state === 'held' || e.state === 'stagger' ? DILLO.walk[0] : DILLO.walk[(e.anim * 8 | 0) % 4];
   }
+  // Big Shell Dillon: approach -> (close) wind up + claw swipe | (else) curl up and roll down your lane, bouncing
+  // off the screen's edges. Kick the rolling shell and it goes back the way it came; when it hits the edge he
+  // crashes, and he's dizzy (half again damage). At half health his Outlaw Dillos roll in.
+  function updateDillon(dt) {
+    const b = boss, p = player;
+    b.t += dt; b.flash -= dt; b.anim += dt;
+    const dx = p.x - b.x, dz = p.z - b.z, toward = Math.sign(dx) || b.face;
+    const L0 = lock + 24, L1 = lock + VW - 24;
+    switch (b.state) {
+      case 'intro':
+        b.face = toward;
+        if (!b.said && b.t > 0.3) { b.said = true; popup(b.x, FLOOR + b.z - 72, "THIS HERE'S MY TOWN!", '#fff3c4', 1, 2); }
+        if (b.t > 2.2) bSet('approach');
+        break;
+      case 'approach': {
+        b.face = toward;
+        const tx = p.x - toward * 44;
+        b.vx = Math.abs(tx - b.x) > 4 ? Math.sign(tx - b.x) * 40 : 0;
+        b.vz = Math.abs(dz) > 3 ? Math.sign(dz) * 34 : 0;
+        if (b.t > 1.2 || (Math.abs(tx - b.x) < 8 && Math.abs(dz) < 6 && b.t > 0.4)) {
+          b.n++; b.vx = b.vz = 0;
+          if (Math.abs(dx) < 70 && Math.abs(dz) < 10 && b.n % 3 !== 0) bSet('windup');
+          else { bSet('curl'); sfx('whoosh'); }
+        }
+        break;
+      }
+      case 'windup': b.vx = b.vz = 0; b.face = toward; if (b.t > 0.5) { bSet('swipe'); sfx('whoosh'); b.hitDone = false; } break;
+      case 'swipe':
+        b.vx = b.t < 0.15 ? b.face * 80 : 0;
+        if (!b.hitDone && b.t < 0.22 && inLane(b, p, 12) && p.h < 26 && Math.sign(dx) === b.face && Math.abs(dx) < 52) { b.hitDone = true; hurtPlayer(b, 3); }
+        if (b.t > 0.35) bSet('recover');
+        break;
+      case 'recover': b.vx = b.vz = 0; if (b.t > 0.7) bSet('approach'); break;
+      case 'stagger': b.vx *= Math.pow(0.01, dt); b.vz = 0; if (b.t > 0.3) bSet('approach'); break;
+      case 'curl': b.vx = b.vz = 0; b.face = toward; if (b.t > 0.45) { bSet('roll'); b.vx = b.face * 210; b.bounces = 0; b.deflected = false; sfx('land'); } break;
+      case 'roll':                                  // a boulder down the lane
+        b.vz = 0;
+        if (Math.abs(dx) < 20 && inLane(b, p, 12) && p.h < 26) hurtPlayer(b, 3);
+        if (Math.random() < 0.3) puff(b.x, b.z, 1);
+        if ((b.x <= L0 && b.vx < 0) || (b.x >= L1 && b.vx > 0)) {
+          if (b.deflected) {                        // kicked back into the wall: he crashes
+            b.vx = 0; bSet('daze'); b.dazeDmg = 0; shake = Math.max(shake, 6); hitstop = 0.08; sfx('stomp'); dirt(b.x, b.z, 8);
+            popup(b.x, FLOOR + b.z - 62, 'DIZZY!', '#ffd34a', 1);
+          } else if (++b.bounces >= 3) { b.vx = 0; bSet('recover'); }
+          else { b.vx = -b.vx; b.face = Math.sign(b.vx); sfx('land'); shake = Math.max(shake, 2); }
+        }
+        if (b.t > 4) { b.vx = 0; bSet('recover'); }
+        break;
+      case 'daze': b.vx = b.vz = 0; if (b.t > 2.2) bSet('approach'); break;
+      case 'ko':
+        b.vh -= GRAV * 0.6 * dt; b.h += b.vh * dt; b.x += b.vx * dt;
+        if (b.t > 2 && phase === 'play') { boss = null; lock = null; waveI++; stageClear(); }
+        return;
+    }
+    b.x += b.vx * dt; b.z = Math.max(0, Math.min(ZMAX, b.z + b.vz * dt));
+    b.x = Math.max(L0 - 4, Math.min(L1 + 4, b.x));
+  }
+  // a kick that meets the rolling shell sends it back
+  function kickShell(box) {
+    const b = boss;
+    if (!b || b.type !== 'dillon' || b.state !== 'roll' || b.deflected || !inLane(b, player, 14)) return;
+    if (box.x0 < b.x + 18 && box.x1 > b.x - 18 && box.h0 < 34) {
+      b.deflected = true; b.vx = -b.vx * 1.3; b.face = Math.sign(b.vx); b.t = 0;
+      spark(b.x, b.z, 18, true); sfx('hit'); hitstop = 0.06; shake = Math.max(shake, 3);
+      popup(b.x, FLOOR + b.z - 50, 'BACK AT YA!', '#ffd34a', 1);
+    }
+  }
+
   function bossImg(b) {
+    if (b.type === 'dillon') {
+      const D = DILLON;
+      return { intro: D.talk[(b.t * 6 | 0) % 2], approach: (b.vx || b.vz) ? D.walk[(b.anim * 7 | 0) % 4] : D.idle[(b.anim * 3 | 0) % 2],
+        windup: D.windup, swipe: D.swipe, recover: D.idle[0], stagger: D.hurt, curl: D.curl, roll: D.ball[(b.anim * 20 | 0) % 8],
+        daze: D.daze[(b.t * 8 | 0) % 4], ko: D.ko }[b.state];
+    }
     const C = COYOTE;
     return { intro: C.talk[(b.t * 6 | 0) % 2], approach: (b.vx || b.vz) ? C.walk[(b.anim * 8 | 0) % 4] : C.idle[(b.anim * 3 | 0) % 2],
       windup: C.windup, throwWind: C.windup, swing: C.swing, throw: C.throw, recover: C.idle[0], stagger: C.hurt, dig: C.dig,
@@ -918,6 +1005,12 @@ T.runBrawler = function (A) {
     if (!params.has('bot') || phase !== 'play') return;
     const p = player; botT -= dt;
     keys.left = keys.right = keys.up = keys.down = false;
+    if (boss && boss.type === 'dillon' && boss.state === 'roll') {      // the shell's coming: kick it back, or get out of its lane
+      const dx = boss.x - p.x;
+      if (!boss.deflected && Math.sign(dx) === -Math.sign(boss.vx) && Math.abs(dx) < 40 && inLane(boss, p, 10) && botT <= 0) { p.face = Math.sign(dx) || 1; pressed.side = true; botT = 0.4; }
+      else if (!boss.deflected) keys[p.z > boss.z ? 'down' : 'up'] = Math.abs(p.z - boss.z) < 14 && Math.abs(dx) < 90;
+      return;
+    }
     if (boss && (boss.state === 'under' || boss.state === 'rumble')) {   // get away from the mound
       keys[p.x > boss.mx ? 'right' : 'left'] = true; keys[p.z > boss.mz ? 'down' : 'up'] = true; return;
     }

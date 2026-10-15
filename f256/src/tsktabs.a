@@ -380,6 +380,6 @@ CI.Out             equ       1
 CI.Yel             equ       84
 CI.Crm             equ       105
 CI.Org             equ       132
-CI.BarBk           equ       147
-CI.BarFg           equ       148
-CI.BarHi           equ       149
+CI.BarBk           equ       160
+CI.BarFg           equ       161
+CI.BarHi           equ       162

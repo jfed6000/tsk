@@ -612,6 +612,10 @@ EName               lda       EN.Ty,x
                     cmpa      #TY.Dillo
                     beq       enm0
                     leay      STwoBit,pcr
+                    tst       bkind,u
+                    beq       enm00
+                    leay      SDillon,pcr
+enm00               equ       *
                     cmpa      #TY.Boss
                     beq       enm0
                     lda       EN.Nm,x             a coyote: one of the gang's names
@@ -640,6 +644,9 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     cmpa      #TY.Coy
                     beq       ex1
                     ldb       #BossHp
+                    tst       bkind,u
+                    beq       ex1
+                    ldb       #DlnHp
 ex1                 puls      a,pc
 
 SName               fcn       "SHITKICKERS"
@@ -648,6 +655,7 @@ SWhip               fcn       "WHIP "
 SCombo              fcn       " HIT COMBO!"
 SDillo              fcn       "DILLO"
 STwoBit             fcn       "TWO-BIT"
+SDillon             fcn       "BIG SHELL DILLON"
 GangNames           fcn       "DUSTY"
                     fcn       "SCRUFF"
                     fcn       "MANGY"

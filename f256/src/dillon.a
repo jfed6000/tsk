@@ -1,0 +1,622 @@
+********************************************************************
+* dillon.a - Big Shell Dillon, Main Street's boss (brawler.js
+*   updateDillon, kickShell; js/dillon.js draws him).  Boss of the
+*   Outlaw Dillos: "He curls up and rolls like a boulder, so kick the
+*   shell back at him" (story.md).
+*
+*   approach -> (close) wind up and claw swipe | (else, and every third
+*   time) curl up and roll down your lane, bouncing off the screen's
+*   edges twice.  Kick the rolling shell and it goes back the way it came;
+*   when it hits the edge he crashes and he's dizzy (half again damage).
+*   At half health his Outlaw Dillos roll in.
+*
+*   He uses Two-Bit's machinery (boss.a): the boss slot, bst, HitBoss,
+*   the KO; bkind = 1 says it's him.
+********************************************************************
+
+DS.Intro            equ       0                   "THIS HERE'S MY TOWN!"
+DS.Appr             equ       1
+DS.Wind             equ       2
+DS.Swipe            equ       3
+DS.Recov            equ       4
+DS.Stag             equ       5
+DS.Curl             equ       6                   curling up (not hittable)
+DS.Roll             equ       7                   a boulder down the lane (not hittable: kick it back)
+DS.Daze             equ       8
+DS.Ko               equ       9
+
+DlnHp               equ       40
+DlnRoll             equ       56                  210 px/s
+DlnBack             equ       73                  kicked back: 1.3x
+
+* StartDillon - he rolls in from the right
+StartDillon         lda       #SF.Land
+                    lbsr      Sfx
+                    lbsr      NewSlot
+                    bcs       sd9x
+                    stx       <bslot
+                    lda       #1
+                    sta       bkind,u
+                    lda       #TY.Boss
+                    sta       EN.Ty,x
+                    lda       #ES.BossX
+                    sta       EN.St,x
+                    lda       #DlnHp
+                    sta       EN.Hp,x
+                    lda       #1
+                    sta       EN.Fc,x
+                    ldd       <cam
+                    addd      #260
+                    lbsr      To124
+                    std       EN.X,x
+                    std       <sx
+                    ldd       #40*16
+                    std       EN.Z,x
+                    std       <sz
+                    clr       <bst
+                    lda       #2                  he opens with the roll
+                    sta       <bn
+                    clr       <bsaid
+                    clr       <bsum
+                    clr       dbnc,u
+                    clr       ddefl,u
+                    lda       #6
+                    lbsr      Puff
+sd9x                rts
+
+* DSet - A = what he does now (DS.*): his clock from 0, hittable or not
+DSet                ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.Boss
+                    cmpa      #DS.Intro
+                    beq       dz1x
+                    cmpa      #DS.Curl
+                    beq       dz1x
+                    cmpa      #DS.Roll
+                    beq       dz1x
+                    cmpa      #DS.Ko
+                    bne       dz2x
+dz1x                ldb       #ES.BossX
+dz2x                stb       EN.St,x
+                    rts
+
+********************************************************************
+* DillonStep - X = him: one pass
+********************************************************************
+DillonStep          stx       <bslot
+                    lda       <bst
+                    leay      DsTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+
+DsTab               fdb       DIntro-DsTab
+                    fdb       DAppr2-DsTab
+                    fdb       DWind-DsTab
+                    fdb       DSwipe-DsTab
+                    fdb       DRecov-DsTab
+                    fdb       DStag-DsTab
+                    fdb       DCurl-DsTab
+                    fdb       DRoll-DsTab
+                    fdb       DDaze-DsTab
+                    fdb       DKo-DsTab
+
+DIntro              lbsr      FaceHero
+                    lbsr      EStop
+                    tst       <bsaid
+                    bne       di1
+                    lda       EN.T,x
+                    cmpa      #18
+                    blo       di1
+                    inc       <bsaid
+                    lda       #72
+                    ldy       #TX.mytown
+                    lbsr      WordE
+di1                 lda       EN.T,x
+                    cmpa      #132
+                    lbls      DMove
+                    lda       #DS.Appr
+                    lbsr      DSet
+                    lbra      DMove
+
+* to 44 px his side of you; then the claws up close, or the roll
+DAppr2              lbsr      FaceHero
+                    ldd       #44*16
+                    tst       EN.Fc,x
+                    beq       dp1x
+                    lbsr      NegD
+dp1x                pshs      d
+                    ldd       <hx
+                    subd      ,s++
+                    subd      EN.X,x
+                    std       <tdx
+                    lbsr      AbsD
+                    cmpd      #4*16
+                    bls       dp2x
+                    ldd       #11
+                    tst       <tdx
+                    bpl       dp3x
+                    ldd       #-11
+                    bra       dp3x
+dp2x                ldd       #0
+dp3x                std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bls       dp4x
+                    ldd       #9
+                    tst       <tdz
+                    bpl       dp5x
+                    ldd       #-9
+                    bra       dp5x
+dp4x                ldd       #0
+dp5x                std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #72
+                    bhi       dp7x
+                    cmpa      #24
+                    lbls      DMove
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #8*16
+                    lbhs      DMove
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #6*16
+                    lbhs      DMove
+dp7x                lbsr      EStop               the next move
+                    inc       <bn
+                    lda       <bn                 every third: the roll, wherever he is
+                    ldb       #3
+                    lbsr      Div
+                    ldb       #3
+                    mul
+                    cmpb      <bn
+                    beq       dp9x
+                    ldd       <hx                 close: the claws
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #70*16
+                    bhs       dp9x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       dp9x
+                    lda       #DS.Wind
+                    lbsr      DSet
+                    lbra      DMove
+dp9x                lda       #SF.Whoosh          else: he curls up
+                    lbsr      Sfx
+                    lda       #DS.Curl
+                    lbsr      DSet
+                    lbra      DMove
+
+DWind               lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #30
+                    lbls      DMove
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #DS.Swipe
+                    lbsr      DSet
+                    clr       <bhit
+                    lbra      DMove
+
+* the claws: a lunge, and 3 if you're in front of him, close, in his lane
+DSwipe              ldd       #0
+                    std       EN.VZ,x
+                    ldy       #0
+                    lda       EN.T,x
+                    cmpa      #9
+                    bhs       dw1x
+                    ldd       #21
+                    lbsr      ByFace
+                    tfr       d,y
+dw1x                sty       EN.VX,x
+                    tst       <bhit
+                    bne       dw5x
+                    lda       EN.T,x
+                    cmpa      #13
+                    bhs       dw5x
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       dw5x
+                    ldd       <hh
+                    cmpd      #26*16
+                    bge       dw5x
+                    ldd       <hx
+                    subd      EN.X,x
+                    tst       EN.Fc,x
+                    beq       dw2y
+                    lbsr      NegD
+dw2y                cmpd      #0
+                    ble       dw5x
+                    cmpd      #52*16
+                    bhs       dw5x
+                    inc       <bhit
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+dw5x                lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #DS.Recov
+                    lbsr      DSet
+                    lbra      DMove
+
+DRecov              lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #42
+                    lbls      DMove
+                    lda       #DS.Appr
+                    lbsr      DSet
+                    lbra      DMove
+
+DStag               ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #18
+                    lbls      DMove
+                    lda       #DS.Appr
+                    lbsr      DSet
+                    lbra      DMove
+
+* curled up, then off he rolls at you
+DCurl               lbsr      EStop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #27
+                    lbls      DMove
+                    lda       #DS.Roll
+                    lbsr      DSet
+                    ldd       #DlnRoll
+                    lbsr      ByFace
+                    std       EN.VX,x
+                    clr       dbnc,u
+                    clr       ddefl,u
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    lbra      DMove
+
+* a boulder down the lane: 3 to you on contact; at the screen's edge he
+*   bounces (twice, then uncurls), or, kicked back, crashes and is dizzy
+DRoll               ldd       #0
+                    std       EN.VZ,x
+                    ldd       <hx                 contact
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #20*16
+                    bhs       dr2x
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       dr2x
+                    ldd       <hh
+                    cmpd      #26*16
+                    bge       dr2x
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+dr2x                lbsr      Rand                dust off the shell
+                    cmpa      #70
+                    bhs       dr3x
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #1
+                    lbsr      Puff
+                    ldx       <bslot
+dr3x                ldd       <cam                the edges: cam + 24 .. cam + 296
+                    addd      #24
+                    lbsr      To124
+                    cmpd      EN.X,x
+                    blt       dr4x
+                    ldd       EN.VX,x             at the left edge, rolling left?
+                    bmi       dr6x
+                    bra       dr9x
+dr4x                ldd       <cam
+                    addd      #296
+                    lbsr      To124
+                    cmpd      EN.X,x
+                    bgt       dr9x
+                    ldd       EN.VX,x             at the right edge, rolling right?
+                    ble       dr9x
+dr6x                tst       ddefl,u
+                    beq       dr7x
+                    ldd       #0                  kicked back into the wall: he crashes
+                    std       EN.VX,x
+                    clr       ddmg,u
+                    lda       #DS.Daze
+                    lbsr      DSet
+                    lda       #12
+                    lbsr      Shk
+                    lda       #5
+                    sta       <hitstop
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #8
+                    lbsr      DirtXZ
+                    ldx       <bslot
+                    lda       #62
+                    ldy       #TX.dizzy
+                    lbsr      WordE
+                    lbra      DMove
+dr7x                inc       dbnc,u              a bounce: back the other way
+                    lda       dbnc,u
+                    cmpa      #3
+                    blo       dr8x
+                    ldd       #0
+                    std       EN.VX,x
+                    lda       #DS.Recov
+                    lbsr      DSet
+                    lbra      DMove
+dr8x                ldd       EN.VX,x
+                    lbsr      NegD
+                    std       EN.VX,x
+                    lbsr      FaceDir
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    lda       #4
+                    lbsr      Shk
+dr9x                lda       EN.T,x              (4 s at most)
+                    cmpa      #240
+                    lbls      DMove
+                    ldd       #0
+                    std       EN.VX,x
+                    lda       #DS.Recov
+                    lbsr      DSet
+                    lbra      DMove
+
+DDaze               lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #132
+                    lbls      DMove
+                    lda       #DS.Appr
+                    lbsr      DSet
+                    lbra      DMove
+
+DKo                 lbra      BKo                 (Two-Bit's: up and away, the gang going down)
+
+* FaceDir - X = him: facing the way he's rolling
+FaceDir             clr       EN.Fc,x
+                    ldd       EN.VX,x
+                    bpl       fd9x
+                    inc       EN.Fc,x
+fd9x                rts
+
+* DMove - moving, kept in the band and on the screen (cam + 20 .. cam + 300)
+DMove               ldd       EN.Z,x
+                    addd      EN.VZ,x
+                    bpl       dm2x
+                    ldd       #0
+dm2x                cmpd      #ZMax*16
+                    ble       dm3x
+                    ldd       #ZMax*16
+dm3x                std       EN.Z,x
+                    ldd       <cam
+                    addd      #20
+                    lbsr      To124
+                    std       <tmp
+                    ldd       EN.X,x
+                    addd      EN.VX,x
+                    cmpd      <tmp
+                    bge       dm4x
+                    ldd       <tmp
+dm4x                pshs      d
+                    ldd       <tmp
+                    addd      #280*16
+                    cmpd      ,s
+                    bge       dm5x
+                    std       ,s
+dm5x                puls      d
+                    std       EN.X,x
+                    rts
+
+* ShellHit - his attack box (bx0, bx1, bh0, pixels) meeting the rolling
+*   shell sends it back: 1.3x as fast, the way it came.  X is kept.
+ShellHit            ldy       <bslot
+                    lbeq      sh9x
+                    lda       EN.Ty,y
+                    cmpa      #TY.Boss
+                    lbne      sh9x
+                    tst       bkind,u
+                    lbeq      sh9x
+                    lda       <bst
+                    cmpa      #DS.Roll
+                    bne       sh9x
+                    tst       ddefl,u
+                    bne       sh9x
+                    ldd       EN.Z,y              in his lane
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       sh9x
+                    ldd       EN.X,y
+                    lbsr      Asr4
+                    std       <tmp
+                    addd      #18                 x0 < it + 18
+                    cmpd      <bx0
+                    ble       sh9x
+                    ldd       <tmp                x1 > it - 18
+                    subd      #18
+                    cmpd      <bx1
+                    bge       sh9x
+                    ldd       <bh0                low enough
+                    cmpd      #34
+                    bge       sh9x
+                    inc       ddefl,u             back at ya
+                    pshs      x
+                    tfr       y,x
+                    ldd       #DlnBack
+                    tst       EN.VX,x             the other way, faster
+                    bpl       sh2x
+                    bra       sh3x
+sh2x                lbsr      NegD
+sh3x                std       EN.VX,x
+                    lbsr      FaceDir
+                    clr       EN.T,x
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       #18*16
+                    std       <sh
+                    lda       #1
+                    lbsr      Spark
+                    lda       #SF.HitBig
+                    lbsr      Sfx
+                    lda       #4
+                    sta       <hitstop
+                    lda       #6
+                    lbsr      Shk
+                    ldx       <bslot
+                    lda       #50
+                    ldy       #TX.backatya
+                    lbsr      WordE
+                    puls      x
+sh9x                rts
+
+* DlnFrame - X = him -> D = his frame
+DlnFrame            lda       <bst
+                    leay      DfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+DfTab               fdb       DfTalk-DfTab
+                    fdb       DfAppr-DfTab
+                    fdb       DfWind-DfTab
+                    fdb       DfSwipe-DfTab
+                    fdb       DfIdle-DfTab
+                    fdb       DfHurt-DfTab
+                    fdb       DfCurl-DfTab
+                    fdb       DfBall-DfTab
+                    fdb       DfDaze-DfTab
+                    fdb       DfKo-DfTab
+DfTalk              lda       EN.T,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #BD.talk-BD.First
+                    bra       dfx
+DfAppr              ldd       EN.VX,x
+                    bne       dfa1
+                    ldd       EN.VZ,x
+                    bne       dfa1
+DfIdle              lda       EN.An,x
+                    ldb       #20
+                    lbsr      Div
+                    anda      #1
+                    adda      #BD.idle-BD.First
+                    bra       dfx
+dfa1                lda       EN.An,x
+                    ldb       #9
+                    lbsr      Div
+                    anda      #3
+                    adda      #BD.walk-BD.First
+                    bra       dfx
+DfWind              lda       #BD.windup-BD.First
+                    bra       dfx
+DfSwipe             lda       #BD.swipe-BD.First
+                    bra       dfx
+DfHurt              lda       #BD.hurt-BD.First
+                    bra       dfx
+DfCurl              lda       #BD.curl-BD.First
+                    bra       dfx
+DfBall              lda       EN.An,x             rolling, 20 frames a second
+                    ldb       #3
+                    lbsr      Div
+                    anda      #7
+                    adda      #BD.ball-BD.First
+                    bra       dfx
+DfDaze              lda       EN.T,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #BD.daze-BD.First
+                    bra       dfx
+DfKo                lda       #BD.ko-BD.First
+dfx                 tst       EN.Fc,x
+                    beq       dfx1
+                    adda      #BD.Mir
+dfx1                tfr       a,b
+                    clra
+                    addd      #BD.First
+                    rts
+
+* the bot: out of the shell's lane, or kick it back as it comes.
+*   Exit: carry clear and B = the input if it's dealing with the shell
+BotShell            ldx       <bslot
+                    beq       bh9x
+                    lda       EN.Ty,x
+                    cmpa      #TY.Boss
+                    bne       bh9x
+                    tst       bkind,u
+                    beq       bh9x
+                    lda       <bst
+                    cmpa      #DS.Roll
+                    bne       bh9x
+                    tst       ddefl,u
+                    bne       bh9x
+                    ldd       EN.X,x              coming at him, close, in his lane: kick it
+                    subd      <hx
+                    std       <tdx
+                    eora      EN.VX,x             (rolling toward him: the signs differ)
+                    bpl       bh5x
+                    ldd       <tdx
+                    lbsr      AbsD
+                    cmpd      #40*16
+                    bhs       bh5x
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    bhs       bh5x
+                    tst       <bott
+                    bne       bh5x
+                    clra
+                    tst       <tdx
+                    bpl       bh4x
+                    inca
+bh4x                sta       <hface
+                    lda       #24
+                    sta       <bott
+                    ldb       #IN.Side
+                    andcc     #$FE
+                    rts
+bh5x                ldd       EN.Z,x              else: step out of its lane, away from it
+                    subd      <hz
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #14*16
+                    bhs       bh6x
+                    ldb       #IN.Up              it's below him (deeper): go up
+                    tst       <tdz
+                    bpl       bh6y
+                    ldb       #IN.Down
+bh6y                andcc     #$FE
+                    rts
+bh6x                clrb
+                    andcc     #$FE
+                    rts
+bh9x                comb
+                    rts

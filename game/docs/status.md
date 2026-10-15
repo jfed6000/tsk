@@ -22,7 +22,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 | **Hero** | Final design: two cowboy boots joined to a very high crotch, a face across both, hat, arms. Profile when moving, faces the camera when standing. 74 frames, including grab, throw, whip and shoot |
 | **Story** | `story.md`: "died with his boots on" revenge western. the Shitkickers (the boots Ringo died in) against the Diamondback Gang |
 | **Stage 1: Boot Hill (brawler)** | The wordless opening (rise from the grave, the hat hops on), the graveyard, five waves of skeletons clawing out of the ground plus dillos, lightning, boss **Two-Bit** (shovel swing, clods thrown across lanes, tunnels through depth and bursts up into a daze, raises two dead at half health) |
-| **Stage 2: Main Street at dusk** | False fronts, sunset, night falling a step per wave (a CLUT fade that spares the lights), mangy coyotes and skeleton gunslingers, five waves, then "TO BE CONTINUED..." |
+| **Stage 2: Main Street at dusk** | False fronts, sunset, night falling a step per wave (a CLUT fade that spares the lights), outlaw coyotes and skeleton gunslingers, five waves, boss **Big Shell Dillon** (giant armadillo: claw swipe, curls and rolls down your lane; kick the shell back and he crashes dizzy; Outlaw Dillos at half health), then "TO BE CONTINUED..." |
 | **Brawler systems** | Depth band with shadows, waves with screen lock and "GO >>", 3-kick combo, side kick, flying kick, stomp, grab/knee/throw, weapon pickups, beans, health bar plus lives (hats), last-hit enemy bar, combos, game over |
 | **Skeleton gunslinger** | Keeps distance, aligns to your lane, aims (eyes flare), fires dodgeable bullets, reloads after six; heap and reassemble; skull knocked off, headless body gropes for it, skull kickable into others; shatters into bones; sometimes drops its gun |
 | **F256: asset exporter** | `f256/tools/export.py` + `game/js/export.js`: Boot Hill → tiles.bin (576 tiles, 3 sets), maps.bin, sprites.bin (551 cells), frames.bin (234 frames, with the combat effects), CLUTs, generated `f256/src/tskassets.d` and `tsktabs.a` (the hero's attack boxes); preview PNGs rebuilt from the binaries |
@@ -38,6 +38,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 | `js/boothill.js` | Night sky, Buzzard, Two-Bit (normal and mangy), Ringo's headstone and grave, props, boss bar |
 | `js/undead.js` | Skeleton gunslinger sprites; the Boot Hill graveyard street for the brawler |
 | `js/mainstreet.js` | Main Street at dusk, night-fall shading (`T.shadeOf`), tumbleweed |
+| `js/dillon.js` | Big Shell Dillon, Main Street's boss (64x64 frames, the rolling ball) |
 | `js/brawler.js` | **The game**: stages, waves, combat, enemies, boss, opening, depth-sorted display list |
 | `js/levels.js`, `js/game.js` | The platformer; `game.js` also does the shared asset, input and sound setup and hands off |
 | `docs/story.md` | Story, villain, levels, roster, beats, decisions and open questions |
@@ -76,7 +77,8 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 1. **Playtest** both stages, ideally on an SNES-style pad, and tune.
 2. **Two-player co-op** (two SNES pads, `SS.Joy` reads both): a second pair of boots.
 3. **P4** (`f256/docs/port-plan.md`): sprints 1-5 done. The whole browser game now runs on the F256: the title,
-   Boot Hill, Main Street, the music. Next: the grab and throw, pads, a Main Street boss, the next stages.
+   Boot Hill, Main Street, the music. Big Shell Dillon is in (2026-10-15). Next: the death scene, the grab and throw, pads, the next stages.
 4. A per-stage sprite CLUT (118 colours already, all enemies in one).
-5. A boss for Main Street, and the next stages from `story.md` reworked for the brawler.
+5. **Death scene** (asked 2026-10-15): the hat crumbles, he topples; a hat floats down off the lives, he grabs it,
+   stands, puts it on. Then the next stages from `story.md` reworked for the brawler.
 6. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).
