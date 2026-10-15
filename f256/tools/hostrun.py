@@ -102,7 +102,7 @@ class Host(CPU6809):
                 raise Exit('F$MapBlk with two windows already mapped')
             w = free[0]
             self.mapped[w] = self.x
-            self.mem[w:w + 0x2000] = self.blocks.get(self.x, bytes(0x2000))
+            self.mem[w:w + 0x2000] = self.blocks.get(self.x) or os.urandom(0x2000)   # fresh RAM is noise (as on the K2)
             self.u = w
             return 0
         if fn == I_WRITLN:

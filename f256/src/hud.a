@@ -60,6 +60,29 @@ hi0                 clr       ,x+
 ********************************************************************
 * Dynamic blocks: one mapped at a time, only while it's drawn into
 ********************************************************************
+* DynClear - at start-up: both dynamic blocks zeroed.  They come from
+*   SS.GfxAlloc as whatever was in that RAM: on real hardware that's
+*   noise, and only the rows text goes into get cleared after this (MAME
+*   and the host model start them at zero, so neither showed it - the
+*   K2 did, 2026-10-14).  Exit: carry = error
+DynClear            clr       <tsn
+dz1                 lda       <tsn
+                    bsr       MapDyn
+                    bcs       dz9
+                    ldx       <dmap
+                    ldy       #8192/2
+                    ldd       #0
+dz2                 std       ,x++
+                    leay      -1,y
+                    bne       dz2
+                    lbsr      UnmapDyn
+                    inc       <tsn
+                    lda       <tsn
+                    cmpa      #NDynBlk
+                    blo       dz1
+                    andcc     #$FE
+dz9                 rts
+
 * MapDyn - A = 0 (the HUD) or 1 (the popups): dmap = where it's mapped.
 *   Exit: carry = error
 MapDyn              adda      <sprblk

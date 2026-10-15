@@ -85,6 +85,8 @@ st3                 lbsr      WSigSet             tell us when our terminal is h
                     lbcs      Fail
                     lbsr      SndInit             the music's loaded; the effects' instruments
                     lbcs      Fail
+                    lbsr      DynClear            the HUD's and the popups' cells blank
+                    lbcs      Fail
                     lda       <bot                (tsk b: the bot plays the games it's given)
                     sta       <botarg
                     lda       <demo               the demo, the autopilot or k: straight in;
