@@ -213,6 +213,28 @@ T.runExport = function (A) {
     for (const c of rec) { dv.setInt8(o++, c.dx); dv.setInt8(o++, c.dy); dv.setUint16(o, c.cell); o += 2; }
   });
 
+  // the frame records for tsk, out of its data area (tskview still reads frames.bin): one 8K graphics block holds the
+  // shared frames' records (frr.bin, loaded once) and, after them, the current stage's (frr_<s>.bin, loaded with the
+  // stage); fri.bin is every frame's offset into that block (2 bytes each, big-endian). A stage's frames are never
+  // drawn on another stage, so one index serves all of them.
+  const bankOf = new Array(frameRecs.length).fill(null);
+  for (const g of groups) { const n = g.n * (g.mirror ? 2 : 1); for (let i = 0; i < n; i++) bankOf[g.first + i] = g.bank; }
+  const recBytes = rec => { const b = new Uint8Array(1 + rec.length * 4), dv2 = new DataView(b.buffer); b[0] = rec.length;
+    rec.forEach((c, k) => { dv2.setInt8(1 + k * 4, c.dx); dv2.setInt8(2 + k * 4, c.dy); dv2.setUint16(3 + k * 4, c.cell); }); return b; };
+  const frParts = { null: [] }, frLen = { null: 0 }, frOff = new Array(frameRecs.length);
+  frameRecs.forEach((rec, i) => { const k = bankOf[i]; if (k !== null) return; const b = recBytes(rec); frOff[i] = frLen.null; frParts.null.push(b); frLen.null += b.length; });
+  const FRR_SH = frLen.null;
+  frameRecs.forEach((rec, i) => {
+    const k = bankOf[i]; if (k === null) return;
+    frParts[k] = frParts[k] || []; frLen[k] = frLen[k] || 0;
+    const b = recBytes(rec); frOff[i] = FRR_SH + frLen[k]; frParts[k].push(b); frLen[k] += b.length;
+  });
+  const cat = parts => { const n = parts.reduce((a, b) => a + b.length, 0), o2 = new Uint8Array(n); let q = 0; for (const b of parts) { o2.set(b, q); q += b.length; } return o2; };
+  const FRR_MAX = Math.max(...Object.keys(frLen).filter(k => k !== 'null').map(k => frLen[k]));
+  if (FRR_SH + FRR_MAX > 8192) throw new Error(`frame records: ${FRR_SH} shared + ${FRR_MAX} a stage > 8192 (one block)`);
+  const fri = new Uint8Array(frameRecs.length * 2), fdv = new DataView(fri.buffer);
+  frOff.forEach((o3, i) => fdv.setUint16(i * 2, o3));
+
   // ---------------------------------------------------------------- CLUTs
   const clut = (colors, fn) => {
     const b = new Uint8Array(1024);
@@ -232,6 +254,7 @@ T.runExport = function (A) {
     'tiles_ms.bin': STAGES[1].tiles, 'maps_ms.bin': STAGES[1].mapBytes,
     'tiles_gt.bin': STAGES[2].tiles, 'maps_gt.bin': STAGES[2].mapBytes,
     'frames.bin': frames,
+    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT),
     'clut_spr.bin': clut(T.CLUT.spr.colors),
     'clut_tile.bin': clut(T.CLUT.bg.colors),
     'clut_flash.bin': clut(T.CLUT.bg.colors, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
@@ -285,6 +308,8 @@ T.runExport = function (A) {
     `SPR.Ovl  equ ${OVL_N}         the most stage cells`, `SPR.Size equ ${hex((OVL_BASE + OVL_N) * 1024, 6)}    bytes of sprite RAM in all`,
     `SPR.ShSize equ ${hex(sprites.length, 6)}  sprites.bin`, '');
   L.push('* frames.bin', `FRM.N    equ ${frameRecs.length}         frames`, `FRM.Size equ ${hex(frames.length)}`, '');
+  L.push('* tsk: the frame records in one block (frr.bin, then the stage\'s frr_<s>.bin at FRR.Sh), fri.bin the index',
+    `FRR.Sh   equ ${FRR_SH}        the shared records' length: a stage's load here`, `FRR.Max  equ ${FRR_MAX}        the biggest stage's`, '');
   L.push('* animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)');
   L.push('* the mirrored (facing left) copy of frame f is f + <group>.Mir');
   for (const g of groups) {

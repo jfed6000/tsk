@@ -226,7 +226,20 @@ One program module, **`tsk`**, assembled from:
      or the leap (`GS.Crouch`, `Leap`, `Hang`, `Drop`: up at 720 px/s, his shadow tracking you at 130 px/s, down
      at 700; 3 if you're under him; then `GS.Land`, open 1.2 s), turn about (`gtrick`). The hook is the end of
      `HitBoss` (`GilaReact`).
-10. The pad harness, co-op, the next stages.
+10. ✓ **Headroom** *(2026-10-15: `tsk` 28.0K of 40,960, data 4.6K of 7,936)*: the data area is one block again, so
+    the module gets five: 40,960 bytes (the makefile checks both).
+    - **The frame records** moved out of the data area into a graphics block (`frblk`): the shared frames'
+      records (`frr.bin`, 4.9K) and, after them at `FRR.Sh`, the stage's (`frr_<s>.bin`, at most 1.1K); `fri.bin`
+      is each frame's offset into the block, in the data area (1.3K). `Draw` maps the block for the pass (the
+      service window is free then). The exporter checks shared + the biggest stage fit 8K; there's 2.1K spare.
+      (`tskview` still reads `frames.bin`.)
+    - **The CLUTs** (sprites, tiles, tiles lightning-lit, the white hit flash) are 1K each in `clublk`, written
+      through the service window (`platform.a ClutK`).
+    - **The worst pass** fell from 92.7K cycles to 79K: the HUD's strings (a new enemy's name, the combo) go
+      through a text queue five letters a pass (`hud.a TextQ`, after a pass that only clears the strip), and
+      `Text` stamps a column unrolled, through a colour table.
+    - `hostrun.py` now has the data area at 0, windows at $2000 and $4000, and the module from $6000 (40K).
+11. The pad harness, co-op, the next stages.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

@@ -59,7 +59,18 @@ cm5                 ldd       <camf
 * Draw - the display list, the records, one push, the maps' scroll.
 *   Exit: carry = error in B
 ********************************************************************
-Draw                lbsr      ShakeXY
+* Draw - the frame records mapped for the pass (frblk: out of the data area,
+*   which then fits one 8K block), then DrawIn
+Draw                lda       frblk,u
+                    lbsr      MapOne
+                    bcs       dwm9
+                    stx       frwin,u
+                    bsr       DrawIn
+                    ldx       frwin,u
+                    lbra      UnmapOne            (CC and B kept: DrawIn's error)
+dwm9                rts
+
+DrawIn              lbsr      ShakeXY
                     clr       <dln
                     lda       <phase
 * the hero: on alternate beats while he's untouchable only his shadow
@@ -346,12 +357,12 @@ msh1                tfr       d,x
 *     ADDR = sprbase + cell * 1024,  X = feet x + dx + 32,  Y = feet y + dy + 32
 *   (the visible screen starts at 32,32).  Stops when the records run out.
 ********************************************************************
-BuildChar           leax      frames,u
+BuildChar           leax      fridx,u
                     lslb
                     rola                          D = frame * 2
-                    addd      #2
-                    ldd       d,x                 the frame's offset in frames.bin
-                    leax      d,x
+                    ldd       d,x                 the frame's offset in the record block
+                    addd      frwin,u
+                    tfr       d,x
                     lda       ,x+
                     sta       <bcn
                     beq       bc9

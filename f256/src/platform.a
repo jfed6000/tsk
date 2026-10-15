@@ -386,6 +386,16 @@ Alloc               ldx       #NTilBlk
                     bcs       alx
                     tfr       x,d
                     stb       <mapblk
+                    ldx       #1                  the frame records (out of the data area: draw.a)
+                    lbsr      GfxAlloc
+                    bcs       alx
+                    tfr       x,d
+                    stb       frblk,u
+                    ldx       #1                  the CLUTs, 1K each
+                    lbsr      GfxAlloc
+                    bcs       alx
+                    tfr       x,d
+                    stb       clublk,u
                     clrb
 alx                 rts
 
@@ -427,26 +437,35 @@ LoadAll             lda       <sprblk             the shared sprites (a stage's 
                     leax      FDusk,pcr
                     lbsr      LoadFile
                     lbcs      lax
-                    leax      FFrames,pcr
-                    leay      frames,u
-                    ldd       #FRM.Size
+                    leax      FFri,pcr            the frames' index (the records themselves in frblk)
+                    leay      fridx,u
+                    ldd       #FRM.N*2
                     lbsr      LoadData
-                    bcs       lax
-                    leax      FClutS,pcr
-                    leay      clutbuf,u
-                    ldd       #1024
-                    lbsr      LoadData
-                    bcs       lax
+                    lbcs      lax
+                    leax      FFrr,pcr            the shared frames' records
+                    lda       frblk,u
+                    ldb       #1
+                    ldy       #0
+                    lbsr      LoadFile
+                    lbcs      lax
+                    leax      FClutS,pcr          the CLUTs, a K each in clublk
+                    lda       clublk,u
+                    ldb       #1
+                    ldy       #0
+                    lbsr      LoadFile
+                    lbcs      lax
                     leax      FClutT,pcr
-                    leay      tclut,u
-                    ldd       #1024
-                    lbsr      LoadData
-                    bcs       lax
+                    lda       clublk,u
+                    ldb       #1
+                    ldy       #1024
+                    lbsr      LoadFile
+                    lbcs      lax
                     leax      FClutF,pcr
-                    leay      fclut,u
-                    ldd       #1024
-                    lbsr      LoadData
-                    bcs       lax
+                    lda       clublk,u
+                    ldb       #1
+                    ldy       #2048
+                    lbsr      LoadFile
+                    lbcs      lax
                     leax      MusFiles,pcr        the songs, a block each
                     clr       <tsn
 la1                 pshs      x
@@ -551,13 +570,17 @@ ld9                 leas      2,s                 (LEAS leaves CC alone)
 * Display - CLUTs, the sprite table, tile sets, tile maps, layers, and
 *   the display mode.  Exit: carry = error in B
 ********************************************************************
-Display             leax      clutbuf,u           CLUT 0: the sprite colours
+Display             clrb                          CLUT 0: the sprite colours (clublk's first K)
                     ldy       #CLUT.Spr*256
-                    ldd       #256
-                    lbsr      ClutWrite
+                    lbsr      ClutK
                     lbcs      dsx
-* CLUT 1: every colour white, for the hit flash (entry 0 stays transparent)
-                    leax      clutbuf,u
+* CLUT 1: every colour white, for the hit flash (entry 0 stays transparent),
+*   built in clublk's fourth K
+                    lda       clublk,u
+                    lbsr      MapOne
+                    lbcs      dsx
+                    pshs      x
+                    leax      3*1024,x
                     clr       ,x+
                     clr       ,x+
                     clr       ,x+
@@ -567,15 +590,15 @@ Display             leax      clutbuf,u           CLUT 0: the sprite colours
 ds1                 std       ,x++
                     leay      -1,y
                     bne       ds1
-                    leax      clutbuf,u
+                    puls      x
+                    lbsr      UnmapOne
+                    ldb       #3
                     ldy       #CLUT.Fls*256
-                    ldd       #256
-                    lbsr      ClutWrite
+                    lbsr      ClutK
                     lbcs      dsx
-                    leax      tclut,u             CLUT 3: the tile colours
+                    ldb       #1                  CLUT 3: the tile colours
                     ldy       #CLUT.Til*256
-                    ldd       #256
-                    lbsr      ClutWrite
+                    lbsr      ClutK
                     lbcs      dsx
 * the sprites' base address, and our sprite table
                     lda       <sprblk
@@ -674,10 +697,9 @@ sg4x                ldx       stgp,u
                     lda       <tsn
                     cmpa      #3
                     blo       sg4x
-                    leax      tclut,u             the night colours back (after Main Street's dusk)
+                    ldb       #1                  the night colours back (after Main Street's dusk)
                     ldy       #CLUT.Til*256
-                    ldd       #256
-                    lbsr      ClutWrite
+                    lbsr      ClutK
 sg9x                rts
 
 * MapsOff - the three tile maps off (the stage changing, or the exit)
@@ -767,10 +789,9 @@ we1                 tst       <lflash
                     beq       we2
                     dec       <lflash
                     bne       we2
-                    leax      tclut,u             the night again
+                    ldb       #1                  the night again
                     ldy       #CLUT.Til*256
-                    ldd       #256
-                    lbsr      ClutWrite
+                    lbsr      ClutK
                     bcs       wex
 we2                 clrb
 wex                 rts
@@ -779,9 +800,52 @@ Bolt                lda       #SF.Thunder
                     lbsr      Sfx
                     lda       #FlashLen
                     sta       <lflash
-                    leax      fclut,u
+                    ldb       #2                  lightning-lit
                     ldy       #CLUT.Til*256
+                    lbra      ClutK
+
+* ClutK - B = which K of clublk (0 sprites, 1 tiles, 2 tiles lightning-lit,
+*   3 all white), Y = CLUT number * 256: that CLUT written from it, through
+*   the service window.  Exit: carry = error in B
+ClutK               pshs      b,y
+                    lda       clublk,u
+                    bsr       MapOne
+                    bcs       ck9
+                    pshs      x
+                    lda       2,s                 the K: b * 4 pages
+                    lsla
+                    lsla
+                    clrb
+                    addd      ,s
+                    tfr       d,x
+                    ldy       3,s
                     ldd       #256
+                    bsr       ClutWrite
+                    pshs      cc,b
+                    ldx       2,s
+                    bsr       UnmapOne
+                    puls      cc,b
+                    leas      2,s
+ck9                 leas      3,s                 (LEAS leaves CC alone)
+                    rts
+
+* MapOne - A = a block: X = it mapped (the service window).  Exit: carry = error
+MapOne              pshs      u
+                    tfr       a,b
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    os9       F$MapBlk
+                    tfr       u,x
+                    puls      u,pc
+
+* UnmapOne - X = a window from MapOne: unmapped (CC and B kept)
+UnmapOne            pshs      cc,b,u
+                    tfr       x,u
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      cc,b,u,pc
+
 * ClutWrite - X = B,G,R,A entries, Y = CLUT number * 256 + first entry,
 *   D = count.  Exit: carry = error in B
 ClutWrite           pshs      u
@@ -874,6 +938,12 @@ cu3                 lda       #NTilBlk            and only then free the blocks
                     lda       #NDuskBlk
                     ldb       duskblk,u
                     lbsr      GfxFree
+                    lda       #1
+                    ldb       frblk,u
+                    lbsr      GfxFree
+                    lda       #1
+                    ldb       clublk,u
+                    lbsr      GfxFree
                     clr       duskblk,u
                     clr       <musblk
                     clr       <tilblk
@@ -895,7 +965,9 @@ FSprites            fcc       /sprites.bin/
                     fcb       $0D
 FDusk               fcc       /clut_dusk.bin/
                     fcb       $0D
-FFrames             fcc       /frames.bin/
+FFri                fcc       /fri.bin/
+                    fcb       $0D
+FFrr                fcc       /frr.bin/
                     fcb       $0D
 FClutS              fcc       /clut_spr.bin/
                     fcb       $0D

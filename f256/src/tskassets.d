@@ -72,6 +72,10 @@ SPR.ShSize equ $0EC000  sprites.bin
 FRM.N    equ 637         frames
 FRM.Size equ $224D
 
+* tsk: the frame records in one block (frr.bin, then the stage's frr_<s>.bin at FRR.Sh), fri.bin the index
+FRR.Sh   equ 4944        the shared records' length: a stage's load here
+FRR.Max  equ 1131        the biggest stage's
+
 * animations: <group>.<anim> = first frame (facing right), .N = frame count, .T = ticks a frame (60 Hz)
 * the mirrored (facing left) copy of frame f is f + <group>.Mir
 HR.First equ 0

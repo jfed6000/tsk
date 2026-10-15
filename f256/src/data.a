@@ -339,6 +339,16 @@ gtx                 rmb       2                   the table: x, z (12.4)
 gtz                 rmb       2
 gtvx                rmb       2                   sliding (side-kicked), 0 = standing
 gtrick              rmb       1                   Doc Gila's tricks so far: odd the card trick, even the leap
+frblk               rmb       1                   the frame records' block: frr.bin, then the stage's frr_<s>.bin
+clublk              rmb       1                   the CLUTs' block: sprites, tiles, tiles lightning-lit, all white
+frwin               rmb       2                   where the frame records are mapped, while Draw runs
+tqi                 rmb       1                   the HUD's text queue: 1 + the next letter, 0 = empty (hud.a TextQ)
+tqx                 rmb       1                   its x, row, colour
+tqrow               rmb       1
+tqcol               rmb       1
+tpal                rmb       3                   Text's colours: clear, the outline, the fill
+TqLen               equ       24
+tqbuf               rmb       TqLen
 sgn                 rmb       4*SN.Size           Ghost Town's hanging signs
 sgsav               rmb       2                   (Signs: the sign being looked at)
 dying               rmb       1                   1 = the death scene's playing (death.a)
@@ -365,10 +375,7 @@ hbuf                rmb       24                  text being built
 pend                rmb       NPend*PN.Size       queued MIDI: note-offs, delayed notes
 mbuf                rmb       NMBuf               this frame's MIDI
 pt                  rmb       NPt*PT.Size         particles
-frames              rmb       FRM.Size            frames.bin
-clutbuf             rmb       1024                sprite CLUT, then the all-white hit-flash CLUT
-tclut               rmb       1024                the tile CLUT
-fclut               rmb       1024                the tile CLUT, lightning-lit
+fridx               rmb       FRM.N*2             each frame's offset in the frame-record block (fri.bin)
 StkBase             equ       .
                     rmb       512                 stack
 size                equ       .

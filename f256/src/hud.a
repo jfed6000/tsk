@@ -179,6 +179,12 @@ Text                stx       <hstr
                     stb       <hx0
                     lbsr      PixCol
                     stx       <hptr
+                    lda       #CI.Out             the stamp's colours: 1 the outline, 2 the fill
+                    sta       tpal+1,u
+                    lda       <hcol
+                    sta       tpal+2,u
+                    pshs      u                   (U: the colour table, in the column loop)
+                    leau      tpal,u
 tx1                 ldx       <hstr
                     lda       ,x+
                     beq       tx9
@@ -203,28 +209,44 @@ tx4                 lda       <hcnt               the fifth column overlaps the 
                     std       <nptr
                     lda       <hx0
                     sta       <nx0
-tx4a                ldx       <hptr
-                    ldb       #7                  seven rows, down the column
-tx5                 lda       ,y+                 (the stamps are column by column)
-                    beq       tx7
-                    cmpa      #1
-                    bne       tx6
-                    lda       #CI.Out
-                    bra       tx6a
-tx6                 lda       <hcol
-tx6a                sta       ,x
-tx7                 leax      32,x
-                    decb
-                    bne       tx5
-                    bsr       Col
+tx4a                ldx       <hptr               seven rows down the column, unrolled (the stamps are
+                    lda       ,y+                 column by column: 0 clear, 1 outline, 2 fill)
+                    beq       tr1
+                    lda       a,u
+                    sta       ,x
+tr1                 lda       ,y+
+                    beq       tr2
+                    lda       a,u
+                    sta       32,x
+tr2                 lda       ,y+
+                    beq       tr3
+                    lda       a,u
+                    sta       64,x
+tr3                 lda       ,y+
+                    beq       tr4
+                    lda       a,u
+                    sta       96,x
+tr4                 lda       ,y+
+                    beq       tr5
+                    lda       a,u
+                    sta       128,x
+tr5                 lda       ,y+
+                    beq       tr6
+                    lda       a,u
+                    sta       160,x
+tr6                 lda       ,y+
+                    beq       tr7
+                    lda       a,u
+                    sta       192,x
+tr7                 bsr       Col
                     dec       <hcnt
                     bne       tx4
                     ldd       <nptr               back one column: the next character
                     std       <hptr
                     lda       <nx0
                     sta       <hx0
-                    bra       tx1
-tx9                 rts
+                    lbra      tx1
+tx9                 puls      u,pc
 
 * Col - the column pointer (hptr, hx0) one pixel right, into the next
 *   cell at a 32-pixel boundary
@@ -319,7 +341,8 @@ hd0                 clr       <hmapd              map the HUD block only if some
                     lbsr      ClrStrip
                     clr       <hudclr
                     lbra      hd6
-hdc1
+hdc1                tst       tqi,u               a string going in, five letters a pass: that first
+                    lbne      TextStep
                     leay      pu,u                a queued points popup first: that's this pass's part
                     ldb       #NPu
 hdp1                tst       PU.L,y
@@ -461,7 +484,9 @@ hd3c                ldb       #'!
                     lda       #24
                     lbsr      Text
                     lbra      hd6                 one part a pass
-* the enemy last hit: its name and bar (the boss's while he's about)
+* the enemy last hit: its name and bar (the boss's while he's about); a new
+*   one's name goes through the text queue (TextQ), after a pass that
+*   only clears the strip
 hd4                 lbsr      Target              X = it (0 = nobody), A = its id
                     sta       <tmpk
                     beq       hd4a
@@ -471,16 +496,16 @@ hd4a                lda       <tmpk
                     cmpa      <hudeid
                     bne       hd4b
                     tsta
-                    beq       hd5
+                    lbeq      hd5
                     lda       <tmpf
                     cmpa      <hudehp
-                    beq       hd5
+                    lbeq      hd5
                     sta       <hudehp             the same one, hurt: the bar only
                     pshs      x
                     lbsr      HudMap
                     puls      x
                     lbcs      hdq
-                    bra       hd4c
+                    lbra      hd4c
 hd4b                sta       <hudeid             a new one (or nobody): the name too
                     lda       <tmpf
                     sta       <hudehp
@@ -495,17 +520,18 @@ hd4b                sta       <hudeid             a new one (or nobody): the nam
                     ldb       #4
                     lbsr      Band
                     tst       <hudeid
-                    beq       hd5
+                    lbeq      hd5
                     lbsr      Target              (Band used X)
-                    pshs      x
-                    lbsr      EName               Y = its name
+                    lbsr      EName               Y = its name, into the text queue
                     tfr       y,x
                     lda       #CI.Yel
                     sta       <hcol
                     ldb       #128+24
                     clra
-                    lbsr      Text
-                    puls      x
+                    lbsr      TextQ
+                    lda       #$80                (and then its bar)
+                    sta       <hudehp
+                    lbra      hd6
 hd4c                lda       EN.Hp,x
                     lbsr      EMax                B = its full health
                     lbsr      BarLen
@@ -543,12 +569,66 @@ hd5b                lda       ,y+
                     leax      hbuf,u
                     ldb       #128+75
                     lda       #16
-                    lbsr      Text
+                    lbsr      TextQ
 hd6                 tst       <hmapd
                     beq       hd7
                     lbsr      UnmapDyn
 hd7                 andcc     #$FE
 hdq                 rts
+
+* TextQ - X = a string, B = x, A = the row, hcol = the colour: queued, to
+*   go in five letters a pass (TextStep).  Stamped all at once, a long
+*   name or "8 HIT COMBO!" made the worst pass of a fight (2026-10-15)
+TextQ               stb       tqx,u
+                    sta       tqrow,u
+                    lda       <hcol
+                    sta       tqcol,u
+                    leay      tqbuf,u
+                    ldb       #TqLen-1
+tq1                 lda       ,x+
+                    sta       ,y+
+                    beq       tq2
+                    decb
+                    bne       tq1
+                    clr       ,y
+tq2                 lda       #1
+                    sta       tqi,u
+                    rts
+
+* TextStep - the next five letters of the queued string (one part a pass)
+TextStep            lbsr      HudMap
+                    lbcs      hdq
+                    lda       tqi,u               1 + the next letter
+                    deca
+                    sta       <tmpk
+                    leay      tqbuf,u
+                    leay      a,y
+                    leax      hbuf,u
+                    ldb       #5
+ts1                 lda       ,y+
+                    sta       ,x+
+                    beq       ts3
+                    decb
+                    bne       ts1
+                    clr       ,x
+                    lda       ,y                  more to come?
+                    beq       ts3
+                    lda       tqi,u
+                    adda      #5
+                    sta       tqi,u
+                    bra       ts4
+ts3                 clr       tqi,u               (the last of it)
+ts4                 lda       tqcol,u
+                    sta       <hcol
+                    lda       <tmpk               x: 4 px a letter on
+                    lsla
+                    lsla
+                    adda      tqx,u
+                    tfr       a,b
+                    lda       tqrow,u
+                    leax      hbuf,u
+                    lbsr      Text
+                    lbra      hd6
 
 * HudMap - map the HUD block, once a pass.  Exit: carry = error
 HudMap              tst       <hmapd

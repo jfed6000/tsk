@@ -78,7 +78,7 @@ ss0x                std       levw,u
 ss9x                andcc     #$FE
 ss8x                rts
 si00                leax      en,u                every table: enemies, skulls, bullets, popups, particles
-                    ldy       #frames-en
+                    ldy       #fridx-en
 gi1                 clr       ,x+
                     leay      -1,y
                     bne       gi1
@@ -165,10 +165,18 @@ LoadStage           lbsr      MapsOff
                     puls      x
                     bcs       ls9
                     bsr       NextName
+                    pshs      x
                     lda       <sprblk             spr_<s>.bin, at the overlay's cells
                     adda      #SPR.Base/8
                     ldb       #NOvlBlk
                     ldy       #0
+                    lbsr      LoadFile
+                    puls      x
+                    bcs       ls9
+                    bsr       NextName
+                    lda       frblk,u             frr_<s>.bin: its frames' records, after the shared ones
+                    ldb       #1
+                    ldy       #FRR.Sh
                     lbsr      LoadFile
                     bcs       ls9
                     lbra      StageGfx
@@ -237,17 +245,23 @@ FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
                     fcc       /spr_bh.bin/
                     fcb       $0D
+                    fcc       /frr_bh.bin/
+                    fcb       $0D
 FileGT              fcc       /tiles_gt.bin/
                     fcb       $0D
                     fcc       /maps_gt.bin/
                     fcb       $0D
                     fcc       /spr_gt.bin/
                     fcb       $0D
+                    fcc       /frr_gt.bin/
+                    fcb       $0D
 FileMS              fcc       /tiles_ms.bin/
                     fcb       $0D
                     fcc       /maps_ms.bin/
                     fcb       $0D
                     fcc       /spr_ms.bin/
+                    fcb       $0D
+                    fcc       /frr_ms.bin/
                     fcb       $0D
 
 ********************************************************************

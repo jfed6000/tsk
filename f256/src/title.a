@@ -30,7 +30,7 @@ TitleInit           clra                          Boot Hill for the backdrop (lo
                     std       <cam
                     clr       <camdir
                     leax      en,u
-                    ldy       #frames-en
+                    ldy       #fridx-en
 tti1                 clr       ,x+
                     leay      -1,y
                     bne       tti1
