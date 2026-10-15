@@ -17,7 +17,10 @@ TauntEvery          equ       240                 a taunt every 4 s
 TitleZ              equ       24                  where he stands, px into the street (feet at y 174)
 
 * TitleInit - to the title screen
-TitleInit           lda       #PH.Title
+TitleInit           clra                          Boot Hill for the backdrop (loaded unless it is)
+                    lbsr      StageSet
+                    lbcs      Fail
+                    lda       #PH.Title
                     lbsr      SetPh
                     clr       <attract
                     lda       <botarg             (tsk b: the autopilot plays the games)

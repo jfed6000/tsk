@@ -311,6 +311,7 @@ twvx                rmb       2
 twvh                rmb       2
 twt                 rmb       2                   passes before the next one
 stgarg              rmb       1                   tsk m: start at Main Street
+ldstg               rmb       1                   the stage whose art is loaded ($FF = none)
 ptnx                rmb       2                   NewPt: where the next search starts (0 = the first)
 ptend               rmb       2                   the end of the particle table (set at start-up)
 gdown               rmb       1                   1 = Two-Bit's down: his gang follows, one a pass

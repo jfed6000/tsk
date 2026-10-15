@@ -39,7 +39,14 @@ gi2                 std       <rnd
                     lda       stgarg,u            (tsk m: Main Street first)
 * StageInit - A = the stage: its art loaded, its street set up, its music.
 *   The hero keeps his health, lives, score.
-StageInit           sta       stgn,u
+StageInit           bsr       StageSet
+                    lbcs      Fail
+                    bra       si00
+
+* StageSet - A = the stage: its record, its stops, and its art (unless it's
+*   the art already loaded).  The title uses it for Boot Hill's backdrop.
+*   Exit: carry = error in B
+StageSet            sta       stgn,u
                     ldb       #SR.Size            its record
                     mul
                     leax      StgTab,pcr
@@ -58,9 +65,16 @@ StageInit           sta       stgn,u
                     sta       sflags,u
                     lda       SR.NWv,x
                     sta       nwaves,u
+                    lda       stgn,u              already loaded (the title's Boot Hill)?
+                    cmpa      ldstg,u
+                    beq       ss9x
                     lbsr      LoadStage           the tiles, maps and its own sprites
-                    lbcs      Fail
-                    leax      en,u                every table: enemies, skulls, bullets, popups, particles
+                    bcs       ss8x
+                    lda       stgn,u
+                    sta       ldstg,u
+ss9x                andcc     #$FE
+ss8x                rts
+si00                leax      en,u                every table: enemies, skulls, bullets, popups, particles
                     ldy       #frames-en
 gi1                 clr       ,x+
                     leay      -1,y

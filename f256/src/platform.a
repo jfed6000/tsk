@@ -64,7 +64,9 @@ st1c                lsrb
 st1d                lsrb
                     bcc       st2
                     inc       stgarg,u
-st2                 leax      pt+NPt*PT.Size,u    (NewPt's wrap)
+st2                 lda       #$FF                no stage's art loaded yet
+                    sta       ldstg,u
+                    leax      pt+NPt*PT.Size,u    (NewPt's wrap)
                     stx       ptend,u
                     leax      recs+NRecs*8,u
                     stx       <recend
