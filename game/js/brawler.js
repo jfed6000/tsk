@@ -1004,6 +1004,7 @@ T.runBrawler = function (A) {
   const BUBBLE = !params.has('nobubble');        // (the user liked the bubble; ?nobubble for the bare words)
   let entr = null;
   function startEntrance() { entr = { t: 0 }; boss.said = true; music('entrance'); }   // (his lines are the entrance's)
+  function say(b, text, dur) { b.say = text; b.sayEnd = time + dur; }   // a boss's line, in a bubble (Diamondback's)
   const bubbleCache = new Map();
   function bubbleSprite(text, side) {            // a speech bubble: the line on a pale card, the tail toward his mouth
     const key = text + side; let c = bubbleCache.get(key); if (c) return c;
@@ -1061,7 +1062,7 @@ T.runBrawler = function (A) {
     if (!b.summoned && b.hp < b.max / 2) {                           // half health: he calls in his own
       b.summoned = true;
       if (b.type === 'diamondback') {               // the posse rises for him; and he fans two volleys now
-        popup(b.x, FLOOR + b.z - 66, "GET 'EM, POSSE!", '#ff9d3c', 1, 1.6); sfx('rattle'); b.rage = true;
+        say(b, "GET 'EM, POSSE!", 2.0); sfx('rattle'); b.rage = true;
         spawn('skel@', 1, 0); spawn('skel@', -1, 0);
       } else if (b.type === 'toro') {                      // red: quicker, and every charge comes straight back; two more at the doors
         popup(b.x, FLOOR + b.z - 70, "SEEIN' RED!", '#ff6b4a', 1, 1.6); sfx('bellow'); b.rage = true;
@@ -1745,11 +1746,11 @@ T.runBrawler = function (A) {
     const dx = p.x - b.x, dz = p.z - b.z, toward = Math.sign(dx) || b.face;
     const L0 = lock + 26, L1 = lock + VW - 26;
     const stop = () => { b.vx = b.vz = 0; };
-    if (b.ringoT && time >= b.ringoT) { b.ringoT = 0; popup(b.x, FLOOR + b.z - 66, 'RINGO WAS SLOW TOO', '#fff3c4', 1, 2.0); }   // (a lost draw)
+    if (b.ringoT && time >= b.ringoT) { b.ringoT = 0; say(b, 'RINGO WAS SLOW TOO', 3.0); }   // (a lost draw)
     switch (b.state) {
       case 'duel':
         stop(); b.face = -1;
-        if (!b.said && b.t > 0.8) { b.said = true; popup(b.x, FLOOR + b.z - 66, "I'VE BEEN NEEDIN' A NEW PAIR.", '#fff3c4', 1, 2.4); }
+        if (!b.said && b.t > 0.8) { b.said = true; say(b, "I'VE BEEN NEEDIN' A NEW PAIR.", 2.4); }
         if (!b.drawT && b.t >= b.drawAt && !b.res) { b.drawT = b.t; struck = true; sfx('bell'); }
         if (!b.res) {
           if (b.kicked) b.res = b.drawT ? 'win' : 'early';
@@ -2096,18 +2097,18 @@ T.runBrawler = function (A) {
         if (S.intro) { center(T.textSprite('TEXAS', '#ffe7b0', 4), 50); center(T.textSprite('SHITKICKERS', '#ff9d3c', 4), 78); }
         center(T.textSprite(S.name, '#ffd34a', S.intro ? 2 : 3), S.intro ? 114 : 66); center(T.textSprite(S.sub, '#e8a070', 1), S.intro ? 132 : 88);
       }
+      const at = (img, x, y) => put(img, Math.max(2, Math.min(VW - 2 - img.width, Math.round(x))), Math.round(y), 0, 0, 0);
+      const speech = (line, top) => {            // a boss's line: in front of his face, on the side he faces
+        const f = boss.face || -1, bx = wx(boss.x), im = BUBBLE ? bubbleSprite(line, -f) : T.textSprite(line, '#fff3c4', 1);
+        at(im, f < 0 ? bx - 22 - im.width : bx + 22, top + (BUBBLE ? 6 : 14));
+      };
       if (entr && boss && boss.h <= 0 && entr.t >= ENT.card && entr.t < ENT.end - 0.1) {   // his entrance: name, lines
         const E2 = ENTRANCE[boss.type], bx = wx(boss.x), top = FLOOR + boss.z - E2[3];
-        const at = (img, x, y) => put(img, Math.max(2, Math.min(VW - 2 - img.width, Math.round(x))), Math.round(y), 0, 0, 0);
         const nm = T.textSprite(boss.name, '#ffd34a', 2), nk = T.textSprite(E2[0], '#e8a070', 1);
         at(nm, bx - nm.width / 2, top - 26); at(nk, bx - nk.width / 2, top - 13);
         const line = entr.t >= ENT.ringo ? E2[2] : entr.t >= ENT.line ? E2[1] : null;
-        if (line) {                              // in front of his face, on the side he faces
-          const f = boss.face || -1, im = BUBBLE ? bubbleSprite(line, -f) : T.textSprite(line, '#fff3c4', 1);
-          const y = top + (BUBBLE ? 6 : 14);
-          at(im, f < 0 ? bx - 22 - im.width : bx + 22, y);
-        }
-      }
+        if (line) speech(line, top);
+      } else if (boss && boss.say && time < boss.sayEnd && boss.state !== 'ko') speech(boss.say, FLOOR + boss.z - 64);
       if (phase === 'clear') { center(T.textSprite(S.name + ' CLEAR!', '#ffd34a', 3), 70); center(T.textSprite('SCORE ' + score, '#fff3c4', 1), 96); }
       if (phase === 'end') { center(T.textSprite('TO BE CONTINUED...', '#ff9d3c', 2), 80); if (Math.floor(phaseT * 3) % 2) center(T.textSprite('PRESS JUMP TO RIDE AGAIN', '#c3c8d8', 1), 110); }
       if (phase === 'over' && phaseT > 1) center(T.textSprite('PRESS JUMP TO TRY AGAIN', '#c3c8d8', 1), 120);
