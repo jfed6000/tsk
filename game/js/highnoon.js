@@ -163,15 +163,163 @@ T.buildNoon = function (VW, VH, FLOOR) {
 T.buildEnding = function (VW, VH, FLOOR) {
   const L = {}, MS = T.buildMainStreet(VW, VH, FLOOR), BH = T.buildNightLayers(VW, VH, FLOOR);
   L.far = MS.far; L.mid = BH.mid; L.street = T.buildGraveyardStreet(VW, VH, FLOOR);
-  const sh = T.canvas(VW, VH), c = sh.getContext('2d');           // the shop: a plank wall, a shelf, a price card
-  const P = { w0: '#4a2e1e', w1: '#5e3a26', w2: '#3a2216', sh0: '#7a5234', sh1: '#946640', card: '#efe6cc', ink: '#5a1a14', dk: '#1e1410' };
-  c.fillStyle = P.dk; c.fillRect(0, 0, VW, VH);
-  for (let x = 0; x < VW; x += 20) { c.fillStyle = (x / 20) % 2 ? P.w0 : P.w1; c.fillRect(x, 20, 19, 180); c.fillStyle = P.w2; c.fillRect(x + 19, 20, 1, 180); }
-  c.fillStyle = P.sh1; c.fillRect(40, 150, 240, 6); c.fillStyle = P.sh0; c.fillRect(40, 156, 240, 4);
-  c.fillStyle = P.w2; c.fillRect(60, 160, 6, 14); c.fillRect(254, 160, 6, 14);
-  c.fillStyle = P.card; c.fillRect(196, 128, 40, 20); T.drawText(c, 'SNAKESKIN', 216, 131, P.ink, 1, null, 'center'); T.drawText(c, '5 BITS', 216, 139, P.ink, 1, null, 'center');
-  L.shop = T.pixelize(sh, P, null, CLUT.bg);
+  Object.assign(L, T.buildShopScene(VW, VH));                      // the boot shop: a bitmap, and the boot that twitches
   return L;
+};
+
+// ---------------------------------------------------------------- the epilogue: the boot shop
+// A painted picture, not tiles: a lamplit boot shop at night - red damask, a mahogany wainscot, a polished shelf with a
+// brass rail, an oil lamp, plain boots in the shadows - and on the shelf a fine pair of diamondback snakeskin boots,
+// a price tag on a string. Painted with gradients at 320x240, then cut to 248 colours (median cut): on the F256 it's the
+// bitmap layer with its own CLUT, loaded for the epilogue. The right-hand boot is a sprite over it (it twitches).
+function medianCut(data, n) {                                     // data: RGBA bytes -> a palette of n [r, g, b]
+  const px = [];
+  for (let i = 0; i < data.length; i += 4) if (data[i + 3] > 127) px.push([data[i], data[i + 1], data[i + 2]]);
+  let boxes = [px];
+  while (boxes.length < n) {
+    let bi = -1, best = -1, ch = 0;
+    boxes.forEach((b, i) => {
+      if (b.length < 2) return;
+      for (let k = 0; k < 3; k++) {
+        let lo = 255, hi = 0; for (const q of b) { if (q[k] < lo) lo = q[k]; if (q[k] > hi) hi = q[k]; }
+        const range = (hi - lo) * (k === 1 ? 1.2 : 1) * Math.sqrt(b.length);
+        if (range > best) { best = range; bi = i; ch = k; }
+      }
+    });
+    if (bi < 0) break;
+    const b = boxes[bi].sort((u, v) => u[ch] - v[ch]), mid = b.length >> 1;
+    boxes.splice(bi, 1, b.slice(0, mid), b.slice(mid));
+  }
+  return boxes.filter(b => b.length).map(b => [0, 1, 2].map(k => Math.round(b.reduce((t, q) => t + q[k], 0) / b.length)));
+}
+function indexed(cv, n, clut) {                                   // cut a canvas to n colours: its pixels, idx, palette
+  const ctx = cv.getContext('2d'), img = ctx.getImageData(0, 0, cv.width, cv.height), d = img.data;
+  const pal = medianCut(d, n), hex = pal.map(q => '#' + q.map(v => v.toString(16).padStart(2, '0')).join(''));
+  const idx = new Uint16Array(cv.width * cv.height), cache = new Map();
+  const ids = clut ? hex.map(h => clut.add(h)) : hex.map((h, i) => i + 1);
+  for (let i = 0; i < idx.length; i++) {
+    const o = i * 4;
+    if (d[o + 3] <= 127) { d[o + 3] = 0; continue; }
+    const key = d[o] << 16 | d[o + 1] << 8 | d[o + 2];
+    let k = cache.get(key);
+    if (k === undefined) {
+      let best = Infinity;
+      pal.forEach((q, j) => { const e = 2 * (q[0] - d[o]) ** 2 + 4 * (q[1] - d[o + 1]) ** 2 + 3 * (q[2] - d[o + 2]) ** 2; if (e < best) { best = e; k = j; } });
+      cache.set(key, k);
+    }
+    d[o] = pal[k][0]; d[o + 1] = pal[k][1]; d[o + 2] = pal[k][2]; d[o + 3] = 255; idx[i] = ids[k];
+  }
+  ctx.putImageData(img, 0, 0);
+  cv.idx = idx; cv.pal = hex; cv.clut = clut || { colors: [null, ...hex] };
+  return cv;
+}
+// a cowboy boot, toe to the right, its heel's back at x 0 and the sole on y 0, about 78 x 118: diamondback skin
+function paintBoot(c, opt = {}) {
+  const outline = () => {
+    c.beginPath();
+    c.moveTo(2, -104); c.quadraticCurveTo(18, -116, 36, -104);     // the scalloped top
+    c.lineTo(37, -52); c.quadraticCurveTo(39, -26, 58, -19);        // the front of the shaft, the instep
+    c.quadraticCurveTo(74, -13, 78, -5); c.lineTo(76, 0);           // the vamp, the pointed toe
+    c.lineTo(22, 0); c.lineTo(17, -5); c.lineTo(15, 0); c.lineTo(0, 0);   // the sole, the arch, the heel
+    c.lineTo(-1, -15); c.quadraticCurveTo(-4, -50, 2, -104); c.closePath();
+  };
+  c.save();
+  outline(); c.save(); c.clip();
+  let g = c.createLinearGradient(0, -118, 0, 0); g.addColorStop(0, '#c49a5c'); g.addColorStop(0.6, '#a07844'); g.addColorStop(1, '#6e4c26');
+  c.fillStyle = g; c.fillRect(-6, -120, 90, 122);
+  const diamond = (x, y, w, h, a) => {                               // one of the big diamonds down his back: a cream rim, dark, a tan heart
+    c.save(); c.translate(x, y); c.rotate(a);
+    for (const [k, col] of [[1, '#e6d09a'], [0.8, '#3a200c'], [0.55, '#5a3818'], [0.28, '#a87c48']]) {
+      c.fillStyle = col; c.beginPath(); c.moveTo(0, -h * k); c.lineTo(w * k, 0); c.lineTo(0, h * k); c.lineTo(-w * k, 0); c.fill();
+    }
+    c.restore();
+  };
+  const blotch = (x, y, r) => { c.fillStyle = 'rgba(58,32,12,0.75)'; c.beginPath(); c.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); c.fill(); };
+  for (let y = -96; y <= -44; y += 13) { diamond(19, y, 9, 7, 0); blotch(3, y + 6, 2.4); blotch(35, y + 6, 2.4); }   // down the shaft, blotches on its sides
+  for (let k = 0; k < 4; k++) {                                       // and along the vamp to the toe, smaller as it goes
+    const t = k / 4, x = 34 + t * 36, y = -36 + t * 26, sc = 1 - t * 0.35;
+    diamond(x, y, 8 * sc, 6 * sc, 0.62); blotch(x - 4, y + 9 * sc, 2 * sc);
+  }
+  c.strokeStyle = 'rgba(70,44,20,0.35)'; c.lineWidth = 0.6;          // the little scales
+  for (let y = -118; y < 0; y += 3) for (let x = -4 + (y % 6 ? 1.5 : 0); x < 82; x += 3) { c.beginPath(); c.arc(x, y, 1.6, 0.1 * Math.PI, 0.9 * Math.PI); c.stroke(); }
+  g = c.createLinearGradient(-2, 0, 40, 0);                         // round: lit from the lamp on the left
+  g.addColorStop(0, 'rgba(255,230,180,0.0)'); g.addColorStop(0.25, 'rgba(255,236,190,0.35)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(30,10,0,0.45)');
+  c.fillStyle = g; c.fillRect(-6, -120, 46, 100);
+  g = c.createLinearGradient(0, -40, 0, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(20,8,0,0.35)');
+  c.fillStyle = g; c.fillRect(-6, -40, 90, 40);
+  c.fillStyle = 'rgba(255,250,235,0.28)'; c.fillRect(9, -100, 2, 52); c.fillRect(48, -20, 14, 1.4);   // the gloss
+  c.restore();
+  c.fillStyle = '#3a2010'; c.fillRect(-1, -15, 16, 15);              // the stacked heel, the sole and its welt
+  c.fillStyle = '#5a3418'; for (let y = -13; y < 0; y += 3) c.fillRect(0, y, 14, 1);
+  c.fillStyle = '#24140a'; c.beginPath(); c.moveTo(15, 0); c.lineTo(17, -4); c.lineTo(22, -3); c.lineTo(76, -3); c.lineTo(76, 0); c.closePath(); c.fill();
+  c.strokeStyle = '#d8c090'; c.lineWidth = 0.8; c.setLineDash([1.5, 1.5]);
+  c.beginPath(); c.moveTo(23, -4); c.lineTo(74, -4); c.stroke();
+  c.beginPath(); c.moveTo(4, -92); c.quadraticCurveTo(18, -82, 34, -92); c.stroke();   // the fancy stitching up the shaft
+  c.beginPath(); c.moveTo(6, -80); c.quadraticCurveTo(18, -70, 33, -80); c.stroke();
+  c.beginPath(); c.moveTo(37, -48); c.quadraticCurveTo(30, -30, 48, -22); c.stroke();
+  c.setLineDash([]);
+  outline(); c.strokeStyle = '#1e1008'; c.lineWidth = 1.4; c.stroke();
+  c.fillStyle = '#5a3418'; c.fillRect(3, -114, 6, 10); c.fillStyle = '#1e1008'; c.fillRect(4, -112, 4, 7);   // the pull tab
+  c.restore();
+}
+T.buildShopScene = function (VW, VH) {
+  const cv = T.canvas(VW, VH), c = cv.getContext('2d');
+  c.fillStyle = '#3a0e12'; c.fillRect(0, 0, VW, 150);              // the damask: red, a darker motif, a gold thread
+  for (let y = 0; y < 150; y += 30) for (let x = (y / 30 % 2) * 14; x < VW + 14; x += 28) {
+    c.fillStyle = '#4e1418'; c.beginPath(); c.ellipse(x, y + 15, 7, 11, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(176,128,60,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x, y + 3); c.quadraticCurveTo(x + 8, y + 15, x, y + 27); c.quadraticCurveTo(x - 8, y + 15, x, y + 3); c.stroke();
+    c.fillStyle = 'rgba(190,140,70,0.5)'; c.fillRect(x - 1, y + 14, 2, 2);
+  }
+  c.fillStyle = '#2a1008'; c.fillRect(0, 146, VW, 4);                 // the chair rail, the wainscot's panels
+  c.fillStyle = '#4a2212'; c.fillRect(0, 150, VW, VH - 150);
+  for (let x = 8; x < VW; x += 52) { c.fillStyle = '#5c2c18'; c.fillRect(x, 186, 44, 46); c.fillStyle = '#7a4024'; c.fillRect(x, 186, 44, 1.5); c.fillRect(x, 186, 1.5, 46); c.fillStyle = '#2e140a'; c.fillRect(x, 231, 44, 1.5); }
+  for (const [sx, sy, w] of [[8, 74, 70], [242, 74, 70], [8, 116, 60], [252, 116, 60]]) {   // shelves in the shadows, plain boots on them
+    c.fillStyle = '#2e1408'; c.fillRect(sx, sy, w, 4); c.fillStyle = '#5a2e18'; c.fillRect(sx, sy, w, 1);
+    for (let k = 0; k < 2; k++) {
+      c.save(); c.translate(sx + 8 + k * 30, sy); c.scale(0.3, 0.3);
+      c.fillStyle = k ? '#3a2214' : '#2a1a10'; c.beginPath(); c.moveTo(2, -104); c.lineTo(36, -104); c.lineTo(37, -52); c.quadraticCurveTo(40, -24, 58, -19); c.quadraticCurveTo(74, -13, 78, -5); c.lineTo(76, 0); c.lineTo(0, 0); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,210,150,0.25)'; c.fillRect(8, -100, 6, 70);
+      c.restore();
+    }
+  }
+  c.fillStyle = '#1e0c06'; c.fillRect(70, 18, 180, 22);              // the sign: gold leaf on black
+  c.strokeStyle = '#b08a3c'; c.lineWidth = 1; c.strokeRect(71.5, 19.5, 177, 19);
+  T.drawText(c, 'FINE BOOTS', 160, 23, '#e8c060', 3, null, 'center');
+  let g = c.createLinearGradient(0, 168, 0, 186);                    // the shelf: polished mahogany, a brass rail
+  g.addColorStop(0, '#8a4a26'); g.addColorStop(0.3, '#6a3218'); g.addColorStop(1, '#3e1a0a');
+  c.fillStyle = g; c.fillRect(20, 168, 280, 16);
+  c.fillStyle = '#c08a5a'; c.fillRect(20, 168, 280, 1);
+  c.fillStyle = '#c8a040'; c.fillRect(20, 182, 280, 2); c.fillStyle = '#f0d070'; c.fillRect(20, 182, 280, 1);
+  c.fillStyle = 'rgba(0,0,0,0.45)'; for (const bx of [140, 226]) { c.beginPath(); c.ellipse(bx, 170, 44, 4, 0, 0, Math.PI * 2); c.fill(); }   // the boots' shadows
+  // the oil lamp: brass foot, glass chimney, the flame
+  c.fillStyle = '#9a7228'; c.beginPath(); c.ellipse(46, 167, 10, 3, 0, 0, Math.PI * 2); c.fill(); c.fillRect(42, 150, 8, 17);
+  c.fillStyle = '#c8a040'; c.beginPath(); c.ellipse(46, 150, 9, 6, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(230,240,240,0.35)'; c.beginPath(); c.moveTo(40, 146); c.quadraticCurveTo(36, 132, 42, 122); c.lineTo(50, 122); c.quadraticCurveTo(56, 132, 52, 146); c.fill();
+  c.fillStyle = '#ffd060'; c.beginPath(); c.ellipse(46, 134, 2.6, 6, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff4c0'; c.beginPath(); c.ellipse(46, 135, 1.2, 3, 0, 0, Math.PI * 2); c.fill();
+  c.save(); c.translate(98, 168); paintBoot(c); c.restore();         // the left boot (the right one's the sprite)
+  c.strokeStyle = '#d8c8a0'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(104, 60); c.quadraticCurveTo(96, 78, 84, 96); c.stroke();   // the tag on its string
+  c.save(); c.translate(84, 96); c.rotate(-0.12);
+  c.fillStyle = '#f4ecd4'; c.fillRect(-36, 0, 46, 24); c.strokeStyle = '#8a7a5a'; c.strokeRect(-36, 0, 46, 24);
+  T.drawText(c, 'GENUINE', -13, 3, '#5a1a14', 1, null, 'center'); T.drawText(c, 'DIAMONDBACK', -13, 10, '#5a1a14', 1, null, 'center'); T.drawText(c, '5 BITS', -13, 17, '#8a2a1a', 1, null, 'center');
+  c.restore();
+  c.globalCompositeOperation = 'screen';                             // the lamplight, warm, from the left
+  g = c.createRadialGradient(56, 130, 4, 56, 130, 190); g.addColorStop(0, 'rgba(255,190,100,0.55)'); g.addColorStop(0.4, 'rgba(160,80,30,0.25)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = g; c.fillRect(0, 0, VW, VH);
+  c.globalCompositeOperation = 'multiply';                           // the corners falling into the dark
+  g = c.createRadialGradient(150, 130, 60, 150, 130, 230); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(40,20,20,1)');
+  c.fillStyle = g; c.fillRect(0, 0, VW, VH);
+  c.globalCompositeOperation = 'source-over';
+  const bmp = indexed(cv, 248);
+  // the right-hand boot, lit the same way, as a sprite: still, and twitching (tipped back on its heel)
+  const boot = [0, -0.09].map(tw => {
+    const sc = T.canvas(88, 128), x = sc.getContext('2d'); x.translate(4, 124); x.rotate(tw); paintBoot(x);
+    x.globalCompositeOperation = 'source-atop';
+    const g2 = x.createLinearGradient(-60, 0, 120, 0); g2.addColorStop(0, 'rgba(255,190,100,0.25)'); g2.addColorStop(1, 'rgba(0,0,0,0.25)');
+    x.fillStyle = g2; x.fillRect(-10, -130, 110, 140);
+    x.fillStyle = 'rgba(20,6,0,0.22)'; x.fillRect(-10, -130, 110, 140);   // (the far side of the lamp: a shade darker)
+    const o = indexed(sc, 40, CLUT.spr); o.ox = 4; o.oy = 124; return o;
+  });
+  return { shopBmp: bmp, shopBoot: boot };
 };
 
 // the clock's hands: 11:59 and noon; and the snakeskin boots (still, and one twitching)

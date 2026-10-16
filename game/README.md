@@ -50,6 +50,7 @@ right side kicks, top tips the hat.
 - `?stage=mainstreet`, `?stage=ghosttown`, `?stage=cattledrive`, `?stage=train`, `?stage=mission`, `?stage=highnoon` or `?stage=desert`: start on another stage (the desert is the original test floor)
 - `?wave=N` (with `?stage=`): start at that wave of the stage (e.g. `?stage=mission&wave=6`, El Toro)
 - `?duel=early` or `?duel=slow` (with `?bot`, High Noon): the autopilot misses the draw (to see him shoot)
+- `?ending` (or `?ending=shop`): the ending, or straight to its last scene
 - `?noduck` (with `?bot`): the autopilot doesn't duck the train's tunnels (to see the knock)
 - `?hug` (with `?bot`): at Sting or El Toro, the autopilot walks into his middle and kicks (to see the guard and the shove)
 - `?nointro`: skip the title screen and the Boot Hill opening (`?stage`, `?bot` and `?god` skip the title too)

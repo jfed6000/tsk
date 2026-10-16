@@ -2031,7 +2031,7 @@ T.runBrawler = function (A) {
     } else if (ending && (ending.step === 'theend' || ending.step === 'shop')) {   // the ending's last words; the boot shop
       if (ending.step === 'theend' && ending.t > 0.6) center(T.textSprite('THE END', '#ff9d3c', 4), 84);
       if (ending.step === 'shop') {
-        put(NSP.boots[ending.twitch > 0 ? 1 : 0], 140, 150, NSP.boots[0].ox, NSP.boots[0].oy, 5);
+        put(ART.shopBoot[ending.twitch > 0 ? 1 : 0], 184, 168, ART.shopBoot[0].ox, ART.shopBoot[0].oy, 5);   // the right-hand boot, over the bitmap
         if (ending.t > 3.5 && Math.floor(ending.t * 2) % 2) center(T.textSprite('PRESS JUMP', '#c3c8d8', 1), 210);
       }
     } else {
@@ -2146,7 +2146,7 @@ T.runBrawler = function (A) {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
     const bg = ride ? Math.min(ride.d, S.ride.tread) : 0;          // the ride: the sky layers keep going over the treadmill
     const run = S.train ? time : 0;                 // the train: the scenery streams by on its own
-    if (ending && ending.step === 'shop') { layer(ART.shop, 0); }   // the boot shop: its wall and shelf only
+    if (ending && ending.step === 'shop') ctx.drawImage(ART.shopBmp, sx, syy);   // the boot shop: a bitmap (the F256's bitmap layer)
     else { layer(ART.far, (cx + bg) * 0.25 + run * TR.FAR); layer(ART.mid, (cx + bg) * 0.5 + run * TR.V); }
     if (rockOn()) layer(ART.rock, cx * 0.5 + run * TR.V);   // in the tunnel: its rock wall behind the train (the middle layer's other map)
     if (!(ending && ending.step === 'shop')) layer(ART.street, ride && ride.d < S.ride.tread ? Math.floor(ride.d) % T.RANCH.LOOP : cx);
@@ -2319,6 +2319,7 @@ T.runBrawler = function (A) {
     enemies: enemies.map(e => ({ type: e.type, state: e.state, x: Math.round(e.x), h: Math.round(e.h), fell: !!e.fell })) });   // (the test harness reads it)
   loadStage(STAGES[params.get('stage')] ? params.get('stage') : 'boothill');
   if (!params.has('stage') && !params.has('nointro') && !params.has('bot') && !params.has('god')) toTitle();
+  if (params.has('ending')) { startEnding(); if (params.get('ending') === 'shop') { ending.step = 'shop'; music(null); } }   // ?ending (=shop): the ending (its last scene)
   if (params.has('wave') && S.waves[+params.get('wave')]) {   // ?wave=N: start at the stage's wave N (the boss, say)
     waveI = +params.get('wave'); camX = Math.min(W - VW, S.waves[waveI].cam); player.x = camX + 80; titleT = 9;
   }
