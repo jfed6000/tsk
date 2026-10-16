@@ -297,7 +297,7 @@ T.runExport = function (A) {
   addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
     ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
     ['ball', DLN.ball, 20, true], ['hurt', [DLN.hurt], 1, false], ['daze', DLN.daze, 8, true], ['ko', [DLN.ko], 1, false]], B.OX, B.OY);
-  bank = ['GT', 'CD', 'TH', 'MI'];                 // the rattler: Ghost Town's, the Cattle Drive's corral's, the train's, the Mission's
+  bank = ['GT', 'CD', 'TH', 'MI', 'HN'];           // the rattler: Ghost Town's, the Cattle Drive's corral's, the train's, the Mission's, High Noon's
   const RAT = T.buildRattler(), GIL = T.buildGila(), GPR = T.buildGhostProps();
   addGroup('RT', [['walk', RAT.walk, 8, true], ['coil', RAT.coil, 14, true], ['lunge', [RAT.lunge], 1, false],
     ['recover', [RAT.recover], 1, false], ['hurt', [RAT.hurt], 1, false], ['down', [RAT.down], 1, false], ['ko', [RAT.ko], 1, false]], B.OX, B.OY);
