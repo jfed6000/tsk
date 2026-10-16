@@ -15,6 +15,8 @@
 #   make mametrain               the Train Heist (tsk tbg) in MAME
 #   make mamemission             the Mission (tsk ibg) in MAME
 #   make mamenoon                High Noon and the ending (tsk nbg) in MAME
+#   make reel                    the showreel: tools/reelrec.sh records every stage in MAME (reel/raw.avi, ~13 GB),
+#                                tools/reel.sh cuts it to reel/tsk-reel.mp4 over the Shitkicker Shuffle
 #   make mametitle               the title screen and its music in MAME: the MIDI the 6809 sends, as mame/midi.mid
 #   make mameview                the same for tskview
 #   make host                    the demo on the host 6809 (tools/hostrun.py): the hero's state, pass by pass
@@ -130,3 +132,7 @@ clean:
 	rm -f tsk tsk.list tsk.map tskview tskview.list tskview.map
 
 .PHONY: all music assets install mame mamebot mameboss mametitle mamems mamedillon mamedeath mamegila mamecattle mametrain mameview host clean
+
+reel: all
+	tools/reelrec.sh
+	tools/reel.sh
