@@ -18,11 +18,15 @@ KY.Space            equ       %10000000
 * start - X = the parameters, U = DP = the data area
 ********************************************************************
 start               clrb                          the parameters: d = demo, b = autopilot,
+                    ldy       #0                  (Y: s = start with five hats, the HUD's count)
 st0                 lda       ,x+                 g = nothing hurts him, k = the boss, m = Main Street, f = frail
                     cmpa      #$0D
                     beq       st0d
                     ora       #$20
-                    cmpa      #'d
+                    cmpa      #'s
+                    bne       st0s
+                    leay      1,y
+st0s                cmpa      #'d
                     bne       st0a
                     orb       #1
 st0a                cmpa      #'b
@@ -59,14 +63,15 @@ st0n                cmpa      #'n                 n = start at High Noon (m and 
                     lbne      st0
                     orb       #144
                     lbra      st0
-st0d                pshs      b
+st0d                pshs      b,y
                     tfr       u,x                 clear the data area below the stack
                     ldy       #StkBase
 st1                 clr       ,x+
                     leay      -1,y
                     bne       st1
                     stu       <dbase
-                    puls      b
+                    puls      b,y
+                    sty       hatarg,u
                     lsrb
                     bcc       st1a
                     inc       <demo

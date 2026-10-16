@@ -344,6 +344,8 @@ twvh                rmb       2
 twt                 rmb       2                   passes before the next one
 stgarg              rmb       1                   tsk m: start at Main Street
 ldstg               rmb       1                   the stage whose art is loaded ($FF = none)
+hatarg              rmb       2                   tsk s: start with five hats (to see the HUD's count)
+nexthat             rmb       2                   the next score that earns a hat: its top four BCD digits (pickup.a HatScore)
 ptnx                rmb       2                   NewPt: where the next search starts (0 = the first)
 ptend               rmb       2                   the end of the particle table (set at start-up)
 gdown               rmb       1                   1 = the boss is down: his gang follows, one a pass

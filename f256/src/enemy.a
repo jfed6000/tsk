@@ -94,7 +94,10 @@ HurtT               equ       24                  the hurt state (0.4 s)
 CombatInit          lda       #MaxHp
                     sta       <hhp
                     lda       #3
-                    sta       <hlives
+                    ldb       hatarg+1,u          (tsk s: five)
+                    beq       ci0
+                    lda       #5
+ci0                 sta       <hlives
                     lda       #1
                     sta       <hatk
                     ldd       #$ACE1
@@ -2683,8 +2686,9 @@ bi5                 leay      EN.Size,y
 *   from 22 px to its left.  Exit: carry clear = binp set
 BotBar              leay      br,u
                     ldb       #NBr
-bb5                 tst       BR.St,y
-                    beq       bb6
+bb5                 lda       BR.St,y             (standing: not a hiding place broken open)
+                    cmpa      #1
+                    bne       bb6
                     pshs      b
                     ldd       BR.X,y
                     lbsr      Asr4

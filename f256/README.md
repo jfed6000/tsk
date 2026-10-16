@@ -76,6 +76,7 @@ SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other lett
 | `i` | Start at the Mission |
 | `n` | Start at High Noon |
 | `f` | Frail: any hit kills (to see the death scene) |
+| `s` | Start with five hats (to see the HUD's count past three) |
 
 | Key | Does |
 |---|---|

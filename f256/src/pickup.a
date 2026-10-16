@@ -6,15 +6,15 @@
 *   dropWeapon.
 ********************************************************************
 
-NBr                 equ       10                  barrels (and Ghost Town's tables) on a stage, at most
+NBr                 equ       11                  barrels (and Ghost Town's tables, and the hidden hat's hiding place) on a stage
 NIt                 equ       6                   items lying about
 NHb                 equ       3                   his bullets in the air
 
 * a barrel
-BR.St               equ       0                   1 = standing
+BR.St               equ       0                   1 = standing (2 = the hiding place, broken open)
 BR.X                equ       1                   12.4
 BR.Z                equ       3
-BR.It               equ       5                   what's in it (IT.*)
+BR.It               equ       5                   what's in it (IT.*; the top bit: a card table; BR.Sec: the hiding place)
 BR.Size             equ       6
 
 * an item
@@ -26,6 +26,9 @@ IT.VH               equ       7
 IT.Am               equ       9                   a weapon's rounds (0 = a full one)
 IT.Size             equ       10
 IT.Beans            equ       3
+IT.Hat              equ       4                   a hat: a spare life (walked over)
+BR.Sec              equ       $40
+MaxHats             equ       9
 
 * one of his bullets
 HB.St               equ       0                   1 = flying
@@ -76,6 +79,8 @@ pi9                 rts
 * the barrels: x, z, what's in it (brawler.js STAGES.*.barrels)
 BarBH               fdb       300
                     fcb       64,IT.Beans
+                    fdb       1060                 the hidden hat's hiding place (brawler.js STAGES.*.secret)
+                    fcb       2,BR.Sec+IT.Hat
                     fdb       700
                     fcb       20,WP.Whip
                     fdb       1100
@@ -87,6 +92,8 @@ BarBH               fdb       300
 * Ghost Town: barrels on the street, card tables in the saloon (the item's top bit: a table)
 BarHN               fdb       300                 High Noon's: down Main Street
                     fcb       30,IT.Beans
+                    fdb       1010                 the hidden hat's hiding place (brawler.js STAGES.*.secret)
+                    fcb       2,BR.Sec+IT.Hat
                     fdb       620
                     fcb       60,WP.Gun
                     fdb       1000
@@ -96,6 +103,8 @@ BarHN               fdb       300                 High Noon's: down Main Street
 BarEN               equ       *                   (the ending: none)
 BarMI               fdb       250                 the Mission's: along the wall, in the courtyard
                     fcb       30,IT.Beans
+                    fdb       700                 the hidden hat's hiding place (brawler.js STAGES.*.secret)
+                    fcb       2,BR.Sec+IT.Hat
                     fdb       560
                     fcb       60,WP.Whip
                     fdb       820
@@ -106,6 +115,8 @@ BarMI               fdb       250                 the Mission's: along the wall,
                     fcb       64,WP.Whip
 BarTH               fdb       300                 the Train Heist's: on the roofs
                     fcb       16,IT.Beans
+                    fdb       1500                 the hidden hat's hiding place (brawler.js STAGES.*.secret)
+                    fcb       2,BR.Sec+IT.Hat
                     fdb       640
                     fcb       30,WP.Whip
                     fdb       980
@@ -118,6 +129,8 @@ BarTH               fdb       300                 the Train Heist's: on the roof
                     fcb       30,IT.Beans
 BarCD               fdb       1300                the Cattle Drive's corral
                     fcb       30,IT.Beans
+                    fdb       1300                 the hidden hat's hiding place (brawler.js STAGES.*.secret)
+                    fcb       2,BR.Sec+IT.Hat
                     fdb       1420
                     fcb       64,WP.Whip
                     fdb       1560
@@ -126,6 +139,8 @@ BarCD               fdb       1300                the Cattle Drive's corral
                     fcb       50,IT.Beans
 BarGT               fdb       240
                     fcb       20,IT.Beans
+                    fdb       1500                 the hidden hat's hiding place (brawler.js STAGES.*.secret)
+                    fcb       2,BR.Sec+IT.Hat
                     fdb       520
                     fcb       60,WP.Whip
                     fdb       880
@@ -146,6 +161,8 @@ BarGT               fdb       240
                     fcb       50,$80+IT.Beans
 BarMS               fdb       250
                     fcb       20,IT.Beans
+                    fdb       1530                 the hidden hat's hiding place (brawler.js STAGES.*.secret)
+                    fcb       2,BR.Sec+IT.Hat
                     fdb       560
                     fcb       60,WP.Whip
                     fdb       960
@@ -180,9 +197,12 @@ kim2                 ldd       IT.VH,x
                     ldd       #0
                     std       IT.H,x
                     std       IT.VH,x
-kim3                 lda       IT.Ty,x             beans: walked over
+kim3                 lda       IT.Ty,x             beans and hats: walked over
                     cmpa      #IT.Beans
+                    beq       kim3a
+                    cmpa      #IT.Hat
                     bne       kim9
+kim3a               equ       *
                     tst       <phase
                     bne       kim9
                     ldd       IT.H,x
@@ -197,8 +217,15 @@ kim3                 lda       IT.Ty,x             beans: walked over
                     lbsr      AbsD
                     cmpd      #10*16
                     bhs       kim9
+                    lda       IT.Ty,x
                     clr       IT.Ty,x
-                    lda       #SF.Check           beans!
+                    cmpa      #IT.Hat             a hat: a spare life
+                    bne       kim3b
+                    pshs      x
+                    lbsr      GainHat
+                    puls      x
+                    bra       kim9
+kim3b               lda       #SF.Check           beans!
                     lbsr      Sfx
                     lda       <hhp
                     adda      #7
@@ -251,6 +278,8 @@ Underfoot           leay      it,u
 kuf1                 lda       IT.Ty,y
                     beq       kuf2
                     cmpa      #IT.Beans
+                    beq       kuf2
+                    cmpa      #IT.Hat
                     beq       kuf2
                     pshs      b
                     ldd       IT.H,y
@@ -349,6 +378,12 @@ BreakBar            lda       #SF.Break
                     lbsr      Sfx
                     pshs      x
                     clr       BR.St,y
+                    lda       BR.It,y             the hidden hat's hiding place: it stays, broken open
+                    bita      #BR.Sec
+                    beq       kbk0
+                    lda       #2
+                    sta       BR.St,y
+kbk0                equ       *
                     lda       #3
                     sta       <hitstop
                     lda       #4
@@ -389,12 +424,26 @@ kbk1                 lda       #14                 a splinter: 10-24 px up
 kbk2                 dec       <kcnt
                     bne       kbk1
                     puls      y
-                    ldd       #10*16              what was inside pops out
+                    lda       BR.It,y             the hiding place: a hat tumbles out, no points
+                    bita      #BR.Sec
+                    beq       kbk3
+                    ldd       <sz                 (brawler.js openSecret: z + 10, 24 px up, 230 px/s)
+                    addd      #10*16
+                    std       <sz
+                    ldd       #24*16
+                    std       <sh
+                    ldd       #61
+                    std       <tdx
+                    lda       #IT.Hat
+                    clrb
+                    lbsr      NewItem
+                    puls      x,pc
+kbk3                ldd       #10*16              what was inside pops out
                     std       <sh
                     ldd       #43
                     std       <tdx
                     lda       BR.It,y
-                    anda      #$7F                (the top bit: it's a table)
+                    anda      #$3F                (the top bits: a table, the hiding place)
                     clrb
                     pshs      y
                     lbsr      NewItem
@@ -411,8 +460,9 @@ kbk2                 dec       <kcnt
 BarHit              pshs      x
                     leay      br,u
                     ldb       #NBr
-kbh1                 tst       BR.St,y
-                    beq       kbh2
+kbh1                 lda       BR.St,y             (standing: not a hiding place broken open)
+                    cmpa      #1
+                    bne       kbh2
                     pshs      b
                     ldd       BR.Z,y
                     subd      <hz
@@ -533,8 +583,9 @@ kwh5                 leax      EN.Size,x
                     bne       kwh3
                     leay      br,u                barrels: 36 px ahead, within 32
                     ldb       #NBr
-kwh6                 tst       BR.St,y
-                    beq       kwh7
+kwh6                 lda       BR.St,y
+                    cmpa      #1
+                    bne       kwh7
                     pshs      b
                     ldd       BR.Z,y
                     subd      <hz
@@ -656,8 +707,9 @@ khu4                 leay      EN.Size,y
                     bne       khu3
                     leay      br,u                barrels
                     ldb       #NBr
-khu5                 tst       BR.St,y
-                    beq       khu6
+khu5                 lda       BR.St,y
+                    cmpa      #1
+                    bne       khu6
                     pshs      b
                     ldd       BR.Z,y
                     subd      HB.Z,x
@@ -694,8 +746,15 @@ kdq1                 tst       BR.St,x
                     pshs      x
                     ldd       #PR.barrel          (or a card table: Ghost Town's, BR.It's top bit)
                     tst       BR.It,x
-                    bpl       kdq1a
+                    bpl       kdq1b
                     ldd       #GP.table
+                    bra       kdq1a
+kdq1b               lda       BR.It,x             (or the hidden hat's hiding place: whole, broken)
+                    bita      #BR.Sec
+                    beq       kdq1c
+                    lbsr      SecDraw
+                    bra       kdq1d
+kdq1c               ldd       #PR.barrel
 kdq1a               std       <efrm
                     lda       #CTL.Spr
                     sta       <ectl
@@ -710,7 +769,7 @@ kdq1a               std       <efrm
                     ldd       #0
                     std       <eh
                     lbsr      Ent
-                    puls      x
+kdq1d               puls      x
 kdq2                 leax      BR.Size,x
                     dec       <dloop
                     bne       kdq1
@@ -725,6 +784,9 @@ kdq3                 lda       IT.Ty,x
                     beq       kdq3a
                     ldy       #PR.gun
                     cmpa      #WP.Gun
+                    beq       kdq3a
+                    ldy       #PR.hat
+                    cmpa      #IT.Hat
                     beq       kdq3a
                     ldy       #PR.beans
 kdq3a                sty       <efrm
@@ -743,6 +805,8 @@ kdq3a                sty       <efrm
                     ldx       ,s
                     lda       IT.Ty,x
                     cmpa      #IT.Beans
+                    beq       kdq4
+                    cmpa      #IT.Hat
                     beq       kdq4
                     lda       <ticks+1
                     bita      #8
@@ -787,3 +851,86 @@ kdq7                 leax      HB.Size,x
                     dec       <dloop
                     bne       kdq6
                     rts
+
+* SecDraw - X = the hidden hat's hiding place (a barrel with BR.Sec): this
+*   stage's prop, whole or broken open; whole, a glint now and then is the
+*   tell (brawler.js: FX.star[2], 0.16 s every 2.6 s; here 8 passes in 128)
+SecDraw             lda       stgn,u
+                    lsla
+                    leay      SecFrm,pcr
+                    ldd       a,y
+                    tst       BR.St,x             (2 = broken open: the next frame)
+                    beq       ksd1
+                    addd      #-1
+                    addb      BR.St,x
+                    adca      #0
+ksd1                std       <efrm
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <eshk
+                    lda       #1
+                    sta       <ekey
+                    ldd       BR.X,x
+                    std       <ex
+                    ldd       BR.Z,x
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbsr      Ent
+                    ldx       2,s                 (the caller's X, under the return)
+                    lda       BR.St,x
+                    cmpa      #1
+                    bne       ksd9
+                    lda       <ticks+1
+                    anda      #$7F
+                    cmpa      #8
+                    bhs       ksd9
+                    ldd       #FX.star+2
+                    std       <efrm
+                    lda       #$FF
+                    sta       <ekey
+                    ldd       BR.X,x
+                    addd      #4*16
+                    std       <ex
+                    ldd       #26*16
+                    std       <eh
+                    lbsr      Ent
+ksd9                rts
+
+* each stage's hiding place, whole then broken (export.js Q<stage>.prop)
+SecFrm              fdb       QBH.prop,QMS.prop,QGT.prop,QCD.prop,QTH.prop,QMI.prop,QHN.prop
+
+* GainHat - a hat (found, or every 30,000 points): a spare life, at most
+*   nine; a full rack, 5,000 points instead (brawler.js gainHat)
+GainHat             lda       <hlives
+                    cmpa      #MaxHats
+                    bhs       kgh1
+                    inc       <hlives
+                    lda       #SF.Tip
+                    lbsr      Sfx
+                    ldx       #TX.anohat
+                    bra       kgh2
+kgh1                ldd       #5000
+                    std       <scw
+                    lbsr      AddBcd
+                    lda       #SF.Check
+                    lbsr      Sfx
+                    ldx       #TX.fullhat
+kgh2                lda       #44
+                    lbra      WordH
+
+* HatScore - a hat every 30,000 points (in play): nexthat is the next
+*   score that earns one, its top four BCD digits
+HatScore            ldd       <score
+                    cmpd      nexthat,u
+                    blo       khs9
+                    lda       nexthat+1,u         30,000 more
+                    adda      #3
+                    daa
+                    sta       nexthat+1,u
+                    lda       nexthat,u
+                    adca      #0
+                    daa
+                    sta       nexthat,u
+                    lbra      GainHat
+khs9                rts

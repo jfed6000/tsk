@@ -2,10 +2,11 @@
 AimT                equ       $0021
 AttractLen          equ       $0BB8
 AttractT            equ       $04B0
-BarEN               equ       $3A79
+BarEN               equ       $3ACF
 BossHp              equ       $0024
 BossTall            equ       $002C
 BR.It               equ       $0005
+BR.Sec              equ       $0040
 BR.Size             equ       $0006
 BR.St               equ       $0000
 BR.X                equ       $0001
@@ -53,7 +54,7 @@ CySpd               equ       $000F
 CyStrikeT           equ       $000F
 CyTall              equ       $002C
 CyWindT             equ       $0019
-ddm0                equ       $4C78
+ddm0                equ       $4DF7
 DGetupT             equ       $0015
 DieDur              equ       $001E
 DlEnter             equ       $0010
@@ -63,9 +64,9 @@ DlSpd               equ       $0013
 DlTall              equ       $0010
 DownT               equ       $0036
 DriftT              equ       $0080
-ds1x                equ       $5CB1
+ds1x                equ       $5E35
 DuskEvery           equ       $0007
-DynCell             equ       $04B0
+DynCell             equ       $04B8
 ES.Aim              equ       $0003
 ES.Air              equ       $0008
 ES.Appr             equ       $0002
@@ -88,7 +89,7 @@ ES.Strike           equ       $000C
 ES.Thrown           equ       $0013
 ES.Vault            equ       $0015
 ES.Wind             equ       $000B
-eth0                equ       $5216
+eth0                equ       $539A
 FlashLen            equ       $0008
 FlashT              equ       $0006
 FlyV                equ       $002D
@@ -109,6 +110,7 @@ HB.VX               equ       $0007
 HB.X                equ       $0001
 HB.Z                equ       $0003
 HbV                 equ       $0065
+hdw1                equ       $4F5F
 HopT                equ       $000A
 HudY                equ       $0004
 HurtT               equ       $0018
@@ -123,6 +125,7 @@ InWake              equ       $00A4
 IT.Am               equ       $0009
 IT.Beans            equ       $0003
 IT.H                equ       $0005
+IT.Hat              equ       $0004
 IT.Size             equ       $000A
 IT.Ty               equ       $0000
 IT.VH               equ       $0007
@@ -131,6 +134,8 @@ IT.Z                equ       $0003
 JumpDn              equ       $FFFFFFE0
 JumpUp              equ       $0020
 JumpV               equ       $0060
+kbk0                equ       $3CF8
+kim3a               equ       $3B97
 KneeDur             equ       $0014
 KY.Down             equ       $0010
 KY.Left             equ       $0020
@@ -140,6 +145,7 @@ KY.Up               equ       $0008
 LandFree            equ       $0005
 Lane                equ       $000C
 LastLen             equ       $0084
+MaxHats             equ       $0009
 MaxHp               equ       $0010
 MaxW                equ       $07F0
 MidiBase            equ       $FF30
@@ -147,7 +153,7 @@ MidiData            equ       $FF31
 MidiPath            equ       $0000
 MidiRoom            equ       $07C0
 MidiTxCnt           equ       $FF38
-NBr                 equ       $000A
+NBr                 equ       $000B
 NCl                 equ       $0003
 NDuskBlk            equ       $0008
 NDynBlk             equ       $0003
@@ -173,7 +179,7 @@ PK.StarB            equ       $0002
 PN.M                equ       $0001
 PN.Size             equ       $0004
 PN.T                equ       $0000
-PopCell             equ       $04B8
+PopCell             equ       $04C0
 PopLife             equ       $0036
 PU.F                equ       $0002
 PU.K                equ       $0001
@@ -295,12 +301,12 @@ TwG                 equ       $0003
 WaitT               equ       $0078
 WalkX               equ       $001C
 WalkZ               equ       $0011
-whb00               equ       $42D4
-whb1x               equ       $4305
+whb00               equ       $4453
+whb1x               equ       $4484
 WhipDur             equ       $0012
 WhipN               equ       $000E
-whk1                equ       $4355
+whk1                equ       $44D4
 WindT               equ       $0012
-wv3                 equ       $2C74
-xdi0                equ       $4CB0
-xhdd2               equ       $4E5C
+wv3                 equ       $2C97
+xdi0                equ       $4E2F
+xhdd2               equ       $4FE0

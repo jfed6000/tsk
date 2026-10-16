@@ -197,6 +197,10 @@ hdWait              lda       dtime,u
                     lblo      PickAnim
                     dec       <hlives
                     lda       <hlives             where it was: x = cam + 124 + 24 lives,
+                    cmpa      #3                  (past three, the one by the count)
+                    blo       hdw1
+                    clra
+hdw1                equ       *
                     ldb       #24
                     mul
                     addd      #108+16

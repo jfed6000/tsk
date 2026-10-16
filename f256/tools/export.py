@@ -97,7 +97,7 @@ def previews():
 
     # every animation frame rebuilt from cells + frame table, facing right and mirrored
     shared = (ASSETS / 'sprites.bin').read_bytes()
-    banks = {'TB': 'bh', 'BD': 'ms', 'RT': 'gt', 'GL': 'gt', 'GP': 'gt', 'RD': 'cd', 'RO': 'cd', 'JK': 'cd', 'SC': 'th', 'TP': 'th', 'TQ': 'th', 'TO': 'mi', 'DB': 'hn', 'CH': 'hn', 'BO': 'en', 'XBH': 'bh', 'XMS': 'ms', 'XGT': 'gt', 'XCD': 'cd', 'XTH': 'th', 'XMI': 'mi', 'XHN': 'hn', 'XEN': 'en'}       # stage groups: their cells come from spr_<stage>.bin
+    banks = {'TB': 'bh', 'BD': 'ms', 'RT': 'gt', 'GL': 'gt', 'GP': 'gt', 'RD': 'cd', 'RO': 'cd', 'JK': 'cd', 'SC': 'th', 'TP': 'th', 'TQ': 'th', 'TO': 'mi', 'DB': 'hn', 'CH': 'hn', 'BO': 'en', 'XBH': 'bh', 'XMS': 'ms', 'XGT': 'gt', 'XCD': 'cd', 'XTH': 'th', 'XMI': 'mi', 'XHN': 'hn', 'XEN': 'en', 'QBH': 'bh', 'QMS': 'ms', 'QGT': 'gt', 'QCD': 'cd', 'QTH': 'th', 'QMI': 'mi', 'QHN': 'hn'}       # stage groups: their cells come from spr_<stage>.bin
     frm = (ASSETS / 'frames.bin').read_bytes()
     sc = clut('clut_spr.bin')
     nf = struct.unpack('>H', frm[:2])[0]

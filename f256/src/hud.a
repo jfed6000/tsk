@@ -1080,10 +1080,28 @@ dt2                 lda       <tmpi
                     lda       <tmpi
                     cmpa      #8
                     blo       dt2
-* his hats: one a life
+* his hats: one a life; past three, one and a count (X4..X9)
 dt3                 lda       <hlives
                     beq       dt5
-                    sta       <tmpn
+                    cmpa      #3
+                    bls       dt3a
+                    ldd       #108+16
+                    std       <bcx
+                    ldd       #6+14
+                    std       <bcy
+                    ldd       #PR.hat
+                    lbsr      BuildChar
+                    ldd       #143                (brawler.js: 'X'+lives at 134,10, top left)
+                    std       <bcx
+                    ldd       #10
+                    std       <bcy
+                    ldb       <hlives
+                    subb      #4
+                    clra
+                    addd      #TX.hx4
+                    lbsr      BuildChar
+                    bra       dt5
+dt3a                sta       <tmpn
                     ldd       #108+16             the hat's origin is its brim's middle
                     std       <bcx
 dt4                 ldd       #6+14

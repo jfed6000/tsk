@@ -237,7 +237,10 @@ T.runExport = function (A) {
     ['story2', 'AND BURIED HIM ON BOOT HILL', '#fff3c4', 1], ['story3', 'WITH HIS BOOTS ON', '#fff3c4', 1],
     ['story4', 'RINGO STAYED DEAD', '#e8a070', 2], ['story5', "HIS BOOTS DIDN'T", '#ff9d3c', 2],
     ['story6', 'THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1], ['story7', 'WITH HIS HAT, A SCOWL AND A GRUDGE', '#fff3c4', 1],
-    ['story8', 'NOW THE BOOTS WANT REVENGE', '#ffd34a', 1], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
+    ['story8', 'NOW THE BOOTS WANT REVENGE', '#ffd34a', 1],
+    ['anohat', 'ANOTHER HAT!', '#ffd34a', 1], ['fullhat', 'FULL HAT RACK!', '#ffd34a', 1],   // the hats (brawler.js gainHat)
+    ...[4, 5, 6, 7, 8, 9].map(n => ['hx' + n, 'X' + n, '#ffd34a', 2]),   // the HUD's count past three hats
+    ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
   ];
   // A word only ever drawn on one stage lives in that stage's sprite bank (it's loaded only with the stage), not in
   // the shared cells, which every stage pays for: the stage's title card, its boss's lines, its own messages. The
@@ -265,14 +268,17 @@ T.runExport = function (A) {
     ['daze', MANGY.daze, 8, true], ['ko', [MANGY.ko], 1, false], ['aim', [MANGY.aim], 1, false], ['shoot', [MANGY.shoot], 1, false]], B.OX, B.OY);
   addGroup('TW', [['roll', TUMBLE, 10, true]], 12, 22);
   OVL_BASE = Math.ceil(cellData.length / 8) * 8;
+  const SECRETS = T.buildSecrets();
   bank = 'BH';
   addGroup('XBH', wordsOf('BH'), 0, 0, false, 'TX');
+  addGroup('QBH', [['prop', SECRETS.bh, 1, false, 16, 39]], 16, 39, false);   // the hidden hat's hiding place: whole, broken
   addGroup('TB', [['idle', COYOTE.idle, 3, true], ['walk', COYOTE.walk, 8, true], ['talk', COYOTE.talk, 6, true],
     ['windup', [COYOTE.windup], 1, false], ['swing', [COYOTE.swing], 1, false], ['throw', [COYOTE.throw], 1, false],
     ['dig', [COYOTE.dig], 1, false], ['pop', [COYOTE.pop], 1, false], ['daze', COYOTE.daze, 8, true],
     ['hurt', [COYOTE.hurt], 1, false], ['ko', [COYOTE.ko], 1, false], ['down', [COYOTE.down], 1, false]], B.OX, B.OY);
   bank = 'MS';
   addGroup('XMS', wordsOf('MS'), 0, 0, false, 'TX');
+  addGroup('QMS', [['prop', SECRETS.ms, 1, false, 16, 39]], 16, 39, false);   // the hidden hat's hiding place: whole, broken
   const DLN = T.buildDillon();                     // Big Shell Dillon, Main Street's boss
   addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
     ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
@@ -283,6 +289,7 @@ T.runExport = function (A) {
     ['recover', [RAT.recover], 1, false], ['hurt', [RAT.hurt], 1, false], ['down', [RAT.down], 1, false], ['ko', [RAT.ko], 1, false]], B.OX, B.OY);
   bank = 'GT';                                     // Ghost Town: Doc Gila and his cards, the signs and tables
   addGroup('XGT', wordsOf('GT'), 0, 0, false, 'TX');
+  addGroup('QGT', [['prop', SECRETS.gt, 1, false, 16, 39]], 16, 39, false);   // the hidden hat's hiding place: whole, broken
   addGroup('GL', [['idle', GIL.idle, 3, true], ['walk', GIL.walk, 7, true], ['talk', GIL.talk, 6, true], ['deal', [GIL.deal], 1, false],
     ['flick', [GIL.flick], 1, false], ['jaws', [GIL.jaws], 1, false], ['bite', [GIL.bite], 1, false], ['duck', [GIL.duck], 1, false],
     ['hurt', [GIL.hurt], 1, false], ['daze', GIL.daze, 8, true], ['ko', [GIL.ko], 1, false],
@@ -293,6 +300,7 @@ T.runExport = function (A) {
     ['plank', [GPR.plank], 1, false, GPR.plank.ox, GPR.plank.oy]], 16, 16, false);
   bank = 'CD';                                     // the Cattle Drive: the longhorn, the horses, fences and rocks, Jackrabbit Jack
   addGroup('XCD', wordsOf('CD'), 0, 0, false, 'TX');
+  addGroup('QCD', [['prop', SECRETS.cd, 1, false, 16, 39]], 16, 39, false);   // the hidden hat's hiding place: whole, broken
   const RS = T.buildRanchSprites(), JK = T.buildJack();
   addGroup('RD', [['steer', RS.steer, 10, true], ['steerj', [RS.steerJump], 1, false], ['horse', RS.horse, 12, true]], B.OX, B.OY);
   addGroup('RO', [['fence', [RS.fence], 1, false, RS.fence.ox, RS.fence.oy], ['rock', [RS.rock], 1, false, RS.rock.ox, RS.rock.oy]], 16, 16, false);
@@ -302,6 +310,7 @@ T.runExport = function (A) {
     ['loop', [JK.loop], 1, false, JK.loop.ox, JK.loop.oy], ['rope', [JK.rope], 1, false, JK.rope.ox, JK.rope.oy]], B.OX, B.OY);
   bank = 'TH';                                     // the Train Heist: Sting, his dynamite, the bang, the tunnel's mouth and its pit-props
   addGroup('XTH', wordsOf('TH'), 0, 0, false, 'TX');
+  addGroup('QTH', [['prop', SECRETS.th, 1, false, 16, 39]], 16, 39, false);   // the hidden hat's hiding place: whole, broken
   const SG = T.buildSting(), TRS = T.buildTrainSprites(FLOOR);
   addGroup('SC', [['idle', SG.idle, 3, true], ['walk', SG.walk, 10, true], ['talk', SG.talk, 6, true], ['pinchw', [SG.pinchw], 1, false],
     ['pinch', [SG.pinch], 1, false], ['windup', [SG.windup], 1, false], ['sting', [SG.sting], 1, false], ['stuck', [SG.stuck], 1, false],
@@ -312,6 +321,7 @@ T.runExport = function (A) {
   addGroup('TQ', [['boom', SG.boom, 1, false, SG.boom[0].ox, SG.boom[0].oy], ['prop', [TRS.prop], 1, false, TRS.prop.ox, TRS.prop.oy]], 0, 0, false);
   bank = 'MI';                                     // the Mission: Bullrush, and the splinters off the church doors
   addGroup('XMI', wordsOf('MI'), 0, 0, false, 'TX');
+  addGroup('QMI', [['prop', SECRETS.mi, 1, false, 16, 39]], 16, 39, false);   // the hidden hat's hiding place: whole, broken
   const TO = T.buildToro(), MSP = T.buildMissionSprites();
   addGroup('TO', [['idle', TO.idle, 3, true], ['walk', TO.walk, 7, true], ['talk', TO.talk, 6, true], ['paw', TO.paw, 6, true],
     ['charge', TO.charge, 12, true], ['stuck', TO.stuck, 10, true], ['hookw', [TO.hookw], 1, false], ['hook', [TO.hook], 1, false],
@@ -319,6 +329,7 @@ T.runExport = function (A) {
     ['ko', [TO.ko], 1, false], ['splint', [MSP.splinter], 1, false, MSP.splinter.ox, MSP.splinter.oy]], B.OX, B.OY);
   bank = 'HN';                                     // High Noon: Diamondback, the town clock's hands
   addGroup('XHN', wordsOf('HN'), 0, 0, false, 'TX');
+  addGroup('QHN', [['prop', SECRETS.hn, 1, false, 16, 39]], 16, 39, false);   // the hidden hat's hiding place: whole, broken
   const DBK = T.buildDiamondback(), NSP = T.buildNoonSprites();
   addGroup('DB', [['idle', DBK.idle, 2, true], ['walk', DBK.walk, 8, true], ['talk', DBK.talk, 6, true], ['draw', [DBK.draw], 1, false],
     ['fire', [DBK.fire], 1, false], ['reload', DBK.reload, 4, true], ['coil', [DBK.coil], 1, false], ['strike', [DBK.strike], 1, false],

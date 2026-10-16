@@ -35,6 +35,8 @@ gi2                 std       <rnd
                     ldd       #0
                     std       <score
                     std       <score+2
+                    ldd       #$0003              a hat at 30,000 points
+                    std       nexthat,u
                     clr       <combo
                     clr       <combot
                     lda       stgarg,u            (tsk m: Main Street first)
@@ -285,7 +287,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BH.MAP0.W,BH.MAP0.Of,BH.MAP1.W,BH.MAP1.Of,BH.MAP2.W,BH.MAP2.Of
                     fcb       BH.TIL.Sets,SG.Intro+SG.Light,MU.boothill,5
                     fdb       WaveBH-StgTab
-                    fcb       5
+                    fcb       6
                     fdb       BarBH-StgTab
                     fdb       TX.boothill,TX.midnight,TX.clear
                     fdb       FileBH-StgTab
@@ -293,7 +295,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       MS.MAP0.W,MS.MAP0.Of,MS.MAP1.W,MS.MAP1.Of,MS.MAP2.W,MS.MAP2.Of
                     fcb       MS.TIL.Sets,SG.Dusk,MU.boogie,6
                     fdb       WaveMS-StgTab
-                    fcb       7
+                    fcb       8
                     fdb       BarMS-StgTab
                     fdb       TX.mainst,TX.dusk,TX.msclear
                     fdb       FileMS-StgTab
@@ -301,7 +303,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       GT.MAP0.W,GT.MAP0.Of,GT.MAP1.W,GT.MAP1.Of,GT.MAP2.W,GT.MAP2.Of
                     fcb       GT.TIL.Sets,0,MU.deadman,6
                     fdb       WaveGT-StgTab
-                    fcb       10
+                    fcb       11
                     fdb       BarGT-StgTab
                     fdb       TX.ghostt,TX.moonrise,TX.gtclear
                     fdb       FileGT-StgTab
@@ -309,7 +311,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       CD.MAP0.W,CD.MAP0.Of,CD.MAP1.W,CD.MAP1.Of,CD.MAP2.W,CD.MAP2.Of
                     fcb       CD.TIL.Sets,SG.Ride,MU.stampede,2
                     fdb       WaveCD-StgTab
-                    fcb       4
+                    fcb       5
                     fdb       BarCD-StgTab
                     fdb       TX.cattle,TX.sunup,TX.cdclear
                     fdb       FileCD-StgTab
@@ -317,7 +319,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       TH.MAP0.W,TH.MAP0.Of,TH.MAP1.W,TH.MAP1.Of,TH.MAP2.W,TH.MAP2.Of
                     fcb       TH.TIL.Sets,SG.Train,MU.heist,6
                     fdb       WaveTH-StgTab
-                    fcb       6
+                    fcb       7
                     fdb       BarTH-StgTab
                     fdb       TX.trainh,TX.midday,TX.thclear
                     fdb       FileTH-StgTab
@@ -325,7 +327,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       MI.MAP0.W,MI.MAP0.Of,MI.MAP1.W,MI.MAP1.Of,MI.MAP2.W,MI.MAP2.Of
                     fcb       MI.TIL.Sets,SG.Dusk+SG.Siege,MU.laststand,7
                     fdb       WaveMI-StgTab
-                    fcb       5
+                    fcb       6
                     fdb       BarMI-StgTab
                     fdb       TX.mission,TX.sundown,TX.miclear
                     fdb       FileMI-StgTab
@@ -333,7 +335,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       HN.MAP0.W,HN.MAP0.Of,HN.MAP1.W,HN.MAP1.Of,HN.MAP2.W,HN.MAP2.Of
                     fcb       HN.TIL.Sets,SG.Noon,MU.boogie,4
                     fdb       WaveHN-StgTab
-                    fcb       4
+                    fcb       5
                     fdb       BarHN-StgTab
                     fdb       TX.hnoon,TX.mainsub,0          (no clear: the ending)
                     fdb       FileHN-StgTab
@@ -492,6 +494,7 @@ sg1                 lda       <phase
                     cmpa      #PH.Play
                     bne       sg2
                     lbsr      Hero
+                    lbsr      HatScore            a hat every 30,000 points (pickup.a)
                     lbsr      Signs               Ghost Town's hanging signs (ghost.a)
                     lbsr      RideStep            the Cattle Drive's ride (ride.a)
                     lbsr      TrainStep           the Train Heist's train (train.a)
