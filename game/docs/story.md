@@ -53,7 +53,7 @@ scene on, he's sizing the hero up as footwear.
 | 6 | **The Mission** (built, browser) | Waves, then Diamondback's enforcer **El Toro**, a minotaur bull | A last stand defending the town, *Magnificent Seven* or Alamo style: the gang batters the church doors the townsfolk are barred behind. The bull is the honest brute before the treacherous snake (the user weighed a snake; Diamondback is the snake, and the rattlers are already common enemies). Knocked out, Diamondback's word from the dark sets up High Noon. |
 | 7 | **High Noon** (built, browser) | **Diamondback** | The showdown on Main Street. It opens with a quick-draw duel, except he kicks: on DRAW! a stone off his boot knocks the gun from Diamondback's tail. Then the fight. |
 
-### Optional subplot: the Ugly
+### Optional subplot: the Ugly (cut, 2026-10-16)
 
 **Vernon Vulture** (placeholder), a bounty hunter after the gang's buried gold, turns up in levels 2-5. He picks off
 the hero's KOs, steals bonus loot, and shows up in boss fights to grab the reward. He's *The Good, the Bad and the
@@ -115,7 +115,8 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
   Player 2 should look different at a glance (colours and hat). On the F256 a CLUT swap is cheapest, but all four
   CLUTs are in use (sprites, flash, ghost, tiles), so either fold the ghost CLUT or give player 2 its own frames.
   Story: a second victim of the gang buried on Boot Hill, rising from the next grave over in the same opening.
-- Is Vernon (the Ugly) in or out?
+- **Vernon (the Ugly): OUT, DECIDED (2026-10-16)** (the user's call). Stealing the player's knockouts and loot works
+  against the fun, the story is tight without him, and the F256's sprite memory is better spent elsewhere.
 - **Pickup weapons (wanted, 2026-10-12):** a bullwhip and a six-shooter with exactly six shots, then he tosses it.
   Both are in the brawler test. Throwing spurs are still an option for a permanent sub-weapon.
 - **Lives: DECIDED (2026-10-16):** the hats are the lives, no continues. Another hat every 30,000 points (merit) and one
