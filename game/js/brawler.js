@@ -2050,7 +2050,7 @@ T.runBrawler = function (A) {
     if (tunnel && tunnel.st === 'warn' && (tunnel.t < S.tunnel.warn - 0.6 || Math.floor(tunnel.t * 8) % 2 === 0)) {   // (steady, then it blinks: here it comes)
       center(T.textSprite('TUNNEL!', '#ff9d3c', 3), 56); center(T.textSprite('DUCK! HOLD DOWN', '#ffd34a', 1), 82);
     }
-    if (S.intro || (ending && ending.step !== 'shop')) {   // Ringo's headstone, and the grave he came out of (the ending's too)
+    if (ending ? ending.step !== 'shop' : S.intro) {   // (never in the boot shop, whatever stage it came from)   // Ringo's headstone, and the grave he came out of (the ending's too)
       put(PROPS.headstone, wx(STONE.x), sy(STONE.z, 0), PROPS.headstone.ox, PROPS.headstone.oy, depth(STONE.z));
       put(phase === 'intro' && phaseT < IN.rise ? PROPS.mound : PROPS.hole, wx(96), sy(34, 0), 20, 11, 8.9);   // (in the ending: still open)
     }
