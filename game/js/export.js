@@ -237,7 +237,7 @@ T.runExport = function (A) {
     ['story2', 'AND BURIED HIM ON BOOT HILL', '#fff3c4', 1], ['story3', 'WITH HIS BOOTS ON', '#fff3c4', 1],
     ['story4', 'RINGO STAYED DEAD', '#e8a070', 2], ['story5', "HIS BOOTS DIDN'T", '#ff9d3c', 2],
     ['story6', 'THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1], ['story7', 'WITH HIS HAT, A SCOWL AND A GRUDGE', '#fff3c4', 1],
-    ['story8', 'NOW THE BOOTS WANT REVENGE', '#ffd34a', 1],
+    ['story8', 'NOW THE BOOTS WANT REVENGE', '#ffd34a', 1], ['copyr', 'JFED (C) 2026', '#c3c8d8', 1],
     ['anohat', 'ANOTHER HAT!', '#ffd34a', 1], ['fullhat', 'FULL HAT RACK!', '#ffd34a', 1],   // the hats (brawler.js gainHat)
     ...[4, 5, 6, 7, 8, 9].map(n => ['hx' + n, 'X' + n, '#ffd34a', 2]),   // the HUD's count past three hats
     ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
@@ -246,7 +246,7 @@ T.runExport = function (A) {
   // the shared cells, which every stage pays for: the stage's title card, its boss's lines, its own messages. The
   // title's words go with Boot Hill (the title is drawn over Boot Hill's art). Still TX.<name> to the 6809.
   const WORDBANK = {
-    BH: 'texas shitk boothill midnight clear rise buried press tagline tagline2 story0 story1 story2 story3 story4 story5 story6 story7 story8',
+    BH: 'texas shitk boothill midnight clear rise buried press tagline tagline2 story0 story1 story2 story3 story4 story5 story6 story7 story8 copyr',
     MS: 'mainst dusk msclear mytown rollout',
     GT: 'ghostt moonrise gtclear weep dealin anteup busted chomp timber pickcard squashed',
     CD: 'cattle sunup cdclear whoa oof trampled roped hogtied finders tooslow nottoday stampede',

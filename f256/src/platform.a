@@ -1052,7 +1052,11 @@ MusFiles            fcc       /mus_title.bin/
                     fcb       $0D
                     fcc       /mus_showdown.bin/    (and the fight)
                     fcb       $0D
-                    ifne      MU.N-11
+                    fcc       /mus_entrance.bin/    (a boss arrives)
+                    fcb       $0D
+                    fcc       /mus_bossfight.bin/   (the boss fights)
+                    fcb       $0D
+                    ifne      MU.N-13
                     error     "the song list here doesn't match tskmusic.d"
                     endc
 MsgLoad             fcc       /Texas Shitkickers - saddling up.../

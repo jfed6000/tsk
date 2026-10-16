@@ -2,7 +2,7 @@
 AimT                equ       $0021
 AttractLen          equ       $0BB8
 AttractT            equ       $04B0
-BarEN               equ       $3ACF
+BarEN               equ       $3BD2
 BossHp              equ       $0024
 BossTall            equ       $002C
 BR.It               equ       $0005
@@ -54,7 +54,7 @@ CySpd               equ       $000F
 CyStrikeT           equ       $000F
 CyTall              equ       $002C
 CyWindT             equ       $0019
-ddm0                equ       $4DF7
+ddm0                equ       $4EFA
 DGetupT             equ       $0015
 DieDur              equ       $001E
 DlEnter             equ       $0010
@@ -64,7 +64,7 @@ DlSpd               equ       $0013
 DlTall              equ       $0010
 DownT               equ       $0036
 DriftT              equ       $0080
-ds1x                equ       $5E35
+ds1x                equ       $5F41
 DuskEvery           equ       $0007
 DynCell             equ       $04B8
 ES.Aim              equ       $0003
@@ -89,7 +89,7 @@ ES.Strike           equ       $000C
 ES.Thrown           equ       $0013
 ES.Vault            equ       $0015
 ES.Wind             equ       $000B
-eth0                equ       $539A
+eth0                equ       $549D
 FlashLen            equ       $0008
 FlashT              equ       $0006
 FlyV                equ       $002D
@@ -110,7 +110,7 @@ HB.VX               equ       $0007
 HB.X                equ       $0001
 HB.Z                equ       $0003
 HbV                 equ       $0065
-hdw1                equ       $4F5F
+hdw1                equ       $5062
 HopT                equ       $000A
 HudY                equ       $0004
 HurtT               equ       $0018
@@ -134,8 +134,8 @@ IT.Z                equ       $0003
 JumpDn              equ       $FFFFFFE0
 JumpUp              equ       $0020
 JumpV               equ       $0060
-kbk0                equ       $3CF8
-kim3a               equ       $3B97
+kbk0                equ       $3DFB
+kim3a               equ       $3C9A
 KneeDur             equ       $0014
 KY.Down             equ       $0010
 KY.Left             equ       $0020
@@ -157,6 +157,8 @@ NBr                 equ       $000B
 NCl                 equ       $0003
 NDuskBlk            equ       $0008
 NDynBlk             equ       $0003
+NeedBlk             equ       $00D7
+NeedK               equ       $06B8
 NHb                 equ       $0003
 NIt                 equ       $0006
 NMBuf               equ       $0060
@@ -301,12 +303,12 @@ TwG                 equ       $0003
 WaitT               equ       $0078
 WalkX               equ       $001C
 WalkZ               equ       $0011
-whb00               equ       $4453
-whb1x               equ       $4484
+whb00               equ       $4556
+whb1x               equ       $4587
 WhipDur             equ       $0012
 WhipN               equ       $000E
-whk1                equ       $44D4
+whk1                equ       $45D7
 WindT               equ       $0012
-wv3                 equ       $2C97
-xdi0                equ       $4E2F
-xhdd2               equ       $4FE0
+wv3                 equ       $2D9A
+xdi0                equ       $4F32
+xhdd2               equ       $50E3

@@ -12,5 +12,7 @@ MU.heist      equ       7
 MU.laststand  equ       8
 MU.standoff   equ       9
 MU.showdown   equ       10
+MU.entrance   equ       11
+MU.bossfight  equ       12
 
-MU.N       equ       11
+MU.N       equ       13
