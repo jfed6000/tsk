@@ -7,11 +7,9 @@ const bg=()=>{ const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0a091
   for(const x of [24,50,268,296]){ c.fillRect(x,214,2,10); c.fillRect(x-3,217,8,2); } };
 const t=(s,y,col,k,o)=>{ for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1],[-1,1],[1,-1],[-1,-1]]) T.drawText(c,s,W/2+dx*o,y+dy*o,"#1f0f07",k,null,"center"); T.drawText(c,s,W/2,y,col,k,null,"center"); };
 const steps=[
- ()=>t("TEXAS SHITKICKERS",14,"#ff9d3c",2,1),
- ()=>t("RUNS ON A",36,"#ffe7b0",2,1),
- ()=>t("F256",54,"#ffd34a",11,3),
- ()=>t("6809",118,"#ff9d3c",11,3),
- ()=>{ t("EAT YOUR HEART OUT, 6502",186,"#ff5a3c",2,1); t("PURE 6809 ASSEMBLY ON NITROS-9",204,"#b4b0d0",1,1); },
+ ()=>{},
+ ()=>t("F256",50,"#ffd34a",11,3),
+ ()=>t("6809",122,"#ff9d3c",11,3),
 ];
 bg(); window.__shots=[];
 for(const f of steps){ f(); window.__shots.push(cv.toDataURL()); }

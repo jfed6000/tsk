@@ -1,6 +1,6 @@
 #!/bin/sh
 # tools/reel.sh - cut the showreel out of tools/reelrec.sh's raw footage: the title, then a few seconds of each stage,
-# then the end card (reel/card0-4.png, built in steps: "RUNS ON A F256 6809 - EAT YOUR HEART OUT, 6502"; drawn by
+# then the end card (reel/card0-2.png, built in steps: the night sky, then a huge F256, then a huge 6809; drawn by
 # tools/reelcard.js in the browser game's font), over the Shitkicker Shuffle (game/music/title.mp3), scaled 4x with
 # sharp pixels -> reel/tsk-reel.mp4.
 # Each window is "start-frame length-in-frames" in MAME's frames (59.94 a second; reel/frames.txt says where each run starts).
@@ -17,7 +17,7 @@ WINDOWS="1290 330
 10120 230
 12060 230
 13230 240"
-CARD="0.5 0.5 0.8 0.8 3.2"
+CARD="0.4 0.9 4.5"
 args=""; filt=""; n=0
 echo "$WINDOWS" | { while read a len; do
   ss=$(echo "scale=4; $a/59.94" | bc); t=$(echo "scale=4; $len/59.94" | bc)
