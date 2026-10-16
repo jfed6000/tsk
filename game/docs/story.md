@@ -167,3 +167,21 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
   - **This can be deferred.** Draw every splatter in one reserved sprite-CLUT entry, so "blood" is red or tan dust
     by a single CLUT write, the way some 16-bit games toned down. Design deaths for both and decide later.
   - The cost is art time, not hardware: Metal Slug's charm is a unique death for each enemy.
+
+## Boss entrances (DECIDED 2026-10-16, the user's call)
+
+Every boss but Diamondback (his duel is his entrance) arrives with a ~4.8 s entrance: the music cuts to "Entrance" (a
+sting), everything else holds, he arrives his own way and says his line, his name card comes up, then his line about
+Ringo; then FIGHT! and the shared boss theme, "Bad Company" (the user: "Shared boss theme is good"). A kick skips it.
+
+| Boss | Name card | His line | About Ringo |
+|---|---|---|---|
+| Two-Bit | THE GRAVEDIGGER | I BURIED YOU MYSELF! | SIX FEET UNDER WITH RINGO (the user's) |
+| Big Shell Dillon | THE TOUGHEST HIDE IN TEXAS | THIS HERE'S MY TOWN! | RINGO THOUGHT IT WAS HIS |
+| Doc Gila | THE CARD SHARP | READ 'EM AND WEEP, BOOTS! | RINGO DREW A DEAD MAN'S HAND |
+| Jackrabbit Jack | THE RUSTLER | FINDERS KEEPERS, BOOTS! | RINGO RAN TOO. NOT FAST ENOUGH |
+| Sting | THE DYNAMITER | NOBODY GETS OFF THIS TRAIN! | RINGO TRIED. ASK HIM HOW IT WENT |
+| Bullrush | DIAMONDBACK'S ENFORCER | SAY YER PRAYERS, BOOTS! | RINGO'S GONE. YOU'RE NEXT (the user's) |
+| Diamondback | (the duel) | I'VE BEEN NEEDIN' A NEW PAIR. | RINGO WAS SLOW TOO (after a lost draw) |
+
+The name cards' second lines are my drafts, not yet approved.

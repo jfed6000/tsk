@@ -28,6 +28,10 @@ Songs:
               strings and a lone whistle, waiting for the draw (loops)
     showdown  "Showdown": the fight with Diamondback - the watch's tune on two trumpets over a galloping E minor drive,
               the overdrive and the bass, timpani, a stop-time break with the clock ticking again (loops)
+    entrance  "Entrance": a boss arrives - the music cut, a big E hit, the timpani rolling up, a hit a half-step up,
+              a tom roll, the last hit ringing (once, ~4.6 s: the length of the boss's entrance)
+    bossfight "Bad Company": every boss fight but Diamondback's - a heavy E minor blues-rock riff with the flat
+              fifth, the bass doubling it, the harmonica wailing over the A section, a stop-time turnaround (loops)
     clear     a stage-clear tag (once)
     over      game over: a dying blues turnaround (once)
 """
@@ -836,6 +840,86 @@ def boothill():
     return s, 0, 16 * 4
 
 
+# ---------------------------------------------------------------------------------------------- the bosses
+def entrance():
+    """A boss arrives: E minor, 104 bpm, eight beats (4.6 s). A big E hit with the crash and the timpani; the timpani
+    rolls up through beats 1-3; a hit a half-step up on F (the menace); a tom roll down the kit; the last E hit rings
+    out as the fight starts."""
+    s = Song(104)
+    s.prog(0, OVERDRIVE, vol=110, pan=48)
+    s.prog(1, DISTORTION, vol=90, pan=80)
+    s.prog(2, FINGER_BASS, vol=118)
+    s.prog(4, TIMPANI, vol=112)
+    s.prog(5, TREMOLO_STR, vol=80)
+    s.cc(9, 0, 7, 110)
+
+    def hit(b, root, vel=124, ln=1.0):
+        r = n(root)
+        s.chord(0, b, [r, r + 7, r + 12], ln, vel)
+        s.chord(1, b, [r + 12, r + 19], ln, vel - 14)
+        s.note(2, b, r - 12, ln, 124)
+        s.note(4, b, r, ln, 124)
+        s.drum(b, CRASH, 124); s.drum(b, KICK, 124)
+    hit(0, 'E2', ln=0.9)
+    for i in range(12):                              # the timpani rolling up
+        s.note(4, 1 + i * 0.25, 'E2', 0.24, 60 + i * 5)
+    s.chord(5, 1, ['E3', 'B3', 'E4'], 3, 70)
+    hit(4, 'F2', ln=0.9)
+    for i, tom in enumerate([TOM_HI, TOM_HI, TOM_MID, TOM_MID, TOM_LO, TOM_LO, FLOOR_TOM, FLOOR_TOM]):
+        s.drum(5 + i * 0.25, tom, 96 + i * 3)
+    hit(7, 'E2', ln=1.0)
+    return s, None, 8
+
+
+def bossfight():
+    """Bad Company: the boss fights (Diamondback has his own). E minor, 148 bpm, straight. A palm-muted chug on E
+    with the riff on top - E, G, A, Bb (the flat fifth), A, G - the bass doubling it (bars 0-7); the riff up a fourth on
+    A with the harmonica wailing (8-11); a stop-time turnaround on C, B and the hits (12-15); back to bar 0."""
+    s = Song(148)
+    s.prog(0, OVERDRIVE, vol=100, pan=44)
+    s.prog(1, DISTORTION, vol=80, pan=84)
+    s.prog(2, FINGER_BASS, vol=116)
+    s.prog(3, HARMONICA, vol=104, pan=64)
+    s.cc(9, 0, 7, 104)
+
+    def beat(bar, fill=False):
+        b0 = bar * 4
+        s.drum(b0, KICK, 118); s.drum(b0 + 1.5, KICK, 96); s.drum(b0 + 2, KICK, 112)
+        s.drum(b0 + 1, SNARE, 112); s.drum(b0 + 3, SNARE, 118)
+        for i in range(8):
+            s.drum(b0 + i * 0.5, HAT_C if i % 2 == 0 else HAT_P, 74 if i % 2 == 0 else 54)
+        if fill:
+            for i in range(4):
+                s.drum(b0 + 3 + i * 0.25, [TOM_HI, TOM_MID, TOM_LO, FLOOR_TOM][i], 100 + i * 5)
+
+    def riff(bar, root):
+        r = n(root); b0 = bar * 4
+        for i in range(8):                            # the chug
+            s.chord(1, b0 + i * 0.5, [r, r + 7], 0.3, 86 if i % 2 else 100)
+        for b, iv, ln in ((0, 0, 0.45), (0.5, 0, 0.2), (1, 3, 0.45), (1.5, 5, 0.45), (2, 6, 0.7), (2.75, 5, 0.25), (3, 3, 0.45), (3.5, 0, 0.45)):
+            s.note(0, b0 + b, r + 12 + iv, ln, 112)
+            s.note(2, b0 + b, r - 12 + iv, ln, 116)
+    for bar in range(8):
+        riff(bar, 'E2'); beat(bar, fill=bar == 7)
+    for bar in range(8, 12):
+        riff(bar, 'A2' if bar % 2 == 0 else 'E2'); beat(bar, fill=bar == 11)
+    wail = [(32, 'E5', 2, 112), (34, 'G5', 1, 116), (35, 'A5', 1, 118), (36, 'A#5', 0.5, 120), (36.5, 'A5', 0.5, 112), (37, 'G5', 1, 108),
+            (38, 'E5', 2, 104), (40, 'B5', 3, 120), (43, 'A5', 0.5, 108), (43.5, 'G5', 0.5, 104), (44, 'E5', 4, 112)]
+    for b, nt, ln, v in wail:
+        s.note(3, b, nt, ln * 0.95, v)
+    for k, (root, hits) in enumerate((('C2', (0, 1.5, 2)), ('B1', (0, 1.5, 2)), ('C2', (0, 1.5, 2)), ('B1', (0, 1, 2, 3)))):
+        b0 = (12 + k) * 4; r = n(root)                # the turnaround: stop-time hits, the crash on each
+        for h in hits:
+            s.chord(0, b0 + h, [r + 12, r + 19, r + 24], 0.4, 120)
+            s.note(2, b0 + h, r, 0.4, 122)
+            s.drum(b0 + h, KICK, 120)
+        s.drum(b0, CRASH if k % 2 == 0 else SPLASH, 110)
+        s.drum(b0 + 3, SNARE, 110)
+    for i in range(8):
+        s.drum(15 * 4 + 2 + i * 0.25, SNARE, 80 + i * 6)
+    return s, 0, 16 * 4
+
+
 # ---------------------------------------------------------------------------------------------- jingles
 def clear():
     """The stage won: a shout-out of a tag, E boogie hits up to an E9 that rings"""
@@ -875,7 +959,8 @@ def over():
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie),
-                     ('deadman', deadman), ('stampede', stampede), ('heist', heist), ('laststand', laststand), ('standoff', standoff), ('showdown', showdown)):
+                     ('deadman', deadman), ('stampede', stampede), ('heist', heist), ('laststand', laststand), ('standoff', standoff), ('showdown', showdown),
+                     ('entrance', entrance), ('bossfight', bossfight)):
         song, loop, end = fn()
         k = song.save(OUT / f'{name}.mid', loop, end)
         secs = end * 60 / song.bpm
