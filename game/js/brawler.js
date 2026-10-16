@@ -998,10 +998,10 @@ T.runBrawler = function (A) {
     sting: ['THE DYNAMITER', 'NOBODY GETS OFF THIS TRAIN!', 'RINGO TRIED. ASK HIM HOW IT WENT', 58],
     toro: ["DIAMONDBACK'S ENFORCER", 'SAY YER PRAYERS, BOOTS!', "RINGO'S GONE. YOU'RE NEXT", 72],
   };
-  // The order (the user, 2026-10-16): he arrives; when he's down and still, his name types on over his head, a telegraph
+  // The order (the user, 2026-10-16): he arrives; a second after he's down and still, his name types on over his head, a telegraph
   // click a letter, and what he is stamps on under it; a second and a half; then his line, then Ringo's, ~4 s each
   // ("about 2 seconds more on each line"); FIGHT!. The boss theme comes in as the sting ends (4.6 s in).
-  const ENT = { arrive: 0.6, letter: 0.045, stamp: 0.15, pause: 1.5, line: 4.0, theme: 4.6, skip: 0.8, hold: 2.0 };
+  const ENT = { arrive: 0.6, settle: 1.0, letter: 0.045, stamp: 0.15, pause: 1.5, line: 4.0, theme: 4.6, skip: 0.8, hold: 2.0 };
   const BUBBLE = !params.has('nobubble');        // (the user liked the bubble; ?nobubble for the bare words)
   let entr = null;
   function startEntrance() { entr = { t: 0, arr: null, n: 0, stamped: false }; boss.said = true; music('entrance'); }   // (his lines are the entrance's)
@@ -1026,11 +1026,11 @@ T.runBrawler = function (A) {
     const b = boss;
     if (!entr || !b) { entr = null; return; }
     entr.t += dt;
-    if (entr.arr === null && entr.t >= ENT.arrive && b.h <= 0 && !(b.type === 'toro' && b.vx)) entr.arr = entr.t;   // down and still
+    if (entr.arr === null && entr.t >= ENT.arrive && b.h <= 0 && !(b.type === 'toro' && b.vx)) entr.arr = entr.t + ENT.settle;   // down and still; a second, then his name
     if (entr.t >= ENT.theme) music('bossfight');   // (music() ignores the song already playing)
     let end = false;
     if (entr.arr !== null) {
-      const M = entrMarks(), n = Math.min(b.name.length, Math.floor((entr.t - entr.arr) / ENT.letter) + 1);
+      const M = entrMarks(), n = Math.max(0, Math.min(b.name.length, Math.floor((entr.t - entr.arr) / ENT.letter) + 1));
       if (n > entr.n) { if (b.name[n - 1] !== ' ') sfx('tick'); entr.n = n; }       // a click a letter
       if (!entr.stamped && entr.t >= M.nick) { entr.stamped = true; sfx('stamp'); shake = Math.max(shake, 2); }
       end = entr.t >= M.end;
