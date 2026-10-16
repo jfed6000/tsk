@@ -143,7 +143,7 @@ st3                 lbsr      WSigSet             tell us when our terminal is h
                     leax      MsgLoad,pcr
                     lbsr      WriteLn
                     lbsr      Alloc
-                    lbcs      Fail
+                    lbcs      NoMem               not enough free memory: say so
                     lbsr      MusInit             the music window first: it takes the top block (snd.a MusMap)
                     lbcs      Fail
                     lbsr      LoadAll
@@ -211,6 +211,25 @@ Quit                lbsr      Cleanup
                     leax      MsgBye,pcr
                     lbsr      WriteLn
                     clrb
+                    os9       F$Exit
+
+* NoMem - the graphics memory couldn't be allocated: what it needs, and
+*   what to try (the shell then prints the error number)
+NoMem               pshs      b
+                    lbsr      Cleanup
+                    leax      MsgMem,pcr
+                    lbsr      WriteLn
+                    leax      MsgMem2,pcr
+                    lbsr      WriteLn
+                    leax      MsgMem3,pcr
+                    lbsr      WriteLn
+                    leax      MsgMem4,pcr
+                    lbsr      WriteLn
+                    leax      MsgMem5,pcr
+                    lbsr      WriteLn
+                    leax      MsgMem6,pcr
+                    lbsr      WriteLn
+                    puls      b
                     os9       F$Exit
 
 Fail                pshs      b
@@ -1041,6 +1060,23 @@ MsgLoad             fcc       /Texas Shitkickers - saddling up.../
 MsgBye              fcc       /So long, partner./
                     fcb       $0D
 DotDir              fcc       /./
+                    fcb       $0D
+* the memory Alloc asks for, in K (the figure in MsgMem2)
+NeedBlk             equ       NTilBlk+NSprBlk+NDynBlk+NDuskBlk+MU.N+NMapBlk+2
+NeedK               equ       NeedBlk*8
+MsgMem              fcc       /Not enough free memory./
+                    fcb       $0D
+MsgMem2             fcc       /Texas Shitkickers needs /
+                    fcb       '0+NeedK/1000,'0+NeedK/100-NeedK/1000*10,'0+NeedK/10-NeedK/100*10,'0+NeedK-NeedK/10*10
+                    fcc       /K free/
+                    fcb       $0D
+MsgMem3             fcc       /for its graphics and music./
+                    fcb       $0D
+MsgMem4             fcc       "(mmap shows what's free.) Close other"
+                    fcb       $0D
+MsgMem5             fcc       /programs or windows, or reboot, and/
+                    fcb       $0D
+MsgMem6             fcc       /try again./
                     fcb       $0D
 MsgErr              fcc       "tsk failed - run it from the TSK directory (chd /dd/TSK): the art and tskms, tskgt, tskcd"
                     fcb       $0D

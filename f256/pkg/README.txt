@@ -56,5 +56,6 @@ Your hat is your life. Lose them all and it's back to Boot Hill. Win
 more every 30,000 points, and one is hidden somewhere on every stage.
 Look for something at the back of the street that glints, and kick it.
 
-If it stops with error #032 at start-up, there isn't enough free memory
-for the graphics (they take about 1.2 MB).
+It needs about 1.7 MB of free memory for its graphics and music (an
+F256K2 has room). If there isn't enough, it says so and stops: close
+other programs or windows, or reboot, and try again.
