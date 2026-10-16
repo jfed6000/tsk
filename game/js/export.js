@@ -233,11 +233,11 @@ T.runExport = function (A) {
     ['needin', "I'VE BEEN NEEDIN' A NEW PAIR.", '#fff3c4', 1], ['draw', 'DRAW!', '#ffd34a', 4], ['outdrawn', 'OUTDRAWN!', '#ffd34a', 2],
     ['jumped', 'JUMPED THE GUN!', '#ff6b4a', 1], ['slowboot', 'TOO SLOW, BOOTS!', '#ff6b4a', 1], ['snakebit', 'SNAKEBIT!', '#ff6b4a', 1],
     ['posse', "GET 'EM, POSSE!", '#ff9d3c', 1], ['theend', 'THE END', '#ff9d3c', 4], ['pressj', 'PRESS JUMP', '#c3c8d8', 1],
-    ['story0', 'RINGO WAS IN THE WAY.', '#fff3c4', 1], ['story1', 'THE DIAMONDBACK GANG GUNNED HIM DOWN', '#fff3c4', 1],   // the story's page (brawler.js STORY)
-    ['story2', 'AND BURIED HIM ON BOOT HILL', '#fff3c4', 1], ['story3', 'WITH HIS BOOTS ON.', '#fff3c4', 1],
-    ['story4', 'RINGO STAYED DEAD.', '#e8a070', 2], ['story5', "HIS BOOTS DIDN'T.", '#ff9d3c', 2],
-    ['story6', 'THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1], ['story7', 'WITH HIS HAT, A SCOWL AND A GRUDGE.', '#fff3c4', 1],
-    ['story8', 'NOW THE BOOTS WANT REVENGE.', '#ffd34a', 1], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
+    ['story0', 'RINGO WAS IN THE WAY', '#fff3c4', 1], ['story1', 'THE DIAMONDBACK GANG GUNNED HIM DOWN', '#fff3c4', 1],   // the story's page (brawler.js STORY)
+    ['story2', 'AND BURIED HIM ON BOOT HILL', '#fff3c4', 1], ['story3', 'WITH HIS BOOTS ON', '#fff3c4', 1],
+    ['story4', 'RINGO STAYED DEAD', '#e8a070', 2], ['story5', "HIS BOOTS DIDN'T", '#ff9d3c', 2],
+    ['story6', 'THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1], ['story7', 'WITH HIS HAT, A SCOWL AND A GRUDGE', '#fff3c4', 1],
+    ['story8', 'NOW THE BOOTS WANT REVENGE', '#ffd34a', 1], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
   ];
   // A word only ever drawn on one stage lives in that stage's sprite bank (it's loaded only with the stage), not in
   // the shared cells, which every stage pays for: the stage's title card, its boss's lines, its own messages. The

@@ -241,11 +241,11 @@ T.runBrawler = function (A) {
   // ---------------------------------------------------------------- the title screen (f256/src/title.a)
   let titleDir = 1, story = false;               // the story's page, over the title's backdrop
   const STORY = [
-    ['RINGO WAS IN THE WAY.', '#fff3c4', 1, 30], ['THE DIAMONDBACK GANG GUNNED HIM DOWN', '#fff3c4', 1, 44],
-    ['AND BURIED HIM ON BOOT HILL', '#fff3c4', 1, 54], ['WITH HIS BOOTS ON.', '#fff3c4', 1, 64],
-    ['RINGO STAYED DEAD.', '#e8a070', 2, 82], ["HIS BOOTS DIDN'T.", '#ff9d3c', 2, 102],
-    ['THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1, 128], ['WITH HIS HAT, A SCOWL AND A GRUDGE.', '#fff3c4', 1, 138],
-    ['NOW THE BOOTS WANT REVENGE.', '#ffd34a', 1, 158],
+    ['RINGO WAS IN THE WAY', '#fff3c4', 1, 30], ['THE DIAMONDBACK GANG GUNNED HIM DOWN', '#fff3c4', 1, 44],
+    ['AND BURIED HIM ON BOOT HILL', '#fff3c4', 1, 54], ['WITH HIS BOOTS ON', '#fff3c4', 1, 64],
+    ['RINGO STAYED DEAD', '#e8a070', 2, 82], ["HIS BOOTS DIDN'T", '#ff9d3c', 2, 102],
+    ['THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1, 128], ['WITH HIS HAT, A SCOWL AND A GRUDGE', '#fff3c4', 1, 138],
+    ['NOW THE BOOTS WANT REVENGE', '#ffd34a', 1, 158],
   ];
   function toTitle() {
     story = false;
