@@ -9,5 +9,6 @@ MU.boogie     equ       4
 MU.deadman    equ       5
 MU.stampede   equ       6
 MU.heist      equ       7
+MU.laststand  equ       8
 
-MU.N       equ       8
+MU.N       equ       9

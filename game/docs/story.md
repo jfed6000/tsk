@@ -49,8 +49,8 @@ scene on, he's sizing the hero up as footwear.
 | 2 | **The Desert** | **Big Shell Dillon**, the giant armadillo | Boss of the Outlaw Dillos. He curls up and rolls like a boulder, so kick the shell back at him. |
 | 3 | **Ghost Town** (built, browser) | **Doc Gila**, a Gila monster card sharp | Runs the saloon. A brawl through swinging doors, tables and falling signs. |
 | 4 | **The Cattle Drive** (built, browser) | **Jackrabbit Jack**, the rustler | A stampede chase on the back of a longhorn: the Metal Slug vehicle level. |
-| 5 | **The Train Heist** (built, browser) | **Sting**, a scorpion with too much dynamite | Fighting along the roofs of a moving train. The tunnel ducking writes itself. |
-| 6 | **The Mission** | Waves, then Diamondback's enforcer | A last stand defending the town, *Magnificent Seven* or Alamo style. The Texas level. |
+| 5 | **The Train Heist** (built, browser and F256) | **Sting**, a scorpion with too much dynamite | Fighting along the roofs of a moving train. The tunnel ducking writes itself. |
+| 6 | **The Mission** (built, browser) | Waves, then Diamondback's enforcer **El Toro**, a minotaur bull | A last stand defending the town, *Magnificent Seven* or Alamo style: the gang batters the church doors the townsfolk are barred behind. The bull is the honest brute before the treacherous snake (the user weighed a snake; Diamondback is the snake, and the rattlers are already common enemies). Knocked out, Diamondback's word from the dark sets up High Noon. |
 | 7 | **High Noon** | **Diamondback** | The showdown on Main Street. It opens with a quick-draw duel, except he kicks. |
 
 ### Optional subplot: the Ugly
@@ -102,6 +102,7 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
   - **Two-Bit:** *"I BURIED YOU MYSELF!"*
   - **Doc Gila:** *"CARE TO CUT THE DECK, PARDNER?"*
   - **Sting:** *"NOBODY GETS OFF THIS TRAIN!"*
+  - **El Toro:** *"SAY YER PRAYERS, BOOTS!"*
   - **Diamondback:** *"I'VE BEEN NEEDIN' A NEW PAIR."*
 
 ## Open questions

@@ -21,6 +21,9 @@ Songs:
               harmonica answering, a stop-time breakdown with whip cracks (loops)
     heist     "Iron Horse": the Train Heist and Sting - the train whistle, then a ZZ Top-ish shuffle boogie in D on the
               overdrive over a chugging train beat, the harmonica wailing, a stop-time tunnel, a slide ride-out (loops)
+    laststand "Last Stand": the Mission and El Toro - the mission bell and a lone trumpet's Deguello (no quarter) over
+              tremolo strings, then a galloping D minor drive down the Andalusian cadence, the trumpets on top, a
+              war-drum break with the call again (loops)
     clear     a stage-clear tag (once)
     over      game over: a dying blues turnaround (once)
 """
@@ -35,6 +38,7 @@ TPB = 480                                       # ticks a beat
 # General MIDI programs, 0-based
 OVERDRIVE, DISTORTION, CLEAN_GTR, MUTED_GTR, ACOUSTIC_BASS, SLAP_BASS, FINGER_BASS = 29, 30, 27, 28, 32, 36, 33
 HARMONICA, HONKYTONK, WHISTLE, CONTRABASS, TREMOLO_STR, STEEL_GTR, TIMPANI = 22, 3, 78, 43, 44, 25, 47
+TRUMPET, TUBULAR_BELLS, NYLON_GTR = 56, 14, 24
 # GM drum notes (channel 9)
 KICK, KICK2, SNARE, RIM, CLAP, HAT_C, HAT_O, HAT_P, CRASH, RIDE, TOM_LO, TOM_MID, TOM_HI, TAMB = \
     36, 35, 38, 37, 39, 42, 46, 44, 49, 51, 45, 47, 50, 54
@@ -616,6 +620,94 @@ def heist():
     return s, 2 * 4, 26 * 4                         # loops back to bar 2 (the whistle once), ends after bar 25
 
 
+# ---------------------------------------------------------------------------------------------- the Mission
+def laststand():
+    """Last Stand: the Mission and El Toro. D minor, 138 bpm, straight. The bell tolling and a lone trumpet's
+    Deguello - the no-quarter call - over tremolo strings (bars 0-3, the first time only); the drive: a galloping
+    overdrive down the Andalusian cadence (Dm C Bb A), the bass, a nylon guitar's strums, the trumpet's tune and the
+    second time a second trumpet a third under it (bars 4-19); the break: stop-time hits, the war drums rolling, the
+    bell, and the call again up high (20-27); back to bar 4."""
+    s = Song(138)
+    s.prog(0, TRUMPET, vol=104, pan=60)
+    s.prog(1, OVERDRIVE, vol=80, pan=40)          # the gallop
+    s.prog(2, FINGER_BASS, vol=112)
+    s.prog(3, TREMOLO_STR, vol=84, pan=76)        # the strings under the call
+    s.prog(4, NYLON_GTR, vol=92, pan=92)          # the strums
+    s.prog(5, TRUMPET, vol=88, pan=72)            # the second trumpet
+    s.prog(6, TUBULAR_BELLS, vol=100, pan=54)     # the mission bell
+    s.cc(9, 0, 7, 104)
+    CH = {'Dm': ('D', ['D3', 'F3', 'A3', 'D4']), 'C': ('C', ['C3', 'E3', 'G3', 'C4']),
+          'Bb': ('A#', ['A#2', 'D3', 'F3', 'A#3']), 'A': ('A', ['A2', 'C#3', 'E3', 'A3'])}
+
+    def bell(beat):
+        s.note(6, beat, 'D5', 3.5, 112); s.note(6, beat, 'D4', 3.5, 70)
+
+    def call(b0, notes, ch=0, vel=104, octave=0):
+        """A melody: (beat from b0, note, length)"""
+        for b, nt, ln in notes:
+            s.note(ch, b0 + b, n(nt) + 12 * octave, ln * 0.94, vel)
+
+    DEGUELLO = [(0, 'A4', 2), (2, 'D5', 1), (3, 'E5', 1), (4, 'F5', 3), (7, 'E5', 1),
+                (8, 'D5', 1), (9, 'C#5', 1), (10, 'D5', 2), (12, 'A4', 4),
+                (16, 'A#4', 2), (18, 'A4', 1), (19, 'G4', 1), (20, 'A4', 2), (22, 'F4', 1), (23, 'E4', 1), (24, 'D4', 6)]
+    # the call (bars 0-3, the first time): the bell, the strings swelling, the trumpet alone
+    bell(0); bell(8)
+    s.chord(3, 0, ['D3', 'A3', 'D4', 'F4'], 7.8, 70); s.chord(3, 8, ['A#2', 'F3', 'A#3', 'D4'], 3.8, 74); s.chord(3, 12, ['A2', 'E3', 'A3', 'C#4'], 3.8, 80)
+    call(0, [(b, nt, ln) for b, nt, ln in DEGUELLO if b < 16])
+    s.drum(14, TOM_LO, 70); s.drum(14.5, TOM_LO, 80); s.drum(15, FLOOR_TOM, 92); s.drum(15.5, FLOOR_TOM, 104); s.drum(15.75, FLOOR_TOM, 110)
+
+    def gallop(bar, chord, vel=88):
+        """The drive: root-and-fifth gallops on the overdrive, the bass on the root, the nylon strummed, the beat"""
+        root, tones = CH[chord]; base = bar * 4; r = n(root + ('1' if root == 'A#' else '2'))
+        for b in range(4):
+            for e, ln in ((0, 0.45), (0.5, 0.22), (0.75, 0.22)):
+                s.chord(1, base + b + e, [r + 12, r + 19], ln, vel - (10 if e else 0))
+            s.note(2, base + b, r, 0.45, 110); s.note(2, base + b + 0.5, r + (12 if b % 2 else 0), 0.4, 92)
+        for b, v in ((0, 96), (2.5, 86)):                                  # the strums, the strings rolled a little
+            for k, t_ in enumerate(tones[1:]):
+                s.note(4, base + b + k * 0.03, t_, 0.4, v - k * 4)
+        s.drum(base, KICK, 112); s.drum(base + 0.75, KICK, 84); s.drum(base + 2, KICK, 108); s.drum(base + 2.75, KICK, 84)
+        s.drum(base + 1, SNARE, 110); s.drum(base + 3, SNARE, 114)
+        for i in range(8):
+            s.drum(base + i * 0.5, HAT_C, 72 if i % 2 == 0 else 54)
+
+    TUNE1 = [(0, 'D5', 1.5), (1.5, 'F5', 0.5), (2, 'A5', 1), (3, 'G5', 0.5), (3.5, 'F5', 0.5),
+             (4, 'E5', 1.5), (5.5, 'G5', 0.5), (6, 'E5', 1), (7, 'C5', 1),
+             (8, 'D5', 1.5), (9.5, 'F5', 0.5), (10, 'D5', 1), (11, 'A#4', 1),
+             (12, 'C#5', 2), (14, 'E5', 1), (15, 'A4', 1)]
+    TUNE2 = [(0, 'A5', 2), (2, 'G5', 0.5), (2.5, 'F5', 0.5), (3, 'E5', 1),
+             (4, 'G5', 2), (6, 'F5', 0.5), (6.5, 'E5', 0.5), (7, 'D5', 1),
+             (8, 'F5', 1), (9, 'E5', 0.5), (9.5, 'D5', 0.5), (10, 'C5', 1), (11, 'A#4', 1),
+             (12, 'A4', 3)]
+    THIRD = {'D5': 'A#4', 'F5': 'D5', 'A5': 'F5', 'G5': 'E5', 'E5': 'C#5', 'C5': 'A4', 'A#4': 'G4', 'C#5': 'A4', 'A4': 'F4'}   # a third under, in the key
+    cad = ['Dm', 'C', 'Bb', 'A']
+    for k in range(16):                              # the drive (bars 4-19): four times down the cadence
+        gallop(4 + k, cad[k % 4])
+    for cyc, tune in enumerate((TUNE1, TUNE2, TUNE1, TUNE2)):
+        b0 = (4 + cyc * 4) * 4
+        call(b0, tune)
+        if cyc >= 2:
+            call(b0, [(b, THIRD.get(nt, nt), ln) for b, nt, ln in tune], ch=5, vel=90)
+        s.drum(b0, CRASH, 110)
+    s.note(0, 19 * 4 + 3, 'A5', 0.9, 116)            # the rip up at the end of the drive
+    # the break (bars 20-27): the hits, the war drums rolling up, the bell, the call an octave up
+    hits = ['Dm', 'Dm', 'Bb', 'A', 'Dm', 'Dm', 'Bb', 'A']
+    for k, chd in enumerate(hits):
+        base = (20 + k) * 4; root, tones = CH[chd]
+        s.chord(1, base, [n(t_) + 12 for t_ in tones[:3]], 0.6, 112); s.chord(4, base, tones, 0.6, 104)
+        s.note(2, base, n(tones[0]) - 12, 0.6, 118)
+        s.drum(base, KICK, 120); s.drum(base, CRASH if k % 4 == 0 else SPLASH, 100)
+        for i in range(8):                            # the war drums, louder bar by bar
+            s.drum(base + 1 + i * 0.375, TOM_LO if i % 2 else FLOOR_TOM, 56 + k * 7 + i * 2)
+    bell(80); bell(96)
+    s.chord(3, 80, ['D3', 'A3', 'D4', 'F4'], 15.8, 86); s.chord(3, 96, ['A#2', 'F3', 'A#3', 'D4'], 7.8, 90); s.chord(3, 104, ['A2', 'E3', 'A3', 'C#4'], 7.8, 96)
+    call(80, [(b, nt, ln) for b, nt, ln in DEGUELLO if b < 24], vel=110)
+    call(80, [(b, THIRD.get(nt, nt), ln) for b, nt, ln in DEGUELLO if b < 24], ch=5, vel=92)
+    for i, v in enumerate(range(90, 126, 4)):        # the fill back into the drive
+        s.drum(108 + 3 + i * (1 / 9), SNARE, v)
+    return s, 4 * 4, 28 * 4                          # loops back to bar 4 (the call once), ends after bar 27
+
+
 # ---------------------------------------------------------------------------------------------- Boot Hill
 def boothill():
     """Boot Hill at midnight: E minor, 76 bpm. Tremolo guitar picking the chords, a whistle that could be the
@@ -700,7 +792,7 @@ def over():
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie),
-                     ('deadman', deadman), ('stampede', stampede), ('heist', heist)):
+                     ('deadman', deadman), ('stampede', stampede), ('heist', heist), ('laststand', laststand)):
         song, loop, end = fn()
         k = song.save(OUT / f'{name}.mid', loop, end)
         secs = end * 60 / song.bpm

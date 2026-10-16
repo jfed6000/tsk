@@ -202,6 +202,9 @@ function sfx(k) {
     case 'boom': noise(0.9, 0.6, 'lowpass', 1800, 60); tone('sine', 90, 30, 0.6, 0.4); break;   // dynamite
     case 'creak': tone('sawtooth', 120, 90, 0.5, 0.05); noise(0.3, 0.1, 'bandpass', 400, 200, 0.1); break;   // a pit-prop coming
     case 'roar': noise(1.6, 0.5, 'lowpass', 700, 90); tone('sine', 70, 40, 1.2, 0.3); break;    // into the tunnel
+    case 'bell': for (const d of [0, 0.9]) { tone('triangle', 392, 388, 1.4, 0.14, d); tone('sine', 784, 780, 0.9, 0.05, d); tone('sine', 1176, 1170, 0.5, 0.03, d); } break;   // the mission bell: here they come
+    case 'thud': noise(0.16, 0.4, 'lowpass', 500, 70); tone('sine', 90, 45, 0.18, 0.3); break;    // a blow on the church doors
+    case 'bellow': tone('sawtooth', 160, 70, 0.9, 0.12); tone('sawtooth', 120, 55, 0.9, 0.08, 0.05); noise(0.6, 0.15, 'lowpass', 500, 120); break;   // El Toro
   }
 }
 

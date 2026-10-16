@@ -1007,7 +1007,9 @@ MusFiles            fcc       /mus_title.bin/
                     fcb       $0D
                     fcc       /mus_heist.bin/       (the Train Heist's)
                     fcb       $0D
-                    ifne      MU.N-8
+                    fcc       /mus_laststand.bin/   (the Mission's)
+                    fcb       $0D
+                    ifne      MU.N-9
                     error     "the song list here doesn't match tskmusic.d"
                     endc
 MsgLoad             fcc       /Texas Shitkickers - saddling up.../
