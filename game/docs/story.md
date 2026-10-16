@@ -17,6 +17,11 @@ and set off across Texas to kick every member of the gang into the next county.
 - **Almost wordless.** Metal Slug tells its whole story with pictures. We get a title card per level, a line or two
   before each boss, and a short ending (see "Telling it" below).
 
+**The kid-friendly name, in reserve (DECIDED 2026-10-16, the user's call): TEXAS SHINKICKERS**, the hero the
+Shinkickers. One letter changed: kicking shins is what a pair of boots would do, and the logo lays out the same (11
+letters). Everything else (Ringo, Diamondback, the story, bloodless) is already fit for kids. Not built as a switch
+yet: the name's in the title logo, the HUD's name, the opening's title and the tagline.
+
 ## The hero
 
 **Shitkickers.** That's his name (the user's call, 2026-10-12): cowboy-boot slang, half the game's title, and plural
