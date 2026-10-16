@@ -4,12 +4,15 @@ HookTab
                     fdb       BotGap-HookTab
                     fdb       0          BotGila
                     fdb       0          BotJack
+                    fdb       0          BotMission
                     fdb       0          BotShell
                     fdb       BotTrain-HookTab
                     fdb       0          DillonStep
                     fdb       0          DlnFrame
+                    fdb       0          DoorInit
                     fdb       0          DrawGila
                     fdb       0          DrawLasso
+                    fdb       0          DrawMission
                     fdb       0          DrawRide
                     fdb       0          DrawRider
                     fdb       0          DrawSigns
@@ -17,7 +20,9 @@ HookTab
                     fdb       0          DrawTable
                     fdb       DrawTrain-HookTab
                     fdb       DuckNow-HookTab
+                    fdb       0          EBatter
                     fdb       0          ELeave
+                    fdb       0          EVault
                     fdb       FallStep-HookTab
                     fdb       0          GilaFrame
                     fdb       0          GilaReact
@@ -27,6 +32,10 @@ HookTab
                     fdb       0          JackFrame
                     fdb       0          JackReact
                     fdb       0          JackStep
+                    fdb       0          MissionStep
+                    fdb       0          MissionWords
+                    fdb       0          OverWall
+                    fdb       0          RaidAppr
                     fdb       0          RAim
                     fdb       0          RAppr
                     fdb       0          RideCarry
@@ -35,6 +44,7 @@ HookTab
                     fdb       0          RLasso
                     fdb       0          RShoot
                     fdb       0          ShellHit
+                    fdb       0          SiegeBell
                     fdb       0          SignInit
                     fdb       0          Signs
                     fdb       0          StartDillon
@@ -42,6 +52,7 @@ HookTab
                     fdb       0          StartJack
                     fdb       0          StartStampede
                     fdb       StartSting-HookTab
+                    fdb       0          StartToro
                     fdb       StickKick-HookTab
                     fdb       StingFrame-HookTab
                     fdb       StingGuard-HookTab
@@ -49,6 +60,10 @@ HookTab
                     fdb       StingSalvo-HookTab
                     fdb       StingStep-HookTab
                     fdb       0          TableHit
+                    fdb       0          ToroFrame
+                    fdb       0          ToroRage
+                    fdb       0          ToroReact
+                    fdb       0          ToroStep
                     fdb       TrainInit-HookTab
                     fdb       TrainScrl-HookTab
                     fdb       TrainStep-HookTab

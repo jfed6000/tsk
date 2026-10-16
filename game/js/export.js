@@ -23,7 +23,11 @@ T.runExport = function (A) {
   // Each stage has its own tile sets and maps, loaded into the same blocks when the stage starts. One tile CLUT
   // serves both (CLUT.bg holds every stage's colours).
   const night = T.buildNightLayers(VW, VH, FLOOR), MS = T.buildMainStreet(VW, VH, FLOOR), GT = T.buildGhostTown(VW, VH, FLOOR);
-  const CD = T.buildRanch(VW, VH, FLOOR), TH = T.buildTrain(VW, VH, FLOOR);
+  const CD = T.buildRanch(VW, VH, FLOOR), TH = T.buildTrain(VW, VH, FLOOR), MI = T.buildMission(VW, VH, FLOOR);
+  // the Mission's church doors, as a fourth map: its four states' patches (mission.js L.doors) side by side, at the
+  // patch's rows (the 6809 copies a state's 4x5 cells into the street map: mission.a)
+  const MD = T.MISSION.DOORS, doorMap = { width: MD.w * 4, height: VH, idx: new Uint16Array(MD.w * 4 * VH) };
+  MI.doors.forEach((d, k) => { for (let y = 0; y < MD.h; y++) for (let x = 0; x < MD.w; x++) doorMap.idx[(MD.y + y) * doorMap.width + k * MD.w + x] = d.idx[y * MD.w + x]; });
   const STAGES = [
     { key: 'BH', file: 'bh', W: 1920, layers: [
       { name: 'FAR', img: night.far, rate: 0.25 }, { name: 'MID', img: night.mid, rate: 0.5 },
@@ -40,6 +44,10 @@ T.runExport = function (A) {
     { key: 'TH', file: 'th', W: T.TRAIN.W, layers: [
       { name: 'FAR', img: TH.far, rate: 0.25, wrap: TH.far.width }, { name: 'MID', img: TH.mid, rate: 0.5, wrap: TH.mid.width },
       { name: 'STR', img: TH.street, rate: 1 }, { name: 'RCK', img: TH.rock, rate: 0.5, wrap: TH.rock.width }] },
+    // the Mission: the sky and the town wrap (the camera only goes to the courtyard); the doors' states (DOR, exact)
+    { key: 'MI', file: 'mi', W: T.MISSION.W, layers: [
+      { name: 'FAR', img: MI.far, rate: 0.25, wrap: MI.far.width }, { name: 'MID', img: MI.mid, rate: 0.5, wrap: MI.mid.width },
+      { name: 'STR', img: MI.street, rate: 1 }, { name: 'DOR', img: doorMap, rate: 0, exact: true }] },
   ];
   const SKEL = T.buildSkeleton();
 
@@ -54,7 +62,7 @@ T.runExport = function (A) {
     const maps = [];
     for (const L of st.layers) {
       const img = L.img, pw = img.width / TS;
-      const need = L.wrap ? Math.ceil((L.wrap + VW) / TS) + 1                                          // a picture and a screen,
+      const need = L.exact ? pw : L.wrap ? Math.ceil((L.wrap + VW) / TS) + 1                                          // a picture and a screen,
         : Math.ceil(((st.W - VW + (L.noExtra ? 0 : st.extra || 0)) * L.rate + VW) / TS) + 1;   // or enough to scroll the whole level
       const cells = new Uint8Array(need * MAP_H * 2);
       for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < need; tx++) {
@@ -211,6 +219,11 @@ T.runExport = function (A) {
     ['seeya', 'SEE YA!', '#ffd34a', 2], ['swept', 'SWEPT OFF!', '#ffd34a', 2], ['watchstep', 'WATCH YER STEP!', '#ffd34a', 1],
     ['mindhead', 'MIND YER HEAD!', '#ff6b4a', 2], ['nobody', 'NOBODY GETS OFF THIS TRAIN!', '#fff3c4', 1], ['clank', 'CLANK!', '#c3c8d8', 1],
     ['stung', 'STUNG!', '#ff6b4a', 1], ['uhoh', 'UH OH!', '#ff9d3c', 1], ['lightall', "LIGHT 'EM ALL!", '#ff9d3c', 1], ['kaboom', 'KA-BOOM!', '#ff6b4a', 1],
+    ['mission', 'THE MISSION', '#ffd34a', 3], ['sundown', 'SUNDOWN', '#e8a070', 1], ['miclear', 'THE MISSION CLEAR!', '#ffd34a', 3],
+    ['herethey', 'HERE THEY COME!', '#ff9d3c', 2], ['theyrein', "THEY'RE IN!", '#ff6b4a', 2], ['costhat', 'THAT COST YA A HAT!', '#ffd34a', 1],
+    ['barred', 'BARRED AGAIN!', '#fff3c4', 1], ['prayers', 'SAY YER PRAYERS, BOOTS!', '#fff3c4', 1], ['snort', 'SNORT!', '#ff9d3c', 1],
+    ['seered', "SEEIN' RED!", '#ff6b4a', 1], ['gored', 'GORED!', '#ff6b4a', 1], ['crash', 'CRASH!', '#ff9d3c', 2], ['stuck', 'STUCK!', '#ffd34a', 1],
+    ['highnoon', 'HIGH NOON, BOOTS.', '#9ad46a', 2], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
 
@@ -232,7 +245,7 @@ T.runExport = function (A) {
   addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
     ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
     ['ball', DLN.ball, 20, true], ['hurt', [DLN.hurt], 1, false], ['daze', DLN.daze, 8, true], ['ko', [DLN.ko], 1, false]], B.OX, B.OY);
-  bank = ['GT', 'CD', 'TH'];                       // the rattler: Ghost Town's, the Cattle Drive's corral's, the train's
+  bank = ['GT', 'CD', 'TH', 'MI'];                 // the rattler: Ghost Town's, the Cattle Drive's corral's, the train's, the Mission's
   const RAT = T.buildRattler(), GIL = T.buildGila(), GPR = T.buildGhostProps();
   addGroup('RT', [['walk', RAT.walk, 8, true], ['coil', RAT.coil, 14, true], ['lunge', [RAT.lunge], 1, false],
     ['recover', [RAT.recover], 1, false], ['hurt', [RAT.hurt], 1, false], ['down', [RAT.down], 1, false], ['ko', [RAT.ko], 1, false]], B.OX, B.OY);
@@ -262,6 +275,12 @@ T.runExport = function (A) {
     ['stick', SG.stick, 14, true, SG.stick[0].ox, SG.stick[0].oy]], B.OX, B.OY);
   addGroup('TP', [['portal', [TRS.portal], 1, false, TRS.portal.ox, TRS.portal.oy]], 0, 0);              // (mirrored: the way out)
   addGroup('TQ', [['boom', SG.boom, 1, false, SG.boom[0].ox, SG.boom[0].oy], ['prop', [TRS.prop], 1, false, TRS.prop.ox, TRS.prop.oy]], 0, 0, false);
+  bank = 'MI';                                     // the Mission: El Toro, and the splinters off the church doors
+  const TO = T.buildToro(), MSP = T.buildMissionSprites();
+  addGroup('TO', [['idle', TO.idle, 3, true], ['walk', TO.walk, 7, true], ['talk', TO.talk, 6, true], ['paw', TO.paw, 6, true],
+    ['charge', TO.charge, 12, true], ['stuck', TO.stuck, 10, true], ['hookw', [TO.hookw], 1, false], ['hook', [TO.hook], 1, false],
+    ['rear', [TO.rear], 1, false], ['stomp', [TO.stomp], 1, false], ['hurt', [TO.hurt], 1, false], ['daze', TO.daze, 8, true],
+    ['ko', [TO.ko], 1, false], ['splint', [MSP.splinter], 1, false, MSP.splinter.ox, MSP.splinter.oy]], B.OX, B.OY);
   bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
@@ -338,27 +357,28 @@ T.runExport = function (A) {
   };
   const files = {
     'sprites.bin': sprites,
-    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT, 'spr_cd.bin': ovl.CD, 'spr_th.bin': ovl.TH,
+    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT, 'spr_cd.bin': ovl.CD, 'spr_th.bin': ovl.TH, 'spr_mi.bin': ovl.MI,
     'tiles_bh.bin': STAGES[0].tiles, 'maps_bh.bin': STAGES[0].mapBytes,
     'tiles_ms.bin': STAGES[1].tiles, 'maps_ms.bin': STAGES[1].mapBytes,
     'tiles_gt.bin': STAGES[2].tiles, 'maps_gt.bin': STAGES[2].mapBytes,
     'tiles_cd.bin': STAGES[3].tiles, 'maps_cd.bin': STAGES[3].mapBytes,
     'tiles_th.bin': STAGES[4].tiles, 'maps_th.bin': STAGES[4].mapBytes,
+    'tiles_mi.bin': STAGES[5].tiles, 'maps_mi.bin': STAGES[5].mapBytes,
     'frames.bin': frames,
-    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD), 'frr_th.bin': cat(frParts.TH),
+    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD), 'frr_th.bin': cat(frParts.TH), 'frr_mi.bin': cat(frParts.MI),
     'clut_spr.bin': clut(shCols),                 // the shared colours only (tskview; tsk loads a stage's pal_<s>)
-    'pal_bh.bin': palOf('BH'), 'pal_ms.bin': palOf('MS'), 'pal_gt.bin': palOf('GT'), 'pal_cd.bin': palOf('CD'), 'pal_th.bin': palOf('TH'),
+    'pal_bh.bin': palOf('BH'), 'pal_ms.bin': palOf('MS'), 'pal_gt.bin': palOf('GT'), 'pal_cd.bin': palOf('CD'), 'pal_th.bin': palOf('TH'), 'pal_mi.bin': palOf('MI'),
     // the tile palettes: a stage's own (tpal_<s>); clut_tile is Boot Hill's (the title, tskview), clut_flash Boot
     // Hill's lightning-lit
     'tpal_bh.bin': clut(STAGES[0].pal), 'tpal_ms.bin': clut(STAGES[1].pal), 'tpal_gt.bin': clut(STAGES[2].pal),
-    'tpal_cd.bin': clut(STAGES[3].pal), 'tpal_th.bin': clut(STAGES[4].pal),
+    'tpal_cd.bin': clut(STAGES[3].pal), 'tpal_th.bin': clut(STAGES[4].pal), 'tpal_mi.bin': clut(STAGES[5].pal),
     'clut_tile.bin': clut(STAGES[0].pal),
     'clut_flash.bin': clut(STAGES[0].pal, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
     // the shades (mainstreet.js shadeOf), Main Street's night falling and the train's tunnels: 61 tile CLUTs of the
     // stage's palette, shade 0 .. 0.60 toward NIGHT in steps of 0.01 (fine enough that the F256 can fade, as the
     // browser does; 13 steps of 0.05 looked abrupt on the K2). The lights (windows, lamps, the sun) keep their colour.
     // 1K each, back to back.
-    'shade_ms.bin': shades(STAGES[1].pal), 'shade_th.bin': shades(STAGES[4].pal),
+    'shade_ms.bin': shades(STAGES[1].pal), 'shade_th.bin': shades(STAGES[4].pal), 'shade_mi.bin': shades(STAGES[5].pal),   // (the Mission: night falling over the siege)
   };
 
   // ---------------------------------------------------------------- the generated defs file

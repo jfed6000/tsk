@@ -31,6 +31,8 @@ ES.BossX            equ       17                  Two-Bit, not hittable (talking
 ES.Held             equ       18                  held by the collar (grab.a)
 ES.Thrown           equ       19                  thrown: flying into its friends
 ES.Leave            equ       20                  a rider making off at the ride's end (ride.a)
+ES.Vault            equ       21                  the siege: up on the courtyard wall, the leap down (mission.a; not hittable)
+ES.Batter           equ       22                  at the church doors, battering them (mission.a)
 
 * a skull's states
 SL.Fly              equ       1
@@ -492,6 +494,8 @@ EnTab               fdb       EnMove-EnTab
                     fdb       EHeld-EnTab
                     fdb       EThrown-EnTab
                     fdb       ELeave-EnTab
+                    fdb       EVault-EnTab        (the Mission's: mission.a)
+                    fdb       EBatter-EnTab
 
 ERise               lbsr      EStop
                     lda       EN.T,x
@@ -769,6 +773,8 @@ ee1                 std       EN.VX,x
 DAppr               lda       EN.Ty,x             (a rider's own: ride.a)
                     cmpa      #TY.Ride
                     lbeq      RAppr
+                    lbsr      RaidAppr            (the siege: a raider for the doors - mission.a; carry set if so)
+                    lbcs      EnMove
                     ldy       #28*16              its spot: 28 px beside him (a coyote 36, a rattler 70; 80 while two
                     lda       EN.Ty,x
                     cmpa      #TY.Coy
@@ -992,7 +998,7 @@ Hitbl               pshs      a,x
                     lda       a,x
                     cmpa      #1
                     puls      a,x,pc
-HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0
+HitblT              fcb       0,0,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,1
 
 * ETall - X = an enemy, tmp = its height off the floor (px):
 *   D = tmp + how tall it is
@@ -1017,6 +1023,8 @@ et1                 clra
 *   while there are enemies about: brawler.js lock + 6 .. lock + 314)
 EnMove              lda       EN.St,x
                     cmpa      #ES.Enter
+                    beq       em5
+                    cmpa      #ES.Vault           (over the wall: from off the screen)
                     beq       em5
                     cmpa      #ES.Leave           (a rider making off: free to go)
                     beq       em5
@@ -2157,6 +2165,8 @@ EfTab               fdb       EfIdle-EfTab
                     fdb       EfHurt-EfTab        held
                     fdb       EfHurt-EfTab        thrown
                     fdb       EfIdle-EfTab        (leaving: a rider's)
+                    fdb       EfAppr-EfTab        over the courtyard wall (the Mission's)
+                    fdb       EfIdle-EfTab        (battering the doors: never a skeleton's)
 EfAppr              ldd       EN.VX,x             moving: walk; else stand
                     lbsr      AbsD
                     pshs      d
@@ -2215,6 +2225,8 @@ efx1                tfr       a,b
 *   knocked down or flies; the first ball frame winding up; standing
 *   when it's hit; else walking
 DlFrame             lda       EN.St,x
+                    cmpa      #ES.Vault           (over the wall: curled)
+                    beq       df2
                     cmpa      #ES.Wind
                     beq       df2
                     cmpa      #ES.Stag
@@ -2258,6 +2270,18 @@ df5                 tfr       a,b
 *   walking or standing, the wind-up, the swing, hurt, down, dazed
 *   getting up, the KO
 CyFrame             lda       EN.St,x
+                    cmpa      #ES.Vault           over the wall: arms up (the Mission)
+                    beq       cf0a
+                    cmpa      #ES.Batter          at the doors: the shovel up, then down
+                    bne       cf0b
+                    lda       EN.T,x
+                    cmpa      #27
+                    bhs       cf0c
+cf0a                lda       #CY.windup-CY.First
+                    bra       cf9
+cf0c                lda       #CY.swing-CY.First
+                    bra       cf9
+cf0b                lda       EN.St,x
                     cmpa      #ES.Wind
                     bne       cf1
                     lda       #CY.windup-CY.First
@@ -2496,7 +2520,15 @@ bs1                 lda       EN.St,y
                     ldd       EN.X,y
                     subd      <hx
                     lbsr      AbsD
-                    cmpd      <bbest
+                    pshs      d                   (one at the church doors counts 60 px nearer)
+                    lda       EN.St,y
+                    cmpa      #ES.Batter
+                    puls      d                   (PULS leaves the flags)
+                    bne       bs1b
+                    subd      #60*16
+                    bcc       bs1b
+                    ldd       #0
+bs1b                cmpd      <bbest
                     bhs       bs2
                     std       <bbest
                     sty       <bnear
@@ -2724,7 +2756,10 @@ bt9                 rts
 
 * BotMound - the autopilot keeps off Two-Bit's mound.  Exit: carry clear
 *   and B = the input if it's running from it
-BotMound            lbsr      BotTrain            the train: ducking the tunnels, Sting's dynamite (train.a)
+BotMound            lbsr      BotMission          the Mission: out of El Toro's lane, over his dust (mission.a)
+                    bcs       bm0m
+                    rts
+bm0m                lbsr      BotTrain            the train: ducking the tunnels, Sting's dynamite (train.a)
                     bcs       bm0t
                     rts
 bm0t                lbsr      BotJack             the ride, and Jack's rope (jack.a)

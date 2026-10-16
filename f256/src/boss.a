@@ -245,7 +245,7 @@ whb4                 lda       #BS.Stag
                     lbsr      ByDir
                     std       EN.VX,x
 whb5                 tst       <bsum               half his health: he raises the dead
-                    bne       whb9
+                    lbne      whb9
                     lda       EN.Hp,x
                     lbsr      EMax                (B = his full health; A kept)
                     lsrb
@@ -255,7 +255,12 @@ whb5                 tst       <bsum               half his health: he raises th
                     inc       <bsum
                     lda       bkind,u
                     lbeq      whs0
-                    cmpa      #4                  Sting: LIGHT 'EM ALL! (sting.a)
+                    cmpa      #5                  El Toro: seein' red (toro.a)
+                    bne       whs5
+                    lbsr      ToroRage
+                    ldx       <bslot
+                    lbra      whb9
+whs5                cmpa      #4                  Sting: LIGHT 'EM ALL! (sting.a)
                     bne       whs4
                     lbsr      StingSalvo
                     ldx       <bslot
@@ -295,7 +300,9 @@ whs0                lda       #66
                     lbsr      NewSkel
                     ldx       <bslot
 whb9                 lda       bkind,u             Doc Gila's tricks (ghost.a), Jack's way out (jack.a),
-                    cmpa      #4                  Sting's staggers and dropped sticks (sting.a)
+                    cmpa      #5                  Sting's staggers and dropped sticks (sting.a), El Toro's
+                    lbeq      ToroReact           hide (toro.a)
+                    cmpa      #4
                     lbeq      StingReact
                     cmpa      #3
                     lbeq      JackReact
@@ -339,7 +346,9 @@ BossStep            stx       <bslot
                     tst       EN.Hp,x
                     beq       wbs0
                     lbra      EStop
-wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila, 3 Jack, 4 Sting
+wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila, 3 Jack, 4 Sting, 5 El Toro
+                    cmpa      #5
+                    lbeq      ToroStep
                     cmpa      #4
                     lbeq      StingStep
                     cmpa      #3
@@ -1013,6 +1022,8 @@ wch2                 leax      CL.Size,x
 ********************************************************************
 * BossFrame - X = him -> D = his frame (brawler.js bossImg)
 BossFrame           lda       bkind,u
+                    cmpa      #5
+                    lbeq      ToroFrame
                     cmpa      #4
                     lbeq      StingFrame
                     cmpa      #3

@@ -22,11 +22,23 @@ Amb                 lda       sflags,u
                     lbsr      Tumble
                     lbsr      Motes
 * DuskStep - toward this wave's darkness, a shade every DuskEvery passes
-DuskStep            ldb       <wavei              the target: DarkTab[wave]
-                    cmpb      #5
+DuskStep            ldb       <wavei              the target: DarkTab[wave] (the Mission's: DarkMI)
+                    leax      DarkTab,pcr
+                    lda       #5
+                    tst       stgn,u              (stage 5: the Mission)
+                    beq       ds0x
+                    lda       stgn,u
+                    cmpa      #5
+                    bne       ds0y
+                    leax      DarkMI,pcr
+                    lda       #6
+                    bra       ds0x
+ds0y                lda       #5
+ds0x                pshs      a
+                    cmpb      ,s+
                     bls       ds1x
-                    ldb       #5
-ds1x                leax      DarkTab,pcr
+                    tfr       a,b
+ds1x                equ       *
                     lda       b,x
                     cmpa      dstep,u
                     beq       am9
@@ -84,6 +96,7 @@ am9                 andcc     #$FE
 
 * the darkness of each wave, in hundredths: 0, .12, .24, .36, .48, .6
 DarkTab             fcb       0,12,24,36,48,60
+DarkMI              fcb       0,6,14,22,30,38,46  the Mission: sundown into the night over the siege
 
 * Tumble - a tumbleweed bowls through every 6-14 s, bouncing
 Tumble              tst       twst,u

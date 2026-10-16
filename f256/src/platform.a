@@ -48,8 +48,12 @@ st0cd               cmpa      #'c                 c = start on the Cattle Drive
                     orb       #128
                     bra       st0
 st0t                cmpa      #'t                 t = start on the Train Heist (h and c together)
-                    lbne      st0
+                    bne       st0i
                     orb       #192
+                    lbra      st0
+st0i                cmpa      #'i                 i = start at the Mission (m, h and c together)
+                    lbne      st0
+                    orb       #208
                     lbra      st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
@@ -82,15 +86,19 @@ st1e                lsrb
                     inc       frail,u
 st1g                lsrb
                     bcc       st1h
-                    lda       #2                  (tsk h: Ghost Town)
+                    lda       stgarg,u            (tsk h: Ghost Town; with m, 3 on the way to tsk i)
+                    adda      #2
                     sta       stgarg,u
 st1h                lsrb
                     bcc       st2
-                    lda       #3                  (tsk c: the Cattle Drive; with h, tsk t: the Train Heist)
-                    ldb       stgarg,u
+                    lda       #3                  (tsk c: the Cattle Drive; with h, tsk t: the Train Heist;
+                    ldb       stgarg,u            with m and h, tsk i: the Mission)
                     cmpb      #2
-                    bne       st1i
+                    bne       st1j
                     lda       #4
+st1j                cmpb      #3
+                    bne       st1i
+                    lda       #5
 st1i                sta       stgarg,u
 st2                 lda       #$FF                no stage's art loaded yet
                     sta       ldstg,u

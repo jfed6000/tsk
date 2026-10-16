@@ -47,7 +47,8 @@ EN.Ty               equ       23                  what it is: TY.Skel, TY.Dillo
 EN.Sd               equ       24                  the side it came in from: 1 right, -1 left
 EN.Nm               equ       25                  a skeleton's name (DeadNames)
 EN.Hop              equ       26                  1 = hopping a gap between the cars (train.a)
-EN.Size             equ       27
+EN.Rd               equ       27                  the Mission: 0, or a raider's spot at the doors (px off their middle, mission.a)
+EN.Size             equ       28
 
 TY.Skel             equ       0
 TY.Dillo            equ       1
@@ -383,6 +384,22 @@ sglint              rmb       1
 shitd               rmb       1                   his sting or pinch has landed
 sclank              rmb       1                   passes till the next CLANK! word
 sblast              rmb       1                   1 = this hit's a blast (no guard)
+* the Mission (mission.a, toro.a)
+dhp                 rmb       1                   the church doors' health (0 = busted in)
+dbust               rmb       1                   passes till they're barred again (0 = they're not busted)
+dshow               rmb       1                   the state their tiles show ($FF = write them)
+huddr               rmb       1                   the doors' strip shows this health ($FF = draw it)
+siegt               rmb       1                   the lull between siege waves, passes
+bnw                 rmb       6                   the banner: up to three TX frames, centred (0 = none)
+bnt                 rmb       1                   passes it has left
+bny                 rmb       1                   its first line's screen y
+tarm                rmb       1                   El Toro: hits taken on the move (the third, he turns on you)
+trage               rmb       1                   1 = seein' red
+tsec                rmb       1                   1 = this is the second of a pair of charges
+thitd               rmb       1                   his charge, hook or shove has landed
+ttramp              rmb       1                   who he's trampled this charge: a bit a slot
+tsaid               rmb       1                   Diamondback's word: said
+tshk                rmb       NShk*SH.Size        his stomp's walls of dust
 riding              rmb       1                   1 = the Cattle Drive's ride is on (ride.a)
 hmount              rmb       1                   1 = he's in the saddle
 hremount            rmb       1                   (the death scene: back in the saddle after)

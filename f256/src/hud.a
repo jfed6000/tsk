@@ -18,7 +18,7 @@
 *   5x7 stamps); the colours are the browser's (CI.*).
 ********************************************************************
 
-NDynBlk             equ       2
+NDynBlk             equ       3                   (the third: the Mission's doors' strip, cells 16-19)
 DynCell             equ       NSprBlk*8           the first dynamic cell
 HudY                equ       4                   the strips' screen y
 PopCell             equ       DynCell+8
@@ -44,6 +44,7 @@ HudInit             lda       #$FF
                     sta       <hudsc
                     sta       <hudeid
                     sta       <hudcb
+                    sta       huddr,u
                     clr       <lhit
                     clr       <lhitt
                     clr       <popn
@@ -549,10 +550,10 @@ hd5                 clra
                     bhs       hd5a
                     clra
 hd5a                cmpa      <hudcb
-                    beq       hd6
+                    beq       hdd
                     sta       <hudcb
                     lbsr      HudMap
-                    bcs       hdq
+                    lbcs      hdq
                     lda       #16
                     ldb       #4
                     lbsr      Band
@@ -570,6 +571,38 @@ hd5b                lda       ,y+
                     ldb       #128+75
                     lda       #16
                     lbsr      TextQ
+                    bra       hd6
+* the doors (the Mission): THE DOORS and their bar, in the third block
+hdd                 lda       sflags,u
+                    bita      #SG.Siege
+                    beq       hd6
+                    lda       dhp,u
+                    cmpa      huddr,u
+                    beq       hd6
+                    sta       huddr,u
+                    lda       #2
+                    lbsr      MapDyn
+                    bcs       hdq
+                    inc       <hmapd
+                    clra
+                    clrb
+                    lbsr      Band
+                    lda       #8
+                    clrb
+                    lbsr      Band
+                    lda       #CI.Yel
+                    sta       <hcol
+                    leax      SDoors,pcr
+                    ldb       #24
+                    clra
+                    lbsr      Text
+                    lda       dhp,u
+                    ldb       #DoorHp
+                    lbsr      BarLen
+                    sta       <hbar
+                    ldb       #23
+                    lda       #8
+                    lbsr      Bar
 hd6                 tst       <hmapd
                     beq       hd7
                     lbsr      UnmapDyn
@@ -704,6 +737,9 @@ EName               lda       EN.Ty,x
                     decb
                     beq       enm00
                     leay      SSting,pcr
+                    decb
+                    beq       enm00
+                    leay      SToro,pcr
 enm00               cmpa      #TY.Boss
                     beq       enm0
                     cmpa      #TY.Rat
@@ -755,6 +791,9 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     deca
                     beq       ex1
                     ldb       #StHp
+                    deca
+                    beq       ex1
+                    ldb       #ToroHp
 ex1                 puls      a,pc
 
 SName               fcn       "SHITKICKERS"
@@ -767,6 +806,8 @@ SDillon             fcn       "BIG SHELL DILLON"
 SGila               fcn       "DOC GILA"
 SJack               fcn       "JACKRABBIT JACK"
 SSting              fcn       "STING"
+SToro               fcn       "EL TORO"
+SDoors              fcn       "THE DOORS"
 SnakeNames          fcn       "SIDEWINDER"
                     fcn       "SLIM"
                     fcn       "FANGS"
@@ -1012,6 +1053,7 @@ dt1                 lda       <tmpi
                     lda       <tmpi
                     cmpa      #4
                     blo       dt1
+                    lbsr      DoorTop             (the Mission: the doors' strip, the enemy's under it)
                     lda       <hudeid             the enemy's strip, when it shows something
                     ora       <hudcb
                     beq       dt3
@@ -1094,6 +1136,39 @@ dt8                 leax      PU.Size,x
                     bne       dt6
                     rts
 
+* DoorTop - the Mission's siege (the courtyard): the doors' strip at the
+*   top right, blinking while they're busted in, and bcy moved down for
+*   the enemy's strip under it
+DoorTop             lda       sflags,u
+                    bita      #SG.Siege
+                    beq       dtp9
+                    ldd       <cam
+                    cmpd      #959
+                    blo       dtp9
+                    lda       dbust,u
+                    beq       dtp0
+                    lda       <ticks+1
+                    bita      #8
+                    bne       dtp8
+dtp0                ldb       #16
+dtp1                pshs      b
+                    subb      #16
+                    lda       #32
+                    mul
+                    addd      #192
+                    std       <bcx
+                    ldb       ,s
+                    clra
+                    addd      #DynCell
+                    lbsr      BuildRaw
+                    puls      b
+                    incb
+                    cmpb      #20
+                    blo       dtp1
+dtp8                ldd       #HudY+20
+                    std       <bcy
+dtp9                rts
+
 * Titles - the stage's name as it begins, GO >>, the clear, the end
 Titles              lda       <phase
                     cmpa      #PH.Intro
@@ -1101,6 +1176,7 @@ Titles              lda       <phase
                     cmpa      #PH.Play
                     bne       ti3
                     lbsr      TrainWords          (the train's TUNNEL! and DUCK!: train.a)
+                    lbsr      MissionWords        (the Mission's banners: mission.a)
                     ldd       <titlet             the stage's name: Boot Hill under the big title,
                     cmpd      #TitleLen           the others on their own
                     bhs       ti2

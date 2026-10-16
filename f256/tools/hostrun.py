@@ -237,7 +237,7 @@ def main():
     h.slow, h.profile, h.prof = a.slow, a.profile, {}
     labs = sorted((v, k) for k, v in sym.items() if re.match(r'^[A-Z][A-Za-z0-9]*$', k) and v < len(mod) and v >= 13)
     h.labofs, h.labnames = [v for v, k in labs], [k for v, k in labs]
-    for sm in ('tskms', 'tskgt', 'tskcd', 'tskth'):          # the stage modules' labels
+    for sm in ('tskms', 'tskgt', 'tskcd', 'tskth', 'tskmi'):          # the stage modules' labels
         mp = os.path.join(F256, sm + '.map')
         if os.path.exists(mp):
             ls = sorted((int(m.group(2), 16), m.group(1)) for m in

@@ -4,12 +4,15 @@ hkslots              equ       .
 HK.BotGap           rmb       2
 HK.BotGila          rmb       2
 HK.BotJack          rmb       2
+HK.BotMission       rmb       2
 HK.BotShell         rmb       2
 HK.BotTrain         rmb       2
 HK.DillonStep       rmb       2
 HK.DlnFrame         rmb       2
+HK.DoorInit         rmb       2
 HK.DrawGila         rmb       2
 HK.DrawLasso        rmb       2
+HK.DrawMission      rmb       2
 HK.DrawRide         rmb       2
 HK.DrawRider        rmb       2
 HK.DrawSigns        rmb       2
@@ -17,7 +20,9 @@ HK.DrawSteer        rmb       2
 HK.DrawTable        rmb       2
 HK.DrawTrain        rmb       2
 HK.DuckNow          rmb       2
+HK.EBatter          rmb       2
 HK.ELeave           rmb       2
+HK.EVault           rmb       2
 HK.FallStep         rmb       2
 HK.GilaFrame        rmb       2
 HK.GilaReact        rmb       2
@@ -27,6 +32,10 @@ HK.JackDodge        rmb       2
 HK.JackFrame        rmb       2
 HK.JackReact        rmb       2
 HK.JackStep         rmb       2
+HK.MissionStep      rmb       2
+HK.MissionWords     rmb       2
+HK.OverWall         rmb       2
+HK.RaidAppr         rmb       2
 HK.RAim             rmb       2
 HK.RAppr            rmb       2
 HK.RideCarry        rmb       2
@@ -35,6 +44,7 @@ HK.RideStep         rmb       2
 HK.RLasso           rmb       2
 HK.RShoot           rmb       2
 HK.ShellHit         rmb       2
+HK.SiegeBell        rmb       2
 HK.SignInit         rmb       2
 HK.Signs            rmb       2
 HK.StartDillon      rmb       2
@@ -42,6 +52,7 @@ HK.StartGila        rmb       2
 HK.StartJack        rmb       2
 HK.StartStampede    rmb       2
 HK.StartSting       rmb       2
+HK.StartToro        rmb       2
 HK.StickKick        rmb       2
 HK.StingFrame       rmb       2
 HK.StingGuard       rmb       2
@@ -49,6 +60,10 @@ HK.StingReact       rmb       2
 HK.StingSalvo       rmb       2
 HK.StingStep        rmb       2
 HK.TableHit         rmb       2
+HK.ToroFrame        rmb       2
+HK.ToroRage         rmb       2
+HK.ToroReact        rmb       2
+HK.ToroStep         rmb       2
 HK.TrainInit        rmb       2
 HK.TrainScrl        rmb       2
 HK.TrainStep        rmb       2
@@ -56,7 +71,7 @@ HK.TrainWords       rmb       2
 HK.TrEnemy          rmb       2
 HK.TrLand           rmb       2
 HK.Unhorse          rmb       2
-NHk                 equ       55
+NHk                 equ       70
 cvslots             equ       .
 CV.AbsD             rmb       2
 CV.Asr4             rmb       2
@@ -75,11 +90,14 @@ CV.Ent              rmb       2
 CV.EStop            rmb       2
 CV.FaceHero         rmb       2
 CV.Fire             rmb       2
+CV.GameOver         rmb       2
+CV.GangDown         rmb       2
 CV.Hitbl            rmb       2
 CV.HitE             rmb       2
 CV.HurtHero         rmb       2
 CV.KO               rmb       2
 CV.NegD             rmb       2
+CV.NewCoy           rmb       2
 CV.NewPt            rmb       2
 CV.NewSlot          rmb       2
 CV.NewWalk          rmb       2
@@ -104,4 +122,4 @@ CV.Toward           rmb       2
 CV.Ttl              rmb       2
 CV.WordE            rmb       2
 CV.WordH            rmb       2
-NCv                 equ       46
+NCv                 equ       49

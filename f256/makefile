@@ -13,6 +13,7 @@
 #   make mamegila                Doc Gila (tsk hkg: Ghost Town, straight to him, unhurtable) in MAME
 #   make mamecattle              the Cattle Drive (tsk cbg) in MAME
 #   make mametrain               the Train Heist (tsk tbg) in MAME
+#   make mamemission             the Mission (tsk ibg) in MAME
 #   make mametitle               the title screen and its music in MAME: the MIDI the 6809 sends, as mame/midi.mid
 #   make mameview                the same for tskview
 #   make host                    the demo on the host 6809 (tools/hostrun.py): the hero's state, pass by pass
@@ -26,11 +27,11 @@ AS          = $(LWASM) --no-warn=ifp1 --6809 --format=os9 \
               --pragma=nosymbolcase,condundefzero,dollarnotlocal \
               --includedir=$(NITROS9DIR)/defs
 AFLAGS      = -I $(NITROS9DIR)/level2/wildbits -I src -Dwildbits=1
-ASSETFILES  = pal_bh.bin pal_ms.bin pal_gt.bin pal_cd.bin fri.bin frr.bin frr_bh.bin frr_ms.bin frr_gt.bin sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin shade_ms.bin shade_th.bin tpal_bh.bin tpal_ms.bin tpal_gt.bin tpal_cd.bin tpal_th.bin pal_th.bin spr_th.bin tiles_th.bin maps_th.bin frr_th.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin mus_deadman.bin mus_stampede.bin mus_heist.bin mus_laststand.bin spr_gt.bin tiles_gt.bin maps_gt.bin spr_cd.bin tiles_cd.bin maps_cd.bin frr_cd.bin
+ASSETFILES  = pal_bh.bin pal_ms.bin pal_gt.bin pal_cd.bin fri.bin frr.bin frr_bh.bin frr_ms.bin frr_gt.bin sprites.bin spr_bh.bin spr_ms.bin tiles_bh.bin maps_bh.bin tiles_ms.bin maps_ms.bin frames.bin clut_spr.bin clut_tile.bin clut_flash.bin shade_ms.bin shade_th.bin tpal_bh.bin tpal_ms.bin tpal_gt.bin tpal_cd.bin tpal_th.bin pal_th.bin spr_th.bin tiles_th.bin maps_th.bin frr_th.bin mus_title.bin mus_boothill.bin mus_clear.bin mus_over.bin mus_boogie.bin mus_deadman.bin mus_stampede.bin mus_heist.bin mus_laststand.bin shade_mi.bin tpal_mi.bin pal_mi.bin spr_mi.bin tiles_mi.bin maps_mi.bin frr_mi.bin spr_gt.bin tiles_gt.bin maps_gt.bin spr_cd.bin tiles_cd.bin maps_cd.bin frr_cd.bin
 TSKSRC      = src/tsk.asm src/data.a src/stages.d src/platform.a src/hero.a src/enemy.a src/stage.a src/hud.a src/pickup.a src/intro.a src/boss.a src/death.a src/grab.a src/rat.a src/stgmod.a src/snd.a src/title.a src/amb.a src/draw.a src/tskassets.d src/tsktabs.a src/tskmusic.d
 # The stage modules (stgmod.a): a stage's own code, F$Loaded with its art into the process's free 8K slot.
 # tools/stagegen.py writes the glue (src/tskvec.d, tskhook.a, tskhk_*.a, tskcore.d) from the sources.
-STAGEMODS   = tskms tskgt tskcd tskth
+STAGEMODS   = tskms tskgt tskcd tskth tskmi
 STAGESRC    = src/dillon.a src/ghost.a src/ride.a src/jack.a src/train.a src/sting.a
 STAGEMAX    = 8192
 # The module budget. The data area is one 8K block (the frame records and CLUTs live in graphics blocks: draw.a,
@@ -63,6 +64,7 @@ tskms: src/tskms.asm src/dillon.a
 tskgt: src/tskgt.asm src/ghost.a
 tskcd: src/tskcd.asm src/ride.a src/jack.a
 tskth: src/tskth.asm src/train.a src/sting.a
+tskmi: src/tskmi.asm src/mission.a src/toro.a
 $(STAGEMODS): tsk
 	$(AS) $(AFLAGS) --list=$@.list --map=$@.map -o $@ src/$@.asm
 	@n=$$(stat -c %s $@); echo "$@: $$n bytes of $(STAGEMAX)"; test $$n -le $(STAGEMAX) || { echo "$@: over one 8K block"; exit 1; }
@@ -104,6 +106,9 @@ mamecattle: tsk $(STAGEMODS) tskview
 
 mametrain: tsk $(STAGEMODS) tskview
 	LUA=tools/tsktrain.lua tools/mame.sh
+
+mamemission: tsk $(STAGEMODS) tskview
+	LUA=tools/tskmission.lua tools/mame.sh
 
 mametitle: tsk $(STAGEMODS) tskview
 	TSKMIDILOG=$(CURDIR)/mame/midi.log LUA=tools/tskmidi.lua tools/mame.sh

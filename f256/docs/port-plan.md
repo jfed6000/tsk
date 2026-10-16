@@ -333,7 +333,35 @@ One program module, **`tsk`**, assembled from:
       the mouth drawn as Sting); loop counters in `<kcnt`/`<aloop`/`<tmpi` clobbered by what the loop calls (Spark,
       the death scene's `Blowback`) - the train's loops keep theirs on the stack.
     - **Cost:** the worst pass in the chain Ghost Town → Cattle Drive → Train Heist is 91K cycles.
-15. The pad harness, co-op, the next stages.
+15. ✓ **The Mission** *(2026-10-15: `tsk` 26.8K of 32,768; `tskmi` 3.7K of 8,192; data 5.6K of 7,936)*: stage 5
+    (`SG.Dusk+SG.Siege`), after the Train Heist; `tsk i` starts there (m, h and c together), `tsk ik` at El Toro,
+    `make mamemission` runs `tsk ibg`.
+    - **The doors are tiles**: the exporter's fourth map for the stage (`MI.MAP3`, `DOR`) holds their four states'
+      64x80 patches side by side, and `mission.a DoorTiles` copies a state's 4x5 cells into the street map in RAM
+      over the doorway (the maps are all in one block: one `F$MapBlk`) when the state changes. Never dropped when the
+      sprites run out (the browser's sprite doors were: the user's playtest), and they darken with the night.
+    - **The siege waves** (`+$80` on a wave's count): `StartWave` puts each over the wall (`OverWall`: `ES.Vault`, 0.45 s
+      apart, the leap down) and rings the bell (`SiegeBell`); a wave at the same spot as the last waits 2.2 s
+      (`siegt`) and shows no GO. The coyotes and rattlers are raiders (`EN.Rd`: their spot at the doors):
+      `RaidAppr` (the start of `DAppr`) sends them for the doors unless he's right there and fewer than two are at
+      him; at the doors `ES.Batter`, a blow every 0.8 s (`HitDoor`: splinters, the thud). Busted (`BustDoor`), it
+      costs a hat (none left: game over); after 2 s `Barred`, and the ones at the doors are thrown out.
+    - **El Toro** (`toro.a`, `bkind` 5, `TS.*`): his stuck is Dillon's dizzy number, so `HitBoss` gives it half
+      again for free; `ToroReact` (his hide: the third hit on the move turns him), `ToroRage` (half health);
+      `Trample` knocks his own down once a charge (a bit a slot); the stomp's dust walls (`tshk`, `ShkStep`,
+      `DrawMission`); `TShove` (solid). KO'd: `Diamondback`'s banner (three centred words, `MissionWords` from
+      `Titles`).
+    - **The HUD**: a third dynamic block (`NDynBlk` 3) for the doors' strip, at the top right in the courtyard, the
+      enemy's strip moved under it (`DoorTop`), blinking while they're busted.
+    - **Night falls** over the siege through the stage's shades (`shade_mi.bin`, `DarkMI`: 0 to 46).
+    - **New effects**: the bell (channel 11, tubular bells), the thud (drum notes), the bellow (channel 9, a tuba with
+      a pitch bend sagging). Music "Last Stand" (`MU.laststand`).
+    - **The waves are six at most** (`NEn`): the browser's last siege wave lost a coyote to match.
+    - **Bugs found on the way:** the autopilot's dust-wall loop counted in B through `ldd`s (112K cycles); a
+      module's local labels that share a name with the core's (`wch1`) become calls into the core (`toro.a`'s
+      locals are `q`-prefixed); `shk` against the core's `Shk` (stagegen compares without case).
+    - **Cost:** the worst pass in the whole stage is 80K cycles.
+16. The pad harness, co-op, High Noon.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

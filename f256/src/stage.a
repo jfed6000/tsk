@@ -109,6 +109,7 @@ si0a                stx       zmax16,u
                     lbsr      SignInit            (Ghost Town's signs: tskgt)
                     lbsr      RideInit            (the Cattle Drive's ride: tskcd)
                     lbsr      TrainInit           (the Train Heist's train: tskth)
+                    lbsr      DoorInit            (the Mission's doors: tskmi)
                     ldd       #0
                     std       <phaset
                     std       <titlet
@@ -270,6 +271,7 @@ SG.Light            equ       2                   lightning
 SG.Dusk             equ       4                   night falls, wave by wave
 SG.Ride             equ       8                   the ride: in the saddle, the trail scrolling (ride.a)
 SG.Train            equ       16                  the train: its roof narrower, the scenery going by, gaps, tunnels (train.a)
+SG.Siege            equ       32                  the Mission: the church doors, the siege (mission.a)
 NOvlBlk             equ       (SPR.Ovl+7)/8
 MaxW                equ       2032                (x 16 = 32512: under 32767, so signed compares work)
 
@@ -313,6 +315,14 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BarTH-StgTab
                     fdb       TX.trainh,TX.midday,TX.thclear
                     fdb       FileTH-StgTab
+                    fdb       MI.W                the Mission at sundown: the siege of the church doors, El Toro
+                    fdb       MI.MAP0.W,MI.MAP0.Of,MI.MAP1.W,MI.MAP1.Of,MI.MAP2.W,MI.MAP2.Of
+                    fcb       MI.TIL.Sets,SG.Dusk+SG.Siege,MU.laststand,7
+                    fdb       WaveMI-StgTab
+                    fcb       5
+                    fdb       BarMI-StgTab
+                    fdb       TX.mission,TX.sundown,TX.miclear
+                    fdb       FileMI-StgTab
 
 FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
@@ -358,6 +368,22 @@ FileTH              fcc       /tiles_th.bin/
                     fcc       /shade_th.bin/
                     fcb       $0D
                     fcc       /tskth/
+                    fcb       $0D
+FileMI              fcc       /tiles_mi.bin/
+                    fcb       $0D
+                    fcc       /maps_mi.bin/
+                    fcb       $0D
+                    fcc       /spr_mi.bin/
+                    fcb       $0D
+                    fcc       /frr_mi.bin/
+                    fcb       $0D
+                    fcc       /pal_mi.bin/
+                    fcb       $0D
+                    fcc       /tpal_mi.bin/
+                    fcb       $0D
+                    fcc       /shade_mi.bin/
+                    fcb       $0D
+                    fcc       /tskmi/
                     fcb       $0D
 FileGT              fcc       /tiles_gt.bin/
                     fcb       $0D
@@ -417,6 +443,7 @@ sg1                 lda       <phase
                     lbsr      Signs               Ghost Town's hanging signs (ghost.a)
                     lbsr      RideStep            the Cattle Drive's ride (ride.a)
                     lbsr      TrainStep           the Train Heist's train (train.a)
+                    lbsr      MissionStep         the Mission's doors, banners, dust (mission.a)
                     tst       dying,u             (no wave while he's down)
                     bne       sgx
                     lbra      Waves
@@ -427,8 +454,8 @@ sg2                 cmpa      #PH.Clear
                     cmpd      #ClearT
                     blo       sgx
                     lda       stgn,u             a stage won: on to the next (health back up 6,
-                    cmpa      #4                  lives and score kept, the weapon left behind);
-                    bhs       sg3                 the Train Heist's the last for now
+                    cmpa      #5                  lives and score kept, the weapon left behind);
+                    bhs       sg3                 the Mission's the last for now
                     lda       <hhp
                     adda      #6
                     cmpa      #MaxHp
@@ -475,22 +502,43 @@ wv0                 tst       <lock
                     bne       wvx
                     clr       <lock
                     inc       <wavei
-                    lda       #GoLen
-                    sta       <got
                     lda       #SF.Check
                     lbsr      Sfx
                     lda       <wavei
                     cmpa      nwaves,u
                     lbhs      StageClear
+                    clr       siegt,u
+                    lbsr      WaveRec             GO >> - unless the next is right here (the siege)
+                    ldd       <cam
+                    addd      #1
+                    cmpd      ,x
+                    bhs       wvx
+                    lda       #GoLen
+                    sta       <got
 wvx                 rts
 wv2                 lda       <wavei              the camera reaching the next wave's spot
                     cmpa      nwaves,u
                     bhs       wvx
-                    bsr       WaveRec
+                    lbsr      WaveRec
                     ldd       <cam
                     addd      #1
                     cmpd      ,x
                     blo       wvx
+                    lda       <wavei              the same spot as the last (the siege): a breather
+                    beq       wv3                 of 2.2 s first
+                    pshs      x
+                    dec       <wavei
+                    lbsr      WaveRec
+                    inc       <wavei
+                    ldd       ,x
+                    puls      x
+                    cmpd      ,x
+                    bne       wv3
+                    inc       siegt,u
+                    lda       siegt,u
+                    cmpa      #132
+                    blo       wvx
+wv3                 equ       *
 * StartWave - X = the wave: the screen locks there and the gang comes
 StartWave           ldd       ,x++
                     std       <cam                the camera holds at the wave's spot
@@ -505,9 +553,9 @@ StartWave           ldd       ,x++
                     std       <camf
                     lda       #1
                     sta       <lock
-                    lda       ,x+                 how many ($FF = the boss)
-                    cmpa      #$FF                (then which: 0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila)
-                    bne       swb9
+                    lda       ,x+                 how many ($FF = the boss; +$80 = the siege: over the walls)
+                    cmpa      #$FF                (then which: 0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila,
+                    bne       swb9                3 Jack, 4 Sting, 5 El Toro)
                     ldb       ,x
                     lbeq      StartBoss
                     decb
@@ -516,20 +564,36 @@ StartWave           ldd       ,x++
                     lbeq      StartGila
                     decb
                     lbeq      StartJack
-                    lbra      StartSting
-swb9                equ       *
-                    sta       <tmpn
+                    decb
+                    lbeq      StartSting
+                    lbra      StartToro
+swb9                clr       <tmpk               (tmpk: the siege flag)
+                    tsta
+                    bpl       swb9a
+                    anda      #$7F
+                    inc       <tmpk
+swb9a               sta       <tmpn
+                    lda       <tmpk
+                    pshs      a
                     clr       <tmpi               i
 sw1                 pshs      x
                     lda       ,x                  the type
                     ldb       <tmpi
-                    lbsr      Spawn
-                    puls      x
+                    lbsr      Spawn               (X = it: OverWall checks there was room)
+                    tst       2,s
+                    beq       sw2
+                    lda       <tmpi               the siege: over the wall, 0.45 s apart
+                    lbsr      OverWall
+sw2                 puls      x
                     leax      1,x
                     inc       <tmpi
                     dec       <tmpn
                     bne       sw1
-                    rts
+                    puls      a
+                    tsta
+                    beq       sw3
+                    lbsr      SiegeBell           the bell, HERE THEY COME! (mission.a)
+sw3                 rts
 
 * WaveRec - X = wave number wavei's record
 WaveRec             ldx       stgp,u              this stage's table
@@ -542,7 +606,8 @@ wr1                 lda       2,x                 skip a record: cam, count, typ
                     cmpa      #$FF
                     bne       wr1a
                     clra
-wr1a                leax      a,x
+wr1a                anda      #$7F                (the siege's flag)
+                    leax      a,x
                     leax      3,x
                     decb
                     bne       wr1
@@ -610,6 +675,20 @@ WaveTH              fdb       0                   the Train Heist: along the roo
                     fcb       5,TY.Coy,TY.SkelW,TY.Coy,TY.Rat,TY.Coy
                     fdb       1712
                     fcb       $FF,4               Sting
+WaveMI              fdb       0                   the Mission: along the wall, then the siege in the courtyard (+$80)
+                    fcb       3,TY.Coy,TY.Coy,TY.Rat
+                    fdb       400
+                    fcb       4,TY.SkelW,TY.Coy,TY.Coy,TY.Rat
+                    fdb       960
+                    fcb       $80+4,TY.Coy,TY.Coy,TY.Rat,TY.Coy
+                    fdb       960
+                    fcb       $80+5,TY.Coy,TY.SkelW,TY.Rat,TY.Coy,TY.Rat
+                    fdb       960
+                    fcb       $80+6,TY.Rat,TY.Coy,TY.SkelW,TY.Coy,TY.Dillo,TY.Coy
+                    fdb       960
+                    fcb       $80+6,TY.Coy,TY.Rat,TY.SkelW,TY.Coy,TY.Rat,TY.Dillo
+                    fdb       960
+                    fcb       $FF,5               El Toro
 WaveCD              fdb       1150                the Cattle Drive: on foot at the corral gate
                     fcb       4,TY.Coy,TY.Rat,TY.Coy,TY.SkelW
                     fdb       1712

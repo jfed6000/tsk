@@ -75,6 +75,18 @@ grs8x                lda       EN.T,x
 
 * RtFrame - X = a rattler -> D = its frame
 RtFrame             lda       EN.St,x
+                    cmpa      #ES.Vault           over the wall: coiled (the Mission)
+                    beq       grf0x
+                    cmpa      #ES.Batter          at the doors: coiled, then the lunge
+                    bne       grf0y
+                    lda       EN.T,x
+                    cmpa      #24
+                    bhs       grf0z
+grf0x               lda       #RT.coil-RT.First
+                    bra       grf9x
+grf0z               lda       #RT.lunge-RT.First
+                    bra       grf9x
+grf0y               lda       EN.St,x
                     cmpa      #ES.Wind
                     bne       grf1x
                     lda       EN.An,x             coiled, the rattle going

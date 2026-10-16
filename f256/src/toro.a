@@ -1,0 +1,820 @@
+********************************************************************
+* toro.a - El Toro, Diamondback's enforcer: the Mission's boss
+*   (brawler.js updateToro, toroStuck, the toro bits of hitBoss).  A
+*   minotaur in jeans, through the side gate at a charge: SAY YER
+*   PRAYERS, BOOTS!  He walks you down; paws the dirt, lines up on your
+*   lane and charges - trampling his own - till his horns go into a wall
+*   (STUCK!: open, half again damage: his stuck is Dillon's dizzy) or into
+*   the church doors (CRASH!: 6 off them).  Up close the horn hook (3,
+*   tossed), or he backs off for a run, or rears up and stomps: a wall of
+*   dust rolls out both ways along the ground (mission.a: jump it).  His
+*   hide shrugs off hits on the move - the third, he turns on you
+*   (SNORT!).  He's solid: walk into him and he shoves you out the front.
+*   Half health: SEEIN' RED! - quicker, every charge comes straight back,
+*   two more at the doors.  KO'd, a word out of the dark (mission.a).
+*   bkind 5; his state numbers line up with Dillon's where boss.a's
+*   shared code tests them (stages.d TS.*).
+********************************************************************
+
+ToWalk              equ       12                  44 px/s (seein' red 56)
+ToWalkR             equ       15
+ToWalkZ             equ       9                   34 px/s
+ToBack              equ       35                  130 px/s, backing off
+ToChg               equ       80                  the charge: 300 px/s (seein' red 340)
+ToChgR              equ       91
+ToL0                equ       26                  the walls he hits: cam + 26 .. cam + 294
+ToL1                equ       294
+
+* StartToro - through the side gate at a charge
+StartToro           lbsr      NewSlot
+                    lbcs      qst9
+                    stx       <bslot
+                    lda       #5
+                    sta       bkind,u
+                    lda       #TY.Boss
+                    sta       EN.Ty,x
+                    lda       #ES.BossX
+                    sta       EN.St,x
+                    lda       #ToroHp
+                    sta       EN.Hp,x
+                    lda       #1
+                    sta       EN.Fc,x
+                    ldd       <cam
+                    addd      #360
+                    lbsr      To124
+                    std       EN.X,x
+                    ldd       #40*16
+                    std       EN.Z,x
+                    ldd       #-ToChgR
+                    std       EN.VX,x
+                    clr       <bst
+                    clr       <bn
+                    clr       <bsaid
+                    clr       <bsum
+                    clr       tarm,u
+                    clr       trage,u
+                    clr       tsec,u
+                    clr       thitd,u
+                    clr       tsaid,u
+                    lda       #SF.Bellow
+                    lbsr      Sfx
+                    lda       #8
+                    lbsr      Shk
+qst9                rts
+
+* TSet - A = his state: its clock from 0; not hittable coming in or KO'd
+TSet                ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.BossX
+                    cmpa      #TS.Intro
+                    beq       qts1
+                    cmpa      #TS.Ko
+                    beq       qts1
+                    ldb       #ES.Boss
+qts1                stb       EN.St,x
+                    rts
+
+* WLane - X = him, D = a width (12.4): carry clear if you're in his lane
+WLane               std       <tmp
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      <tmp
+                    blo       qln1
+                    orcc      #1
+                    rts
+qln1                andcc     #$FE
+                    rts
+
+* WAhead - X = him: D = how far ahead of him you are, the way he faces
+WAhead              ldd       <hx
+                    subd      EN.X,x
+                    tst       EN.Fc,x
+                    beq       qah1
+                    lbsr      NegD
+qah1                rts
+
+* WMod - A mod B -> A (B kept)
+WMod                pshs      b
+qmd1                cmpa      ,s
+                    blo       qmd2
+                    suba      ,s
+                    bra       qmd1
+qmd2                puls      b,pc
+
+* WPuff - X = him, Y = an offset the way he faces: A dust puffs there
+WPuff               pshs      a
+                    tfr       y,d
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    puls      a
+                    lbsr      Puff
+                    ldx       <bslot
+                    rts
+
+********************************************************************
+* ToroStep - X = him: one pass
+********************************************************************
+ToroStep            stx       <bslot
+                    lbsr      TShove               solid: walk into him and he shoves you out
+                    lda       <bst
+                    leay      TtTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+TtTab               fdb       WtIntro-TtTab
+                    fdb       WtAppr-TtTab
+                    fdb       WtHookW-TtTab
+                    fdb       WtHook-TtTab
+                    fdb       WtRecov-TtTab
+                    fdb       WtStag-TtTab
+                    fdb       WtPaw-TtTab
+                    fdb       WtCharge-TtTab
+                    fdb       WtStuck-TtTab
+                    fdb       WtKo-TtTab
+                    fdb       WtBack-TtTab
+                    fdb       WtRear-TtTab
+                    fdb       WtStomp-TtTab
+
+* TShove - X = him: walking into him while he's on his feet and not
+*   charging (approaching, pawing, rearing, the hook coming, recovering)
+*   is 1, out his front.  Exit: X = him
+TShove               lda       <bst
+                    cmpa      #TS.Appr
+                    beq       qsh1
+                    cmpa      #TS.Paw
+                    beq       qsh1
+                    cmpa      #TS.Rear
+                    beq       qsh1
+                    cmpa      #TS.HookW
+                    beq       qsh1
+                    cmpa      #TS.Recov
+                    bne       qsh9
+qsh1                ldd       <hh
+                    cmpd      #20*16
+                    bge       qsh9
+                    ldd       #8*16
+                    lbsr      WLane
+                    bcs       qsh9
+                    ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       qsh9
+                    ldd       #-4*16              (from just behind his middle: out the front)
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <sx
+                    lda       #1
+                    lbsr      HurtHero
+                    tsta
+                    beq       qsh8
+                    lda       #SF.Shell
+                    lbsr      Sfx
+qsh8                ldx       <bslot
+qsh9                rts
+
+WtIntro             ldd       EN.VX,x             through the gate at a charge, a skid, a word
+                    beq       qti2
+                    ldd       EN.X,x
+                    addd      EN.VX,x
+                    std       EN.X,x
+                    ldd       <cam
+                    addd      #230
+                    lbsr      To124
+                    cmpd      EN.X,x
+                    blt       qti9
+                    lbsr      EStop
+                    clr       EN.T,x
+                    lda       #8
+                    ldy       #0
+                    lbsr      WPuff
+                    lda       #10
+                    lbsr      Shk
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+qti9                rts
+qti2                lbsr      FaceHero
+                    tst       <bsaid
+                    bne       qti3
+                    lda       EN.T,x
+                    cmpa      #24
+                    blo       qti3
+                    inc       <bsaid
+                    lda       #66
+                    ldy       #TX.prayers
+                    lbsr      WordE
+qti3                lda       EN.T,x
+                    cmpa      #156
+                    lbls      DMove
+                    lda       #TS.Appr
+                    lbsr      TSet
+                    lbra      DMove
+
+WtAppr              lbsr      FaceHero            to 50 px short of you, his side of you
+                    ldd       #50*16
+                    tst       EN.Fc,x
+                    bne       qap1
+                    lbsr      NegD
+qap1                addd      <hx
+                    subd      EN.X,x
+                    std       <tdx
+                    ldd       #ToWalk
+                    tst       trage,u
+                    beq       qap2
+                    ldd       #ToWalkR
+qap2                std       <tcap
+                    ldd       <tdx
+                    lbsr      Toward
+                    std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #ToWalkZ
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+                    lda       #54                 a decision every 0.9 s (0.6 seein' red)
+                    tst       trage,u
+                    beq       qap7
+                    lda       #36
+qap7                cmpa      EN.T,x
+                    lbhi      DMove
+                    lbsr      EStop
+                    inc       <bn
+                    ldd       EN.X,x              close: within 58 px and 10 of his lane
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #58*16
+                    bhs       qap9
+                    ldd       #10*16
+                    lbsr      WLane
+                    bcs       qap9
+                    lda       <bn                 the hook, he backs off for a run, or the stomp
+                    ldb       #3
+                    lbsr      WMod                (bn mod 3)
+                    tsta
+                    bne       qap8
+                    lda       #TS.HookW
+                    lbsr      TSet
+                    lbra      DMove
+qap8                cmpa      #1
+                    bne       qap8a
+                    lda       #TS.Back
+                    lbsr      TSet
+                    lbra      DMove
+qap8a               lda       #TS.Rear
+                    lbsr      TSet
+                    lbra      DMove
+qap9                lda       <bn                 further off: every fourth the stomp, else a charge
+                    anda      #3
+                    bne       wapa
+                    lda       #TS.Rear
+                    lbsr      TSet
+                    lbra      DMove
+wapa                lbsr      ToPaw
+                    lbra      DMove
+
+* ToPaw - X = him: the dirt flies, a bellow
+ToPaw               lda       #TS.Paw
+                    lbsr      TSet
+                    lda       #SF.Bellow
+                    lbra      Sfx
+
+WtBack              lbsr      FaceHero            a few steps back for a run at you
+                    ldd       #-ToBack            (backwards: the way he doesn't face)
+                    lbsr      ByFace
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #30
+                    bhs       qbk3
+                    ldd       EN.X,x              (a wall behind: from here)
+                    lbsr      ToWall
+                    lbcc      DMove
+qbk3                lbsr      EStop
+                    bsr       ToPaw
+                    lbra      DMove
+
+* ToWall - D = an x (12.4): carry set if it's within 30 px of his walls
+ToWall              pshs      d
+                    ldd       <cam
+                    addd      #ToL0+30
+                    lbsr      To124
+                    cmpd      ,s
+                    bgt       qtw8
+                    ldd       <cam
+                    addd      #ToL1-30
+                    lbsr      To124
+                    cmpd      ,s
+                    blt       qtw8
+                    puls      d
+                    andcc     #$FE
+                    rts
+qtw8                puls      d
+                    orcc      #1
+                    rts
+
+WtPaw               lbsr      FaceHero            lining up on your lane, then the dirt flies
+                    ldd       #0
+                    std       EN.VX,x
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #30
+                    bhs       qpw1
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #2*16
+                    bls       qpw1
+                    ldd       #11                 40 px/s
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+qpw1                lda       EN.T,x              a puff behind him every quarter second
+                    ldb       #15
+                    lbsr      WMod
+                    tsta
+                    bne       qpw2
+                    lda       #2
+                    ldy       #-10*16
+                    lbsr      WPuff
+qpw2                lda       #54                 0.9 s (0.55 seein' red)
+                    tst       trage,u
+                    beq       qpw3
+                    lda       #33
+qpw3                cmpa      EN.T,x
+                    lbhi      DMove
+                    lda       #TS.Charge
+                    lbsr      TSet
+                    clr       thitd,u
+                    clr       ttramp,u
+                    lda       #SF.Roar
+                    lbsr      Sfx
+                    lbra      DMove
+
+WtCharge            ldd       #ToChg              down the lane he's lined up on
+                    tst       trage,u
+                    beq       qch1
+                    ldd       #ToChgR
+qch1                lbsr      ByFace
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x              a puff behind him every 6 passes
+                    ldb       #6
+                    lbsr      WMod
+                    tsta
+                    bne       qch2
+                    lda       #1
+                    ldy       #-14*16
+                    lbsr      WPuff
+qch2                tst       thitd,u             you, in his lane: gored (3, flung)
+                    bne       qch3
+                    ldd       <hh
+                    cmpd      #26*16
+                    bge       qch3
+                    ldd       #12*16
+                    lbsr      WLane
+                    bcs       qch3
+                    ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #20*16
+                    bhs       qch3
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+                    tsta
+                    beq       qch3
+                    inc       thitd,u
+                    ldd       #59                 flung his way: 220 px/s, up 180
+                    lbsr      ByFace
+                    std       <hvx
+                    ldd       #48
+                    std       <hvh
+                    ldx       #TX.gored
+                    lda       #62
+                    lbsr      WordH
+                    ldx       <bslot
+qch3                lbsr      Trample             his own, flattened
+                    ldx       <bslot
+                    ldd       EN.X,x              the next x: into the doors? into a wall?
+                    addd      EN.VX,x
+                    std       <tdx
+                    tst       dhp,u
+                    beq       qch5
+                    ldd       EN.Z,x              (the doors: his lane at the back)
+                    cmpd      #18*16
+                    bhs       qch5
+                    ldd       EN.X,x
+                    subd      #DoorX*16
+                    std       <tmp
+                    ldd       <tdx
+                    subd      #DoorX*16
+                    eora      <tmp                (signs differ: he crossed their middle)
+                    bpl       qch5
+                    ldd       #-18*16             CRASH!: stuck in the doors
+                    lbsr      ByFace
+                    addd      #DoorX*16
+                    std       EN.X,x
+                    lda       #6
+                    lbsr      HitDoor
+                    ldx       <bslot
+                    lda       #70
+                    ldy       #TX.crash
+                    lbsr      WordE
+                    lbra      ToStuck
+qch5                ldd       <cam                into the wall?
+                    addd      #ToL0
+                    lbsr      To124
+                    cmpd      <tdx
+                    bge       qch6
+                    ldd       <cam
+                    addd      #ToL1
+                    lbsr      To124
+                    cmpd      <tdx
+                    bgt       qch7
+qch6                std       EN.X,x              (at the wall)
+                    tst       trage,u             seein' red: straight back the other way
+                    beq       qch6a
+                    tst       tsec,u
+                    bne       qch6a
+                    inc       tsec,u
+                    lda       EN.Fc,x
+                    eora      #1
+                    sta       EN.Fc,x
+                    lbsr      EStop
+                    lda       #TS.Paw
+                    lbsr      TSet
+                    lda       #21                 (a short paw)
+                    sta       EN.T,x
+                    lda       #SF.Bellow
+                    lbra      Sfx
+qch6a               lbra      ToStuck
+qch7                lda       EN.T,x              a charge that runs on 2.5 s: done
+                    cmpa      #150
+                    lbls      DMove
+                    lbsr      EStop
+                    lda       #TS.Recov
+                    lbsr      TSet
+                    lbra      DMove
+
+* ToStuck - X = him: his horns in the wall (or the doors)
+ToStuck             lbsr      EStop
+                    clr       tsec,u
+                    lda       #TS.Stuck
+                    lbsr      TSet
+                    lda       #12
+                    lbsr      Shk
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+                    lda       #4
+                    sta       <hitstop
+                    lda       #6
+                    ldy       #18*16
+                    lbsr      WPuff
+                    lda       #62
+                    ldy       #TX.stuck
+                    lbra      WordE
+
+* Trample - X = him charging: anyone in his lane and under him (the
+*   gang) is knocked flat, once a charge
+Trample             leay      en,u
+                    ldd       #$0100+NEn          the slot's bit, and the slots left
+                    pshs      d
+qtr1                lda       EN.St,y
+                    beq       qtr2
+                    cmpy      <bslot
+                    beq       qtr2
+                    lbsr      Hitbl
+                    bcs       qtr2
+                    lda       ,s
+                    bita      ttramp,u
+                    bne       qtr2
+                    ldd       EN.Z,y
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #12*16
+                    bhs       qtr2
+                    ldd       EN.X,y
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #18*16
+                    bhs       qtr2
+                    ldd       EN.H,y
+                    cmpd      #30*16
+                    bge       qtr2
+                    lda       ,s
+                    ora       ttramp,u
+                    sta       ttramp,u
+                    clr       <hdir               knocked the way he's going
+                    tst       EN.Fc,x
+                    beq       qtr1a
+                    inc       <hdir
+qtr1a               pshs      x,y
+                    tfr       y,x
+                    lda       #4
+                    ldb       #1
+                    lbsr      HitE
+                    puls      x,y
+qtr2                lsl       ,s
+                    leay      EN.Size,y
+                    dec       1,s
+                    bne       qtr1
+                    puls      d,pc
+
+WtStuck             lbsr      EStop               horns in the adobe: get in there
+                    lda       EN.T,x
+                    cmpa      #96
+                    lbls      DMove
+                    lda       #4
+                    ldy       #16*16
+                    lbsr      WPuff
+                    lda       #TS.Recov
+                    lbsr      TSet
+                    lbra      DMove
+
+WtHookW             lbsr      EStop               head down to scoop
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #27
+                    lbls      DMove
+                    clr       thitd,u
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #TS.Hook
+                    lbsr      TSet
+                    lbra      DMove
+
+WtHook              lbsr      EStop               the horns flung up: 3, and you're tossed
+                    tst       thitd,u
+                    bne       qhk1
+                    lda       EN.T,x
+                    cmpa      #9
+                    bhs       qhk1
+                    ldd       <hh
+                    cmpd      #30*16
+                    bge       qhk1
+                    ldd       #10*16
+                    lbsr      WLane
+                    bcs       qhk1
+                    lbsr      WAhead
+                    cmpd      #-8*16
+                    ble       qhk1
+                    cmpd      #48*16
+                    bge       qhk1
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+                    tsta
+                    beq       qhk1
+                    inc       thitd,u
+                    ldd       #43                 tossed: 160 px/s his way, up 260
+                    lbsr      ByFace
+                    std       <hvx
+                    ldd       #69
+                    std       <hvh
+qhk1                lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #TS.Recov
+                    lbsr      TSet
+                    lbra      DMove
+
+WtRear              lbsr      EStop               up on his hooves ...
+                    lda       EN.T,x
+                    cmpa      #33
+                    lbls      DMove
+                    lda       #TS.Stomp           ... and down: the dust rolls out
+                    lbsr      TSet
+                    ldd       #10*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <tdx
+                    ldd       EN.Z,x
+                    std       <tdz
+                    lbsr      NewShock
+                    ldx       <bslot
+                    lda       #14
+                    lbsr      Shk
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+                    lda       #6
+                    ldy       #0
+                    lbsr      WPuff
+                    lbra      DMove
+
+WtStomp             lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #30
+                    lbls      DMove
+                    lda       #TS.Recov
+                    lbsr      TSet
+                    lbra      DMove
+
+WtRecov             lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #42
+                    lbls      DMove
+                    lda       #TS.Appr
+                    lbsr      TSet
+                    lbra      DMove
+
+WtStag              ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #TS.Appr
+                    lbsr      TSet
+                    lbra      DMove
+
+WtKo                tst       gdown,u             out cold (his gang going down with him); then
+                    beq       qko0                a word out of the dark
+                    lbsr      GangDown
+qko0                ldx       <bslot
+                    ldd       EN.H,x              in the air: up and over (kept on the screen)
+                    bne       qko1
+                    ldd       EN.VH,x
+                    beq       qko3
+qko1                ldd       EN.VH,x
+                    subd      #3
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    bgt       qko2
+                    ldd       #0                  down: a thump
+                    std       EN.VH,x
+                    std       EN.H,x
+                    lbsr      EStop
+                    lda       #8
+                    ldy       #0
+                    lbsr      WPuff
+                    lda       #12
+                    lbsr      Shk
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+                    bra       qko3
+qko2                lbsr      DMove
+qko3                lda       EN.T,x
+                    cmpa      #84
+                    blo       qko9
+                    tst       tsaid,u
+                    bne       qko4
+                    inc       tsaid,u
+                    lbsr      Diamondback         (mission.a)
+qko4                lda       EN.T,x              4.25 s: the stage is won
+                    cmpa      #255
+                    blo       qko9
+                    clr       EN.St,x
+qko9                rts
+
+* ToroReact - the end of HitBoss (X = him): on the move his hide shrugs
+*   it off - the third, he turns on you
+ToroReact           ldx       <bslot
+                    tst       EN.Hp,x
+                    ble       qrc9
+                    lda       <bst
+                    cmpa      #TS.Appr
+                    beq       qrc1
+                    cmpa      #TS.Paw
+                    bne       qrc9
+qrc1                inc       tarm,u
+                    lda       tarm,u
+                    cmpa      #3
+                    blo       qrc9
+                    clr       tarm,u
+                    lbsr      EStop
+                    lda       #TS.HookW
+                    lbsr      TSet
+                    lda       #66
+                    ldy       #TX.snort
+                    lbsr      WordE
+qrc9                rts
+
+* ToroRage - half health: SEEIN' RED! - quicker, every charge straight
+*   back; two more at the doors
+ToroRage            lda       #70
+                    ldy       #TX.seered
+                    lbsr      WordE
+                    lda       #SF.Bellow
+                    lbsr      Sfx
+                    lda       #1
+                    sta       trage,u
+                    clrb
+                    lbsr      NewCoy
+                    clra
+                    lbsr      OverWall
+                    ldb       #1
+                    lbsr      NewCoy
+                    clra
+                    lbsr      OverWall
+                    ldx       <bslot
+                    rts
+
+********************************************************************
+* ToroFrame - X = him -> D = his frame (brawler.js bossImg)
+********************************************************************
+ToroFrame           lda       <bst
+                    leay      TfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+TfTab               fdb       WfIntro-TfTab
+                    fdb       WfAppr-TfTab
+                    fdb       WfHookW-TfTab
+                    fdb       WfHook-TfTab
+                    fdb       WfIdle0-TfTab
+                    fdb       WfHurt-TfTab
+                    fdb       WfPaw-TfTab
+                    fdb       WfCharge-TfTab
+                    fdb       WfStuck-TfTab
+                    fdb       WfKo-TfTab
+                    fdb       WfBack-TfTab
+                    fdb       WfRear-TfTab
+                    fdb       WfStomp-TfTab
+WfIntro             ldd       EN.VX,x             charging in, or the word
+                    bne       WfCharge
+                    lda       EN.T,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #TO.talk-TO.First
+                    bra       wfx
+WfAppr              ldd       EN.VX,x             walking, or standing
+                    bne       qfa1
+                    ldd       EN.VZ,x
+                    bne       qfa1
+                    lda       EN.An,x
+                    ldb       #20
+                    lbsr      Div
+                    anda      #1
+                    adda      #TO.idle-TO.First
+                    bra       wfx
+qfa1                lda       EN.An,x
+                    ldb       #9
+                    lbsr      Div
+                    anda      #3
+                    adda      #TO.walk-TO.First
+                    bra       wfx
+WfBack              lda       EN.An,x             backing off: the walk, the other way round
+                    ldb       #7
+                    lbsr      Div
+                    anda      #3
+                    nega
+                    adda      #TO.walk-TO.First+3
+                    bra       wfx
+WfIdle0             lda       #TO.idle-TO.First
+                    bra       wfx
+WfHookW             lda       #TO.hookw-TO.First
+                    bra       wfx
+WfHook              lda       #TO.hook-TO.First
+                    bra       wfx
+WfHurt              lda       #TO.hurt-TO.First
+                    bra       wfx
+WfRear              lda       #TO.rear-TO.First
+                    bra       wfx
+WfStomp             lda       #TO.stomp-TO.First
+                    bra       wfx
+WfPaw               lda       EN.T,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #TO.paw-TO.First
+                    bra       wfx
+WfCharge            lda       EN.An,x
+                    ldb       #5
+                    lbsr      Div
+                    anda      #1
+                    adda      #TO.charge-TO.First
+                    bra       wfx
+WfStuck             lda       EN.T,x
+                    ldb       #6
+                    lbsr      Div
+                    anda      #1
+                    adda      #TO.stuck-TO.First
+                    bra       wfx
+WfKo                lda       #TO.ko-TO.First
+wfx                 tst       EN.Fc,x
+                    beq       qfx1
+                    adda      #TO.Mir
+qfx1                tfr       a,b
+                    clra
+                    addd      #TO.First
+                    rts

@@ -27,9 +27,9 @@ BulH                equ       $001C
 BulV                equ       $003D
 CamLead             equ       $0090
 ChainT              equ       $001B
-CI.BarBk            equ       $0076
-CI.BarFg            equ       $0077
-CI.BarHi            equ       $0078
+CI.BarBk            equ       $0077
+CI.BarFg            equ       $0078
+CI.BarHi            equ       $0079
 CI.Crm              equ       $0054
 CI.Org              equ       $0057
 CI.Out              equ       $0001
@@ -52,7 +52,7 @@ CySpd               equ       $000F
 CyStrikeT           equ       $000F
 CyTall              equ       $002C
 CyWindT             equ       $0019
-ddm0                equ       $4863
+ddm0                equ       $4AB8
 DGetupT             equ       $0015
 DieDur              equ       $001E
 DlEnter             equ       $0010
@@ -62,11 +62,13 @@ DlSpd               equ       $0013
 DlTall              equ       $0010
 DownT               equ       $0036
 DriftT              equ       $0080
+ds1x                equ       $5A37
 DuskEvery           equ       $0007
-DynCell             equ       $0508
+DynCell             equ       $0530
 ES.Aim              equ       $0003
 ES.Air              equ       $0008
 ES.Appr             equ       $0002
+ES.Batter           equ       $0016
 ES.Boss             equ       $0010
 ES.BossX            equ       $0011
 ES.Down             equ       $0009
@@ -83,8 +85,9 @@ ES.Shoot            equ       $0004
 ES.Stag             equ       $0006
 ES.Strike           equ       $000C
 ES.Thrown           equ       $0013
+ES.Vault            equ       $0015
 ES.Wind             equ       $000B
-eth0                equ       $4E01
+eth0                equ       $5056
 FlashLen            equ       $0008
 FlashT              equ       $0006
 FlyV                equ       $002D
@@ -146,7 +149,7 @@ MidiTxCnt           equ       $FF38
 NBr                 equ       $000A
 NCl                 equ       $0003
 NDuskBlk            equ       $0008
-NDynBlk             equ       $0002
+NDynBlk             equ       $0003
 NHb                 equ       $0003
 NIt                 equ       $0006
 NMBuf               equ       $0060
@@ -168,7 +171,7 @@ PK.StarB            equ       $0002
 PN.M                equ       $0001
 PN.Size             equ       $0004
 PN.T                equ       $0000
-PopCell             equ       $0510
+PopCell             equ       $0538
 PopLife             equ       $0036
 PU.F                equ       $0002
 PU.K                equ       $0001
@@ -189,6 +192,8 @@ RtRecT              equ       $003C
 RtSpd               equ       $0011
 RtStrikeT           equ       $0015
 RtWindT             equ       $0024
+SF.Bell             equ       $0016
+SF.Bellow           equ       $0018
 SF.Bones            equ       $0004
 SF.Boom             equ       $0015
 SF.Break            equ       $0009
@@ -207,6 +212,7 @@ SF.Roar             equ       $0013
 SF.Shell            equ       $000F
 SF.Shot             equ       $0008
 SF.Stomp            equ       $0005
+SF.Thud             equ       $0017
 SF.Thunder          equ       $000C
 SF.Tip              equ       $000A
 SF.Whistle          equ       $0012
@@ -215,6 +221,7 @@ SG.Dusk             equ       $0004
 SG.Intro            equ       $0001
 SG.Light            equ       $0002
 SG.Ride             equ       $0008
+SG.Siege            equ       $0020
 SG.Train            equ       $0010
 ShootDur            equ       $000F
 ShootT              equ       $0015
@@ -272,7 +279,6 @@ StompV              equ       $FFFFFF6B
 StoneX              equ       $0042
 StoneZ              equ       $0004
 StrikeT             equ       $001E
-swb9                equ       $2A61
 TauntDur            equ       $0036
 TauntEvery          equ       $00F0
 ThrowDur            equ       $0018
@@ -285,11 +291,12 @@ TwG                 equ       $0003
 WaitT               equ       $0078
 WalkX               equ       $001C
 WalkZ               equ       $0011
-whb00               equ       $3EFF
-whb1x               equ       $3F30
+whb00               equ       $4134
+whb1x               equ       $4165
 WhipDur             equ       $0012
 WhipN               equ       $000E
-whk1                equ       $3F80
+whk1                equ       $41B5
 WindT               equ       $0012
-xdi0                equ       $489B
-xhdd2               equ       $4A47
+wv3                 equ       $2B45
+xdi0                equ       $4AF0
+xhdd2               equ       $4C9C

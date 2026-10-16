@@ -18,10 +18,10 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / 'src'
 F256 = SRC.parent
-MODULES = {'ms': ['dillon.a'], 'gt': ['ghost.a'], 'cd': ['ride.a', 'jack.a'], 'th': ['train.a', 'sting.a']}   # a stage module's files
+MODULES = {'ms': ['dillon.a'], 'gt': ['ghost.a'], 'cd': ['ride.a', 'jack.a'], 'th': ['train.a', 'sting.a'], 'mi': ['mission.a', 'toro.a']}   # a stage module's files
 BRANCH = re.compile(r'^l?b(sr|ra|eq|ne|cc|cs|hs|lo|hi|ls|ge|gt|le|lt|pl|mi|vc|vs)$|^jsr$|^jmp$')
 SKIP = {'equ', 'set', 'rmb', 'macro', 'endm'}
-CARRYSET = {'BotGila', 'BotJack', 'BotShell', 'BotTrain'}         # hooks whose "nothing to do" is carry set (NoHookC)
+CARRYSET = {'BotGila', 'BotJack', 'BotShell', 'BotTrain', 'BotMission'}         # hooks whose "nothing to do" is carry set (NoHookC)
 
 
 def core_files():

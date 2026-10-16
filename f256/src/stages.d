@@ -103,3 +103,28 @@ BM.T                equ       0                   passes since the bang (0 = fre
 BM.X                equ       1
 BM.Z                equ       3
 BM.Size             equ       5
+
+* the Mission (mission.a, toro.a): El Toro's states (1 approach, 4 recover, 5 stagger, 8 stuck - Dillon's dizzy: half
+*   again damage - and 9 KO as Dillon's, where boss.a's shared code tests them), his health; the doors; the dust walls
+TS.Intro            equ       0                   through the side gate at a charge: "SAY YER PRAYERS, BOOTS!"
+TS.Appr             equ       1
+TS.HookW            equ       2                   head down to scoop
+TS.Hook             equ       3                   the horns flung up: tossed
+TS.Recov            equ       4
+TS.Stag             equ       5
+TS.Paw              equ       6                   pawing the dirt, lining up on your lane
+TS.Charge           equ       7
+TS.Stuck            equ       8                   horns in the wall or the doors: open
+TS.Ko               equ       9
+TS.Back             equ       10                  backing off for a run at you
+TS.Rear             equ       11                  up on his hooves
+TS.Stomp            equ       12                  and down: a wall of dust rolls out
+ToroHp              equ       60
+DoorHp              equ       30
+NShk                equ       2
+SH.On               equ       0
+SH.X                equ       1                   where it started, 12.4
+SH.Z                equ       3
+SH.R                equ       5                   how far it's rolled, 12.4
+SH.Hit              equ       7                   who it's hit: a bit a slot, bit 7 the hero
+SH.Size             equ       8

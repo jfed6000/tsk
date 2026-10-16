@@ -171,7 +171,7 @@ T.runBrawler = function (A) {
         { cam: MI.YARD, siege: true, gang: ['coyote', 'coyote', 'rattler', 'coyote'] },
         { cam: MI.YARD, siege: true, gang: ['coyote', 'skel', 'rattler', 'coyote', 'rattler'] },
         { cam: MI.YARD, siege: true, gang: ['rattler', 'coyote', 'skel', 'coyote', 'dillo', 'coyote'] },
-        { cam: MI.YARD, siege: true, gang: ['coyote', 'rattler', 'coyote', 'skel', 'coyote', 'rattler', 'dillo'] },
+        { cam: MI.YARD, siege: true, gang: ['coyote', 'rattler', 'skel', 'coyote', 'rattler', 'dillo'] },   // (six at most: the F256's NEn)
         { cam: MI.YARD, boss: 'toro' },            // and through the side gate: El Toro
       ],
       barrels: [[250, 30, 'beans'], [560, 60, 'whip'], [820, 20, 'gun'], [1000, 70, 'beans'], [1250, 64, 'whip']],
@@ -622,7 +622,7 @@ T.runBrawler = function (A) {
       case 'hurt':                                   // knocked back; hit in the air, he falls (he used to hang there)
         p.vx *= Math.pow(0.02, dt);
         if (p.h > 0 || p.vh) { p.vh -= GRAV * dt; p.h += p.vh * dt; if (p.h <= 0) { p.h = 0; p.vh = 0; } }
-        if (p.t > 0.4) setS('idle');
+        if (p.t > 0.4 && p.h <= 0) setS('idle');     // (tossed: not till he's down again)
         break;
     }
     p.x += p.vx * dt; p.z += p.vz * dt;

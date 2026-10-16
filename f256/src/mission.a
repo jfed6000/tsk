@@ -1,0 +1,792 @@
+********************************************************************
+* mission.a - the Mission at sundown (brawler.js: the siege, the doors,
+*   overWall, hitDoor, bustDoor, updateDoor, updateShocks; mission.js):
+*   the last stand.  The siege waves come over the courtyard walls from
+*   both sides (OverWall, EVault); the coyotes and rattlers go for the
+*   church doors (RaidAppr) and batter them (EBatter) - two at most turn
+*   on him, the rest keep at it.  The doors are tiles: their state's 4x5
+*   cells copied from the fourth map (MI.MAP3: the four states side by
+*   side) into the street map (DoorTiles).  Busted, it costs a hat; the
+*   townsfolk throw them out and bar the doors again.  El Toro's walls of
+*   dust (his stomp), the banners (HERE THEY COME!, Diamondback's word),
+*   and the autopilot here.  The tskmi stage module, with toro.a.
+********************************************************************
+
+DoorX               equ       1120                the doors' middle, px (the courtyard's screen middle)
+DoorCol             equ       68                  their patch: tile column 68.., rows 5..9 (mission.js DOORS)
+DoorRow             equ       5
+BustT               equ       120                 busted in: 2 s before they're barred again
+BatterT             equ       48                  a blow every 0.8 s
+VaultV              equ       21                  over the wall: 80 px/s in
+VaultVH             equ       37                  up 140 px/s from the wall's top
+VaultH              equ       46*16
+ShkV                equ       64                  the dust rolls out at 240 px/s
+ShkMax              equ       150*16              and dies out at 150 px
+
+********************************************************************
+* DoorInit - a stage begins (StageInit): the doors whole, the siege's
+*   state from scratch
+********************************************************************
+DoorInit            lda       sflags,u
+                    bita      #SG.Siege
+                    beq       mdi9
+                    lda       #DoorHp
+                    sta       dhp,u
+                    clr       dbust,u
+                    lda       #$FF
+                    sta       dshow,u             (the tiles written on the first pass)
+                    sta       huddr,u
+                    clr       siegt,u
+                    clr       bnt,u
+                    clr       tsaid,u
+                    leax      tshk,u
+                    ldb       #NShk
+mdi1                clr       SH.On,x
+                    leax      SH.Size,x
+                    decb
+                    bne       mdi1
+mdi9                rts
+
+********************************************************************
+* MissionStep - one pass: the banner's clock, the doors barred again
+*   after a bust, their tiles if their state's changed, the dust
+********************************************************************
+MissionStep         lda       sflags,u
+                    bita      #SG.Siege
+                    beq       mms9
+                    tst       bnt,u
+                    beq       mms1
+                    dec       bnt,u
+mms1                tst       dbust,u             busted: the townsfolk bar them again
+                    beq       mms2
+                    dec       dbust,u
+                    bne       mms2
+                    lbsr      Barred
+mms2                lda       dhp,u               their state: 0 shut, 1 battered, 2 nearly through, 3 busted
+                    clrb
+                    cmpa      #DoorHp*2/3
+                    bhi       mms3
+                    incb
+                    cmpa      #DoorHp/3
+                    bhi       mms3
+                    incb
+                    tsta
+                    bne       mms3
+                    incb
+mms3                cmpb      dshow,u
+                    beq       mms4
+                    stb       dshow,u
+                    tfr       b,a
+                    lbsr      DoorTiles
+mms4                lbra      ShkStep
+mms9                rts
+
+* DoorTiles - A = the doors' state: its 4x5 cells from the fourth map
+*   into the street map, over the doorway (the maps all in one block)
+DoorTiles           pshs      a
+                    ldb       <mapblk
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    pshs      u
+                    os9       F$MapBlk
+                    tfr       u,x
+                    puls      u
+                    bcs       mdt9
+                    pshs      x                   the window
+                    ldb       2,s                 the state's columns: 4 tiles in, 2 bytes a tile
+                    lslb
+                    lslb
+                    lslb
+                    clra
+                    addd      #MI.MAP3.Of+DoorRow*MI.MAP3.W*2
+                    leay      d,x                 from
+                    leax      MI.MAP2.Of+(DoorRow*MI.MAP2.W+DoorCol)*2,x   to
+                    lda       #5
+                    pshs      a
+mdt1                ldd       ,y
+                    std       ,x
+                    ldd       2,y
+                    std       2,x
+                    ldd       4,y
+                    std       4,x
+                    ldd       6,y
+                    std       6,x
+                    leay      MI.MAP3.W*2,y
+                    leax      MI.MAP2.W*2,x
+                    dec       ,s
+                    bne       mdt1
+                    leas      1,s
+                    puls      x
+                    pshs      u
+                    tfr       x,u
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      u
+mdt9                puls      a,pc
+
+********************************************************************
+* The doors battered, busted, barred again
+********************************************************************
+* HitDoor - A = the damage: splinters fly; at nothing they're busted in.
+*   X, Y kept
+HitDoor             tst       dhp,u
+                    beq       mhd9
+                    pshs      a,x,y
+                    lda       dhp,u
+                    suba      ,s
+                    bhi       mhd1
+                    clra
+mhd1                sta       dhp,u
+                    lda       #SF.Thud
+                    lbsr      Sfx
+                    lda       ,s                  splinters: one more than the damage
+                    inca
+                    sta       ,s
+mhd2                lda       #30
+                    lbsr      RandS
+                    addd      #DoorX*16
+                    std       <sx
+                    ldd       #1*16
+                    std       <sz
+                    lda       #34
+                    lbsr      RandN
+                    adda      #16
+                    ldb       #16
+                    mul
+                    std       <sh
+                    lbsr      NewPt
+                    bcs       mhd3
+                    ldd       #TO.splint
+                    std       PT.F,y
+                    lda       #48
+                    ldb       #PK.Chunk
+                    std       PT.L,y
+                    lda       #43
+                    lbsr      RandS
+                    std       PT.VX,y
+                    lda       #32
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #21
+                    std       PT.VH,y
+mhd3                dec       ,s
+                    bne       mhd2
+                    tst       dhp,u
+                    bne       mhd8
+                    bsr       BustDoor
+mhd8                puls      a,x,y
+mhd9                rts
+
+* BustDoor - THEY'RE IN!: a hat (none left: the town's fallen)
+BustDoor            lda       #BustT
+                    sta       dbust,u
+                    lda       #12
+                    lbsr      Shk
+                    lda       #SF.Break
+                    lbsr      Sfx
+                    tst       <god
+                    bne       mbd2
+                    tst       <hlives
+                    bne       mbd1
+                    lda       #ST.Die             no hat to lose: game over
+                    lbsr      SetS
+                    clr       <hhp
+                    lbra      GameOver
+mbd1                dec       <hlives
+mbd2                ldx       #TX.theyrein
+                    ldy       #TX.costhat
+                    lda       #64
+                    ldb       #108
+                    bra       Banner
+
+* Barred - the townsfolk throw them out and bar the doors again
+Barred              lda       #DoorHp
+                    sta       dhp,u
+                    lda       #SF.Tip
+                    lbsr      Sfx
+                    ldx       #TX.barred
+                    ldy       #0
+                    lda       #64
+                    ldb       #84
+                    bsr       Banner
+                    leax      en,u                the ones at the doors: thrown out
+                    lda       #NEn
+                    pshs      a
+mbr1                tst       EN.Rd,x
+                    beq       mbr2
+                    lda       EN.St,x
+                    lbsr      Hitbl
+                    bcs       mbr2
+                    ldd       EN.Z,x
+                    cmpd      #30*16
+                    bhs       mbr2
+                    ldd       EN.X,x
+                    subd      #DoorX*16
+                    lbsr      AbsD
+                    cmpd      #60*16
+                    bhs       mbr2
+                    lda       #ES.Air
+                    lbsr      SetE
+                    ldd       #40                 away from the doors: 150 px/s, up 260
+                    pshs      d
+                    ldd       EN.X,x
+                    cmpd      #DoorX*16
+                    puls      d
+                    bge       mbr1a
+                    lbsr      NegD
+mbr1a               std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    ldd       #69
+                    std       EN.VH,x
+mbr2                leax      EN.Size,x
+                    dec       ,s
+                    bne       mbr1
+                    puls      a,pc
+
+********************************************************************
+* The banners: up to three words centred (MissionWords draws them)
+********************************************************************
+* Banner - X, Y = two TX frames (Y 0: one line), A = the first's y,
+*   B = passes
+Banner              stx       bnw,u
+                    sty       bnw+2,u
+                    clr       bnw+4,u
+                    clr       bnw+5,u
+                    sta       bny,u
+                    stb       bnt,u
+                    rts
+
+* SiegeBell - a siege wave: the bell, HERE THEY COME!
+SiegeBell           lda       #SF.Bell
+                    lbsr      Sfx
+                    ldx       #TX.herethey
+                    ldy       #0
+                    lda       #60
+                    ldb       #96
+                    bra       Banner
+
+* Diamondback - El Toro's out cold: a word out of the dark
+Diamondback         lda       #SF.Rattle
+                    lbsr      Sfx
+                    ldx       #TX.highnoon
+                    ldy       #TX.mainst2
+                    lda       #52
+                    ldb       #204
+                    bsr       Banner
+                    ldd       #TX.diamond
+                    std       bnw+4,u
+                    rts
+
+* MissionWords - the HUD's pass (Titles: BuildChar's records through Y)
+MissionWords        tst       bnt,u
+                    beq       mmw9
+                    lda       bny,u
+                    leax      bnw,u
+                    ldb       #3
+mmw1                pshs      a,b,x
+                    ldx       ,x
+                    beq       mmw2
+                    tfr       a,b
+                    clra
+                    lbsr      Ttl
+mmw2                puls      a,b,x
+                    leax      2,x
+                    adda      #22
+                    decb
+                    bne       mmw1
+mmw9                rts
+
+********************************************************************
+* The siege's gang
+********************************************************************
+* OverWall - X = one just spawned (if there was room), A = i: up on the
+*   courtyard wall on its side, over it after i x 0.45 s; the coyotes
+*   and rattlers for the doors
+OverWall            pshs      a
+                    leay      en+NEn*EN.Size,u    (no room: X isn't one)
+                    pshs      y
+                    cmpx      ,s++
+                    bhs       mow9
+                    lda       EN.St,x
+                    cmpa      #ES.Enter
+                    bne       mow9
+                    lda       #ES.Vault
+                    lbsr      SetE
+                    lda       ,s                  the wait: i x 27 passes
+                    ldb       #27
+                    mul
+                    stb       EN.Cd,x
+                    ldd       <cam                on the wall: just off its side of the screen
+                    subd      #8
+                    tst       EN.Sd,x
+                    bmi       mow1
+                    addd      #328+8
+mow1                lbsr      To124
+                    std       EN.X,x
+                    ldd       #0
+                    std       EN.H,x
+                    std       EN.VH,x
+                    std       EN.VX,x
+                    std       EN.VZ,x
+                    clr       EN.Rd,x
+                    lda       EN.Ty,x             the coyotes and rattlers: for the doors, each its own
+                    cmpa      #TY.Coy             spot by them (8..25 px off their middle)
+                    beq       mow2
+                    cmpa      #TY.Rat
+                    bne       mow9
+mow2                lda       #18
+                    lbsr      RandN
+                    adda      #8
+                    sta       EN.Rd,x
+mow9                puls      a,pc
+
+* EVault - X = it: waiting on the wall, then the leap down into the yard
+EVault              tst       EN.Cd,x
+                    beq       mev1
+                    lbsr      EStop
+                    lbra      EnMove
+mev1                ldd       EN.H,x              the leap: off the top of the wall
+                    bne       mev2
+                    ldd       EN.VH,x
+                    bne       mev2
+                    ldd       #VaultH
+                    std       EN.H,x
+                    ldd       #VaultVH
+                    std       EN.VH,x
+                    lda       #SF.Jump
+                    lbsr      Sfx
+                    ldx       <ecur
+mev2                ldd       #VaultV             in from its side
+                    tst       EN.Sd,x
+                    bmi       mev3
+                    lbsr      NegD
+mev3                std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    ldd       EN.VH,x
+                    subd      #Grav
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    bgt       mev9
+                    ldd       #0                  down in the yard: at them
+                    std       EN.H,x
+                    std       EN.VH,x
+                    lbsr      EStop
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #36
+                    sta       EN.Cd,x
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #3
+                    lbsr      Puff
+                    lda       #SF.Land
+                    lbsr      Sfx
+                    ldx       <ecur
+mev9                lbra      EnMove
+
+* MNear - X = an enemy: carry clear if he's right there (40 px, his lane)
+MNear               ldd       <hx
+                    subd      EN.X,x
+                    lbsr      AbsD
+                    cmpd      #40*16
+                    bhs       mnr8
+                    ldd       <hz
+                    subd      EN.Z,x
+                    lbsr      AbsD
+                    cmpd      #16*16
+                    bhs       mnr8
+                    andcc     #$FE
+                    rts
+mnr8                orcc      #1
+                    rts
+
+* RaidAppr - X = a coyote or rattler approaching (DAppr): a raider goes
+*   for the doors - unless he's right there and not two at him already.
+*   Exit: carry set if it's gone for the doors (its move set)
+RaidAppr            tst       EN.Rd,x
+                    lbeq      mra8
+                    lda       sflags,u
+                    bita      #SG.Siege
+                    lbeq      mra8
+                    tst       dbust,u             (busted: they fight)
+                    lbne      mra8
+                    tst       <phase
+                    bne       mra8
+                    tst       dying,u             (the death scene: for the doors)
+                    bne       mra1
+                    lda       <attackers
+                    cmpa      #2
+                    bhs       mra1
+                    bsr       MNear
+                    bcc       mra8
+mra1                lda       EN.Rd,x             its spot: on its side of the doors
+                    ldb       #16
+                    mul
+                    tst       EN.Sd,x
+                    bpl       mra2
+                    lbsr      NegD
+mra2                addd      #DoorX*16
+                    subd      EN.X,x
+                    std       <tdx
+                    ldd       #CySpd
+                    lda       EN.Ty,x
+                    cmpa      #TY.Rat
+                    bne       mra3
+                    ldd       #RtSpd
+                    bra       mra3a
+mra3                ldd       #CySpd
+mra3a               std       <tcap
+                    ldd       <tdx
+                    lbsr      Toward
+                    std       EN.VX,x
+                    ldd       #2*16
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #SkSpdZ
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+                    clra                          facing the way it's going
+                    tst       <tdx
+                    bpl       mra4
+                    inca
+mra4                sta       EN.Fc,x
+                    ldd       <tdx                there: at the doors
+                    lbsr      AbsD
+                    cmpd      #5*16
+                    bhs       mra7
+                    ldd       <tdz
+                    lbsr      AbsD
+                    cmpd      #4*16
+                    bhs       mra7
+                    lbsr      EStop
+                    lda       #ES.Batter
+                    lbsr      SetE
+mra7                orcc      #1
+                    rts
+mra8                andcc     #$FE
+                    rts
+
+* EBatter - X = it at the doors: a blow every 0.8 s, facing them; he
+*   comes close (and not two at him already): at him
+EBatter             lbsr      EStop
+                    clra
+                    ldd       EN.X,x
+                    cmpd      #DoorX*16
+                    blt       meb1
+                    lda       #1
+                    sta       EN.Fc,x
+                    bra       meb2
+meb1                clr       EN.Fc,x
+meb2                tst       dbust,u
+                    bne       meb3
+                    tst       dying,u
+                    bne       meb3
+                    lda       <attackers
+                    cmpa      #2
+                    bhs       meb3
+                    lbsr      MNear
+                    bcs       meb3
+                    lda       #ES.Appr
+                    lbsr      SetE
+                    lda       #18
+                    sta       EN.Cd,x
+                    lbra      EnMove
+meb3                lda       EN.T,x
+                    cmpa      #BatterT
+                    blo       meb9
+                    clr       EN.T,x
+                    lda       #1
+                    lbsr      HitDoor
+meb9                lbra      EnMove
+
+********************************************************************
+* El Toro's walls of dust: jump them (2); they bowl over his own too
+********************************************************************
+* NewShock - tdx, tdz = where it starts (12.4)
+NewShock            leax      tshk,u
+                    ldb       #NShk
+mns1                tst       SH.On,x
+                    beq       mns2
+                    leax      SH.Size,x
+                    decb
+                    bne       mns1
+                    rts
+mns2                lda       #1
+                    sta       SH.On,x
+                    ldd       <tdx
+                    std       SH.X,x
+                    ldd       <tdz
+                    std       SH.Z,x
+                    ldd       #0
+                    std       SH.R,x
+                    clr       SH.Hit,x
+                    rts
+
+* SFront - X = a dust wall, D = an x (12.4): carry clear if that x is on
+*   one of its fronts (within 10 px)
+SFront              subd      SH.X,x
+                    lbsr      AbsD
+                    subd      SH.R,x
+                    lbsr      AbsD
+                    cmpd      #10*16
+                    blo       msf1
+                    orcc      #1
+                    rts
+msf1                andcc     #$FE
+                    rts
+
+* ShkStep - the dust rolling out
+ShkStep             leax      tshk,u
+                    lda       #NShk
+                    pshs      a
+mss1                tst       SH.On,x
+                    lbeq      mss9
+                    ldd       SH.R,x
+                    addd      #ShkV
+                    std       SH.R,x
+                    cmpd      #ShkMax
+                    blo       mss2
+                    clr       SH.On,x
+                    lbra      mss9
+mss2                lda       SH.Hit,x            him: on the ground, on a front, near its lane
+                    bmi       mss3
+                    ldd       <hh
+                    cmpd      #6*16
+                    bge       mss3
+                    ldd       <hz
+                    subd      SH.Z,x
+                    lbsr      AbsD
+                    cmpd      #36*16
+                    bhs       mss3
+                    ldd       <hx
+                    bsr       SFront
+                    bcs       mss3
+                    ldd       SH.X,x
+                    std       <sx
+                    pshs      x
+                    lda       #2
+                    lbsr      HurtHero
+                    puls      x
+                    tsta
+                    beq       mss3
+                    lda       SH.Hit,x
+                    ora       #$80
+                    sta       SH.Hit,x
+mss3                leay      en,u                his own, on the ground in its way
+                    ldd       #$0100+NEn
+                    pshs      d
+mss4                lda       EN.St,y
+                    beq       mss5
+                    lda       EN.Ty,y
+                    cmpa      #TY.Boss
+                    beq       mss5
+                    lda       EN.St,y
+                    lbsr      Hitbl
+                    bcs       mss5
+                    lda       ,s
+                    bita      SH.Hit,x
+                    bne       mss5
+                    ldd       EN.H,y
+                    cmpd      #6*16
+                    bge       mss5
+                    ldd       EN.Z,y
+                    subd      SH.Z,x
+                    lbsr      AbsD
+                    cmpd      #36*16
+                    bhs       mss5
+                    ldd       EN.X,y
+                    lbsr      SFront
+                    bcs       mss5
+                    lda       ,s
+                    ora       SH.Hit,x
+                    sta       SH.Hit,x
+                    clr       <hdir               knocked away from where it started
+                    ldd       EN.X,y
+                    cmpd      SH.X,x
+                    bge       mss4a
+                    inc       <hdir
+mss4a               pshs      x,y
+                    tfr       y,x
+                    lda       #2
+                    ldb       #1
+                    lbsr      HitE
+                    puls      x,y
+mss5                lsl       ,s
+                    leay      EN.Size,y
+                    dec       1,s
+                    bne       mss4
+                    leas      2,s
+mss9                leax      SH.Size,x
+                    dec       ,s
+                    lbne      mss1
+                    puls      a,pc
+
+* DrawMission - the dust walls: three puffs down each front
+DrawMission         lda       sflags,u
+                    bita      #SG.Siege
+                    lbeq      mdm9
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <ekey               (behind characters, like dust)
+                    clr       <eshk
+                    leay      tshk,u
+                    lda       #NShk
+                    pshs      a
+mdm1                tst       SH.On,y
+                    beq       mdm5
+                    ldd       SH.R,y              its size: bigger as it goes (36 px a step)
+                    lbsr      Asr4
+                    tfr       b,a
+                    ldb       #36
+                    lbsr      Div
+                    cmpa      #4
+                    bls       mdm1a
+                    lda       #4
+mdm1a               tfr       a,b
+                    clra
+                    addd      #FX.dust
+                    std       <efrm
+                    ldd       #0
+                    std       <eh
+                    clr       ,-s                 the front: 0 left, 1 right
+mdm2                ldd       SH.R,y
+                    tst       ,s
+                    bne       mdm2a
+                    lbsr      NegD
+mdm2a               addd      SH.X,y
+                    std       <ex
+                    leax      DzTab,pcr           three lanes: its own, 24 px either side
+                    lda       #3
+                    pshs      a,x
+mdm3                ldx       1,s
+                    ldd       ,x++
+                    stx       1,s
+                    addd      SH.Z,y
+                    bpl       mdm3a
+                    ldd       #0
+mdm3a               cmpd      zmax16,u
+                    ble       mdm3b
+                    ldd       zmax16,u
+mdm3b               std       <ez
+                    pshs      y
+                    lbsr      Ent
+                    puls      y
+                    dec       ,s
+                    bne       mdm3
+                    leas      3,s
+                    inc       ,s
+                    lda       ,s
+                    cmpa      #2
+                    blo       mdm2
+                    leas      1,s
+mdm5                leay      SH.Size,y
+                    dec       ,s
+                    bne       mdm1
+                    leas      1,s
+mdm9                rts
+DzTab               fdb       0,24*16,-24*16
+
+********************************************************************
+* BotMission - the autopilot and El Toro: over his dust, over the stomp
+*   coming, out of his lane when he paws or charges.  Exit: carry clear
+*   and B = the input if acting
+********************************************************************
+BotMission          lda       sflags,u
+                    bita      #SG.Siege
+                    lbeq      mbt9
+                    lda       bkind,u
+                    cmpa      #5
+                    lbne      mbt9
+                    ldx       <bslot
+                    lbeq      mbt9
+                    lda       EN.St,x
+                    lbeq      mbt9
+                    lda       <bst
+                    cmpa      #TS.Ko
+                    lbeq      mbt9
+                    ldd       <hh                 (on the ground)
+                    bne       mbt3
+                    leay      tshk,u               a front coming at him: jump
+                    lda       #NShk               (the count on the stack: D's in use)
+                    pshs      a
+mbt1                tst       SH.On,y
+                    beq       mbt2
+                    ldd       <hz
+                    subd      SH.Z,y
+                    lbsr      AbsD
+                    cmpd      #36*16
+                    bhs       mbt2
+                    ldd       <hx
+                    subd      SH.X,y
+                    lbsr      AbsD
+                    subd      SH.R,y              ahead of the front by under 34 px
+                    cmpd      #-4*16
+                    blt       mbt2
+                    cmpd      #34*16
+                    bge       mbt2
+                    leas      1,s
+                    ldb       #IN.Jump
+                    andcc     #$FE
+                    rts
+mbt2                leay      SH.Size,y
+                    dec       ,s
+                    bne       mbt1
+                    leas      1,s
+                    lda       <bst                rearing up near him: jump it early
+                    cmpa      #TS.Rear
+                    bne       mbt3
+                    lda       EN.T,x
+                    cmpa      #24
+                    blo       mbt3
+                    ldd       EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #40*16
+                    bhs       mbt3
+                    ldb       #IN.Jump
+                    andcc     #$FE
+                    rts
+mbt3                lda       <bst                pawing, charging, backing off, coming in: out of
+                    cmpa      #TS.Paw             his lane
+                    beq       mbt4
+                    cmpa      #TS.Charge
+                    beq       mbt4
+                    cmpa      #TS.Back
+                    beq       mbt4
+                    cmpa      #TS.Intro
+                    bne       mbt9
+mbt4                ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    lbsr      AbsD
+                    cmpd      #20*16
+                    bhs       mbt9
+                    tst       <tdz                below him (and room): further down
+                    bmi       mbt6
+                    ldd       zmax16,u
+                    subd      #6*16
+                    cmpd      <hz
+                    ble       mbt5
+                    ldb       #IN.Down
+                    bra       mbt7
+mbt5                ldb       #IN.Up
+                    bra       mbt7
+mbt6                ldd       <hz                 above him (and room): further up
+                    cmpd      #6*16
+                    ble       mbt6a
+                    ldb       #IN.Up
+                    bra       mbt7
+mbt6a               ldb       #IN.Down
+mbt7                andcc     #$FE
+                    rts
+mbt9                orcc      #1
+                    rts
