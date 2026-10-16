@@ -138,6 +138,7 @@ reel: all
 	tools/reelrec.sh
 	tools/reel.sh
 
+.PHONY: dist
 dist: tsk $(STAGEMODS)
 	rm -rf dist/pkg && mkdir -p dist/pkg/TSK
 	cp tsk pkg/README.txt pkg/install.sh dist/pkg/
