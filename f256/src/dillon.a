@@ -51,6 +51,7 @@ StartDillon         lda       #SF.Land
                     clr       ddefl,u
                     lda       #6
                     lbsr      Puff
+                    lbsr      EntrStart           his entrance (entr.a)
 sd9x                rts
 
 

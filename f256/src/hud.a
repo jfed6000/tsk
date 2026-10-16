@@ -342,7 +342,11 @@ hd0                 clr       <hmapd              map the HUD block only if some
                     lbsr      ClrStrip
                     clr       <hudclr
                     lbra      hd6
-hdc1                tst       tqi,u               a string going in, five letters a pass: that first
+hdc1                lbsr      EntrHud             a letter of a boss's name (entr.a): that, this pass
+                    lbcs      hdq
+                    tsta
+                    lbne      hd6
+                    tst       tqi,u               a string going in, five letters a pass: that first
                     lbne      TextStep
                     leay      pu,u                a queued points popup first: that's this pass's part
                     ldb       #NPu
@@ -1113,8 +1117,10 @@ dt4                 ldd       #6+14
                     std       <bcx
                     dec       <tmpn
                     bne       dt4
+* a boss's entrance, or his line (entr.a)
+dt5                 lbsr      EntrTop
 * the titles, GO, the end, game over
-dt5                 lbsr      Titles
+                    lbsr      Titles
 * the popups
                     leax      pu,u
                     lda       #NPu

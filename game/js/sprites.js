@@ -1082,6 +1082,29 @@ T.drawText = function (ctx, str, x, y, color, s = 1, outline = PAL.out, align = 
   pass(0, 0, color);
 };
 
+// ---------------------------------------------------------------- speech bubbles (a boss's lines)
+// The body: the line in dark letters on a pale card, outlined, 13 px inside. The tail is its own small sprite (so the
+// F256 keeps one body a line and two tails in all): side 1 = at the body's right end (he's to the right of it), -1 =
+// at its left. T.TAIL[side] = where its top-left sits from the body's (right end: from the body's top-right corner).
+const bubCache = new Map();
+T.bubbleBody = function (text) {
+  let c = bubCache.get(text); if (c) return c;
+  const w = T.textWidth(text) + 10, h = 13;
+  c = canvas(w + 2, h + 2); const x = c.getContext('2d');
+  x.fillStyle = '#1f0f07'; x.fillRect(1, 0, w, h + 2); x.fillRect(0, 1, w + 2, h);
+  x.fillStyle = '#fff3c4'; x.fillRect(2, 1, w - 2, h); x.fillRect(1, 2, w, h - 2);
+  T.drawText(x, text, 6, 4, '#1f0f07', 1, null);
+  pixelize(c, { k: '#1f0f07', p: '#fff3c4' }, null, CLUT.spr); bubCache.set(text, c); return c;
+};
+T.bubbleTail = function (side) {
+  const key = 'tail' + side; let c = bubCache.get(key); if (c) return c;
+  c = canvas(7, 5); const x = c.getContext('2d');
+  x.fillStyle = '#1f0f07'; x.fillRect(0, 1, 6, 2); x.fillRect(side > 0 ? 4 : 1, 3, 3, 2);
+  x.fillStyle = '#fff3c4'; x.fillRect(1, 0, 4, 2); x.fillRect(side > 0 ? 4 : 2, 2, 1, 1);
+  pixelize(c, { k: '#1f0f07', p: '#fff3c4' }, null, CLUT.spr); bubCache.set(key, c); return c;
+};
+T.TAIL = { 1: { dx: -11, dy: 13 }, '-1': { dx: 5, dy: 13 } };   // (right end: x from the body's right edge; left: from its left)
+
 // ---------------------------------------------------------------- text as sprites
 const textCache = new Map();
 T.textSprite = function (str, color, s = 1, outline = PAL.out) {

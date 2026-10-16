@@ -493,7 +493,13 @@ sg1                 lda       <phase
                     lbeq      IntroStep
                     cmpa      #PH.Play
                     bne       sg2
-                    lbsr      Hero
+                    lbsr      SayStep             a boss's line (entr.a)
+                    lbsr      EntrStep            a boss's entrance (entr.a): no input, the rest holds
+                    bcc       sgp1
+                    clr       <inp
+                    clr       <ipress
+                    lbra      Hero
+sgp1                lbsr      Hero
                     lbsr      HatScore            a hat every 30,000 points (pickup.a)
                     lbsr      Signs               Ghost Town's hanging signs (ghost.a)
                     lbsr      RideStep            the Cattle Drive's ride (ride.a)

@@ -990,14 +990,7 @@ T.runBrawler = function (A) {
   // end FIGHT! and the boss theme. A kick after the first beat skips it. (story.md: the user's lines, 2026-10-16)
   // His name and what he is sit just over his head; his two lines (his own, then Ringo's) come one after the other right
   // in front of his face in a speech bubble, held still (the user, 2026-10-16).
-  const ENTRANCE = {                             // what he is, his line, his line about Ringo, how tall he stands (px)
-    twobit: ['THE GRAVEDIGGER', 'I BURIED YOU MYSELF!', 'SIX FEET UNDER WITH RINGO', 62],
-    dillon: ['THE TOUGHEST HIDE IN TEXAS', "THIS HERE'S MY TOWN!", 'RINGO THOUGHT IT WAS HIS', 60],
-    gila: ['THE CARD SHARP', "READ 'EM AND WEEP, BOOTS!", "RINGO DREW A DEAD MAN'S HAND", 62],
-    jack: ['THE RUSTLER', 'FINDERS KEEPERS, BOOTS!', 'RINGO RAN TOO. NOT FAST ENOUGH', 60],
-    sting: ['THE DYNAMITER', 'NOBODY GETS OFF THIS TRAIN!', 'RINGO TRIED. ASK HIM HOW IT WENT', 58],
-    toro: ["DIAMONDBACK'S ENFORCER", 'SAY YER PRAYERS, BOOTS!', "RINGO'S GONE. YOU'RE NEXT", 72],
-  };
+  const ENTRANCE = T.ENTRANCE;                   // (levels.js: the exporter draws the F256's from it too)
   // The order (the user, 2026-10-16): he arrives; a second after he's down and still, his name types on over his head, a telegraph
   // click a letter, and what he is stamps on under it; a second and a half; then his line, then Ringo's, ~3 s each
   // ("about 2 seconds more on each line"); FIGHT!. The boss theme comes in as the sting ends (4.6 s in).
@@ -1010,18 +1003,6 @@ T.runBrawler = function (A) {
     return { name, nick, line, ringo: line + ENT.line, end: line + 2 * ENT.line };
   }
   function say(b, text, dur) { b.say = text; b.sayEnd = time + dur; }   // a boss's line, in a bubble (Diamondback's)
-  const bubbleCache = new Map();
-  function bubbleSprite(text, side) {            // a speech bubble: the line on a pale card, the tail toward his mouth
-    const key = text + side; let c = bubbleCache.get(key); if (c) return c;
-    const w = T.textWidth(text) + 10, h = 13, cv = T.canvas(w + 2, h + 6), x = cv.getContext('2d');
-    x.fillStyle = '#1f0f07'; x.fillRect(1, 0, w, h + 2); x.fillRect(0, 1, w + 2, h);
-    x.fillStyle = '#fff3c4'; x.fillRect(2, 1, w - 2, h); x.fillRect(1, 2, w, h - 2);
-    const tx = side > 0 ? w - 8 : 6;             // the tail, at the end nearest him
-    x.fillStyle = '#1f0f07'; x.fillRect(tx - 1, h + 1, 6, 2); x.fillRect(tx + (side > 0 ? 3 : 0), h + 3, 3, 2);
-    x.fillStyle = '#fff3c4'; x.fillRect(tx, h, 4, 2); x.fillRect(tx + (side > 0 ? 3 : 1), h + 2, 1, 1);
-    T.drawText(x, text, 6, 4, '#1f0f07', 1, null);
-    c = T.pixelize(cv, { k: '#1f0f07', p: '#fff3c4' }, null, T.CLUT.spr); bubbleCache.set(key, c); return c;
-  }
   function updateEntrance(dt) {                  // (before the boss's own update)
     const b = boss;
     if (!entr || !b) { entr = null; return; }
@@ -1075,7 +1056,7 @@ T.runBrawler = function (A) {
     if (!b.summoned && b.hp < b.max / 2) {                           // half health: he calls in his own
       b.summoned = true;
       if (b.type === 'diamondback') {               // the posse rises for him; and he fans two volleys now
-        say(b, "GET 'EM, POSSE!", 2.0); sfx('rattle'); b.rage = true;
+        say(b, T.DKSAY.posse, 2.0); sfx('rattle'); b.rage = true;
         spawn('skel@', 1, 0); spawn('skel@', -1, 0);
       } else if (b.type === 'toro') {                      // red: quicker, and every charge comes straight back; two more at the doors
         popup(b.x, FLOOR + b.z - 70, "SEEIN' RED!", '#ff6b4a', 1, 1.6); sfx('bellow'); b.rage = true;
@@ -1759,11 +1740,11 @@ T.runBrawler = function (A) {
     const dx = p.x - b.x, dz = p.z - b.z, toward = Math.sign(dx) || b.face;
     const L0 = lock + 26, L1 = lock + VW - 26;
     const stop = () => { b.vx = b.vz = 0; };
-    if (b.ringoT && time >= b.ringoT) { b.ringoT = 0; say(b, 'RINGO WAS SLOW TOO', 3.0); }   // (a lost draw)
+    if (b.ringoT && time >= b.ringoT) { b.ringoT = 0; say(b, T.DKSAY.slow, 3.0); }   // (a lost draw)
     switch (b.state) {
       case 'duel':
         stop(); b.face = -1;
-        if (!b.said && b.t > 0.8) { b.said = true; say(b, "I'VE BEEN NEEDIN' A NEW PAIR.", 2.4); }
+        if (!b.said && b.t > 0.8) { b.said = true; say(b, T.DKSAY.needin, 2.4); }
         if (!b.drawT && b.t >= b.drawAt && !b.res) { b.drawT = b.t; struck = true; sfx('bell'); }
         if (!b.res) {
           if (b.kicked) b.res = b.drawT ? 'win' : 'early';
@@ -2112,8 +2093,11 @@ T.runBrawler = function (A) {
       }
       const at = (img, x, y) => put(img, Math.max(2, Math.min(VW - 2 - img.width, Math.round(x))), Math.round(y), 0, 0, 0);
       const speech = (line, top) => {            // a boss's line: in front of his face, on the side he faces
-        const f = boss.face || -1, bx = wx(boss.x), im = BUBBLE ? bubbleSprite(line, -f) : T.textSprite(line, '#fff3c4', 1);
-        at(im, f < 0 ? bx - 22 - im.width : bx + 22, top + (BUBBLE ? 6 : 14));
+        const f = boss.face || -1, bx = wx(boss.x);
+        if (!BUBBLE) { const im = T.textSprite(line, '#fff3c4', 1); at(im, f < 0 ? bx - 22 - im.width : bx + 22, top + 14); return; }
+        const body = T.bubbleBody(line), y = top + 6, side = -f, tl = T.TAIL[side];   // (the tail at the end nearest him)
+        const x0 = Math.max(2, Math.min(VW - 2 - body.width, f < 0 ? bx - 22 - body.width : bx + 22));
+        put(body, x0, y, 0, 0, 0); put(T.bubbleTail(side), side > 0 ? x0 + body.width + tl.dx : x0 + tl.dx, y + tl.dy, 0, 0, 0);
       };
       if (entr && boss && entr.arr !== null) {   // his entrance: the name typing on, what he is, his lines
         const E2 = ENTRANCE[boss.type], M = entrMarks(), bx = wx(boss.x), top = FLOOR + boss.z - E2[3];

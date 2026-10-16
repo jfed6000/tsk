@@ -442,7 +442,11 @@ es0c                clr       <eleft
                     sta       <eloop
 es1                 tst       EN.St,x
                     beq       es2
-                    lbsr      RideCarry           (the ride: carried, or left behind)
+                    tst       entact,u            (a boss's entrance: only he moves)
+                    beq       es1a
+                    cmpx      <bslot
+                    bne       es2
+es1a                lbsr      RideCarry           (the ride: carried, or left behind)
                     bcs       es2
                     stx       <ecur
                     bsr       Enemy

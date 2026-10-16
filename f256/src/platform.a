@@ -185,12 +185,14 @@ Main                ldx       #2                  one tick (1 only yields)
                     bra       mn2
 mn1                 lbsr      Stage               the clocks, the phase, the hero, the waves
                     lbsr      Enemies
+                    tst       entact,u            (a boss's entrance: their shots hold)
+                    bne       mn1e
                     lbsr      Skulls
                     lbsr      EBullets
-                    lbsr      Parts
+                    lbsr      Clods
+mn1e                lbsr      Parts
                     lbsr      Items
                     lbsr      HBullets
-                    lbsr      Clods
                     lbsr      Amb                 Main Street: night falling, tumbleweeds, motes
                     lbcs      Fail
                     lbsr      Pops

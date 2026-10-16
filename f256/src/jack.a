@@ -46,6 +46,7 @@ StartJack           lbsr      NewSlot
                     clr       jnext,u
                     clr       jdodge,u
                     clr       jover,u
+                    lbsr      EntrStart           his entrance (entr.a)
 ksj9                 rts
 
 * JSet - A = his state: its clock from 0; not hittable in the air, talking,

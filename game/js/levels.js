@@ -62,4 +62,16 @@ T.LEVELS = {
     boss: null,
   },
 };
+
+// ---------------------------------------------------------------- the bosses' entrances (brawler.js, export.js)
+// what he is, his line, his line about Ringo, how tall he stands (px); story.md "Boss entrances"
+T.ENTRANCE = {                             // what he is, his line, his line about Ringo, how tall he stands (px)
+  twobit: ['THE GRAVEDIGGER', 'I BURIED YOU MYSELF!', 'SIX FEET UNDER WITH RINGO', 62],
+  dillon: ['THE TOUGHEST HIDE IN TEXAS', "THIS HERE'S MY TOWN!", 'RINGO THOUGHT IT WAS HIS', 60],
+  gila: ['THE CARD SHARP', "READ 'EM AND WEEP, BOOTS!", "RINGO DREW A DEAD MAN'S HAND", 62],
+  jack: ['THE RUSTLER', 'FINDERS KEEPERS, BOOTS!', 'RINGO RAN TOO. NOT FAST ENOUGH', 60],
+  sting: ['THE DYNAMITER', 'NOBODY GETS OFF THIS TRAIN!', 'RINGO TRIED. ASK HIM HOW IT WENT', 58],
+  toro: ["DIAMONDBACK'S ENFORCER", 'SAY YER PRAYERS, BOOTS!', "RINGO'S GONE. YOU'RE NEXT", 72],
+};
+T.DKSAY = { needin: "I'VE BEEN NEEDIN' A NEW PAIR.", slow: 'RINGO WAS SLOW TOO', posse: "GET 'EM, POSSE!" };   // Diamondback's spoken lines
 })();

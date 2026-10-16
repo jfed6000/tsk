@@ -49,6 +49,7 @@ StartSting          lbsr      NewSlot
                     clr       shitd,u
                     clr       sclank,u
                     clr       sblast,u
+                    lbsr      EntrStart           his entrance (entr.a)
 zst9                rts
 
 * SSet - A = his state: its clock from 0; not hittable talking or KO'd

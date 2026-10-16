@@ -235,9 +235,9 @@ NtDuel              lbsr      EStop               the standoff
                     cmpd      #48
                     blo       jdu1
                     inc       <bsaid
-                    lda       #66
-                    ldy       #TX.needin
-                    lbsr      WordE
+                    lda       #144                (2.4 s, in a bubble: entr.a)
+                    ldy       #TX.dkneeda
+                    lbsr      Say
 jdu1                tst       dbres,u
                     lbne      jdu8
                     ldd       dbdrt,u             noon: DRAW!
@@ -297,7 +297,11 @@ jdu6                ldx       <bslot
                     lda       #62
                     ldy       #TX.slowboot
                     lbsr      WordE
-jdu7                ldx       <bslot
+jdu7                lda       #180                and he rubs it in: RINGO WAS SLOW TOO, 1.7 s on, 3 s
+                    ldb       #102
+                    ldy       #TX.dkslowa
+                    lbsr      SayLater
+                    ldx       <bslot
                     lda       #7
                     sta       dbflash,u
                     dec       dbammo,u
@@ -648,9 +652,9 @@ jrc1                lda       #DK.Stag
 jrc9                rts
 
 * DiamondRage - half health: GET 'EM, POSSE! - two of the dead rise; two volleys now
-DiamondRage         lda       #66
-                    ldy       #TX.posse
-                    lbsr      WordE
+DiamondRage         lda       #120                (2 s, in a bubble)
+                    ldy       #TX.dkpossea
+                    lbsr      Say
                     lda       #SF.Rattle
                     lbsr      Sfx
                     lda       #1

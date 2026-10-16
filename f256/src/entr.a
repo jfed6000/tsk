@@ -1,0 +1,506 @@
+********************************************************************
+* entr.a - a boss's entrance, and a boss's lines in speech bubbles
+*   (brawler.js startEntrance, updateEntrance, the HUD's entrance and
+*   speech; story.md "Boss entrances").
+*
+*   Every boss but Diamondback (his duel is his) calls EntrStart at the
+*   end of his start.  The music cuts to the sting; the hero gets no
+*   input and his gang, their shots and the stage's own goings-on hold;
+*   the boss arrives his own way (his intro state, 0 for all of them,
+*   held open: his clock kept under the move on).  A second after he's
+*   down and still his name types on over his head, a telegraph click a
+*   letter - drawn by the 6809 into dynamic cells 20-23 (the third
+*   block), twice the size, a letter a pass (EntrHud); what he is stamps
+*   on under it (a word in his stage's bank); a second and a half; then
+*   his line and his line about Ringo in a speech bubble in front of him,
+*   3 s each; FIGHT! and the boss theme (which comes in as the sting ends
+*   anyway).  A kick, side kick or jump after the first 0.8 s skips it.
+*
+*   The bubbles: a word in the stage's bank, twice - 'a' anchored 32 px
+*   in from its left edge (he's left of it), 'b' 32 px in from its right
+*   (he's right of it) - and a shared tail, BU.tailr or BU.taill, drawn
+*   at the edge nearest him.  Say puts any of them up for a while
+*   (Diamondback's lines).
+********************************************************************
+
+* the entrance's timing, in passes
+EnArrive            equ       36                  0.6 s at least before he counts as arrived
+EnSettle            equ       60                  a second after, his name
+EnLetter            equ       3                   a letter every 50 ms
+EnStamp             equ       9                   what he is: 0.15 s after the name
+EnPause             equ       90                  a second and a half
+EnLine              equ       180                 each line 3 s
+EnTheme             equ       276                 the boss theme as the sting ends (4.6 s)
+EnSkip              equ       48                  a kick skips it after 0.8 s
+EnHold              equ       120                 his intro's clock held here (they all move on after 132+)
+NmCell              equ       DynCell+20          his name's strip: dynamic cells 20-23
+BubIn               equ       32                  a bubble's anchor: 32 px in from its edge (export.js bubble)
+
+* a boss's entrance record (EntTab, by bkind)
+ER.Name             equ       0                   his name: a string (hud.a's), as an offset from EntTab (EntName)
+ER.Nick             equ       2                   what he is (a TX word)
+ER.L1               equ       4                   his line (a bubble, its 'a' frame)
+ER.L2               equ       6                   his line about Ringo
+ER.Tall             equ       8                   how tall he stands (px)
+ER.Size             equ       9
+
+EntTab              fdb       STwoBit-EntTab,TX.nkbh,TX.l1bha,TX.l2bha
+                    fcb       62
+                    fdb       SDillon-EntTab,TX.nkms,TX.l1msa,TX.l2msa
+                    fcb       60
+                    fdb       SGila-EntTab,TX.nkgt,TX.l1gta,TX.l2gta
+                    fcb       62
+                    fdb       SJack-EntTab,TX.nkcd,TX.l1cda,TX.l2cda
+                    fcb       60
+                    fdb       SSting-EntTab,TX.nkth,TX.l1tha,TX.l2tha
+                    fcb       58
+                    fdb       SToro-EntTab,TX.nkmi,TX.l1mia,TX.l2mia
+                    fcb       72
+                    fdb       SDiamond-EntTab,0,0,0      (Diamondback: the duel instead; his height for Say)
+                    fcb       64
+
+********************************************************************
+* EntrStart - the boss is set up (bslot, bkind): his entrance begins.
+*   Everything is kept.
+********************************************************************
+EntrStart           pshs      d,x,y
+                    lda       #1
+                    sta       entact,u
+                    sta       <bsaid              (his line is the entrance's)
+                    ldd       #0
+                    std       entt,u
+                    ldd       #$FFFF
+                    std       entarr,u
+                    clr       entn,u
+                    clr       entdn,u
+                    clr       entst,u
+                    clr       entth,u
+                    clr       sayl,u
+                    clr       saydl,u
+                    lbsr      EntName          the name's length, and where it starts in its strip
+                    clrb
+zzens1                tst       b,x
+                    beq       zzens2
+                    incb
+                    bra       zzens1
+zzens2                stb       entlen,u
+                    lda       #8                  its width: 8 a letter and 2 of outline; centred in 128
+                    mul
+                    addd      #2
+                    pshs      d
+                    ldd       #128
+                    subd      ,s++
+                    asra
+                    rorb
+                    stb       entx0,u             (-1 for BIG SHELL DILLON: its outer outline clipped)
+                    lda       entlen,u            when each part comes, after the name starts
+                    ldb       #EnLetter
+                    mul
+                    addd      #EnStamp
+                    std       entstp,u
+                    addd      #EnPause
+                    std       entl1,u
+                    addd      #EnLine
+                    std       entl2,u
+                    addd      #EnLine
+                    std       entfin,u
+                    lda       #MU.entrance
+                    lbsr      Music
+                    puls      d,x,y,pc
+
+* EntName - X = this boss's name (the code's position-independent: the table
+*   holds offsets)
+EntName             bsr       EntRec
+                    ldd       ER.Name,x
+                    leax      EntTab,pcr
+                    leax      d,x
+                    rts
+
+* EntRec - X = this boss's entrance record
+EntRec              lda       bkind,u
+                    ldb       #ER.Size
+                    mul
+                    leax      EntTab,pcr
+                    leax      d,x
+                    rts
+
+********************************************************************
+* EntrStep - a pass of the entrance (Stage, in play, before the hero).
+*   Exit: carry set = it's on (the hero gets no input; his gang holds)
+********************************************************************
+EntrStep            tst       entact,u
+                    bne       zzenp0
+                    andcc     #$FE
+                    rts
+zzenp0                ldd       entt,u
+                    addd      #1
+                    std       entt,u
+                    ldx       <bslot
+                    tst       <bst                his intro, held open
+                    bne       zzenp1
+                    lda       EN.T,x
+                    cmpa      #EnHold
+                    bls       zzenp1
+                    lda       #EnHold
+                    sta       EN.T,x
+zzenp1                tst       entth,u             the boss theme as the sting ends
+                    bne       zzenp2
+                    ldd       entt,u
+                    cmpd      #EnTheme
+                    blo       zzenp2
+                    inc       entth,u
+                    lda       #MU.bossfight
+                    lbsr      Music
+                    ldx       <bslot
+zzenp2                ldd       entarr,u            arrived: down and still
+                    cmpd      #$FFFF
+                    bne       zzenp3
+                    ldd       entt,u
+                    cmpd      #EnArrive
+                    blo       zzenp8
+                    ldd       EN.H,x
+                    bne       zzenp8
+                    ldd       EN.VX,x
+                    bne       zzenp8
+                    ldd       entt,u
+                    addd      #EnSettle
+                    std       entarr,u
+                    bra       zzenp8
+zzenp3                ldd       entt,u              rel = how long since the name started
+                    subd      entarr,u
+                    blt       zzenp8
+                    std       etrel,u
+                    cmpd      entfin,u            the end
+                    lbhs      EntrEnd
+                    clra                          the letters due: rel / 3 + 1, at most the name
+                    ldx       etrel,u
+zzenp4                inca
+                    cmpa      entlen,u
+                    bhs       zzenp5
+                    leax      -EnLetter,x
+                    cmpx      #0
+                    bge       zzenp4
+zzenp5                cmpa      entn,u              a new one: a click (not for a space)
+                    bls       zzenp6
+                    sta       entn,u
+                    lbsr      EntName
+                    lda       entn,u
+                    deca
+                    lda       a,x
+                    cmpa      #'                  (a space)
+                    beq       zzenp6
+                    lda       #SF.Tick
+                    lbsr      Sfx
+zzenp6                tst       entst,u             what he is, stamped on
+                    bne       zzenp8
+                    ldd       etrel,u
+                    cmpd      entstp,u
+                    blo       zzenp8
+                    inc       entst,u
+                    lda       #SF.Stamp
+                    lbsr      Sfx
+                    lda       #2
+                    lbsr      Shk
+zzenp8                ldd       entt,u              a kick skips it
+                    cmpd      #EnSkip
+                    blo       zzenp9
+                    lda       <ipress
+                    bita      #IN.Kick+IN.Side+IN.Jump
+                    lbne      EntrEnd
+zzenp9                orcc      #1
+                    rts
+
+* EntrEnd - FIGHT!: he's let go, the boss theme (if the sting was cut
+*   short), the word.  Exit: carry clear
+EntrEnd             clr       entact,u
+                    ldx       <bslot
+                    tst       <bst
+                    bne       zzee1
+                    lda       #200                (past every intro's move on)
+                    sta       EN.T,x
+zzee1                 tst       entth,u
+                    bne       zzee2
+                    inc       entth,u
+                    lda       #MU.bossfight
+                    lbsr      Music
+zzee2                 lda       #SF.Bell
+                    lbsr      Sfx
+                    ldd       <cam                FIGHT! in the middle of the screen
+                    addd      #160
+                    std       <pux
+                    ldd       #66
+                    std       <puy
+                    ldd       #TX.fight
+                    lbsr      PopWord
+                    andcc     #$FE
+                    rts
+
+********************************************************************
+* Say - Y = a bubble (its 'a' frame), A = passes: the boss says it.
+*   SayLater - the same, B passes from now.  X is kept.
+********************************************************************
+Say                 clrb
+SayLater            sty       sayf,u
+                    sta       sayl,u
+                    stb       saydl,u
+                    rts
+
+* SayStep - a pass of the boss's line (Stage, every pass)
+SayStep             tst       saydl,u
+                    beq       zzsy1
+                    dec       saydl,u
+                    rts
+zzsy1                 tst       sayl,u
+                    beq       zzsy9
+                    dec       sayl,u
+zzsy9                 rts
+
+********************************************************************
+* EntrHud - (Hud) the next letter of his name into its strip, if one's
+*   due: the strip cleared first.  Exit: A = 1 if it drew (the HUD's
+*   pass is used), carry = error
+********************************************************************
+EntrHud             tst       entact,u
+                    beq       zzeh8
+                    lda       entdn,u
+                    cmpa      entn,u
+                    bhs       zzeh8
+                    lda       #2
+                    lbsr      MapDyn
+                    bcs       zzeh9
+                    inc       <hmapd
+                    tst       entdn,u             the first letter: the strip blank
+                    bne       zzeh1
+                    clra
+                    ldb       #4
+                    lbsr      Band
+                    lda       #7
+                    ldb       #4
+                    lbsr      Band
+zzeh1                 lbsr      EntName
+                    lda       entdn,u
+                    ldb       entdn,u             x = the strip's start + 8 a letter
+                    lslb
+                    lslb
+                    lslb
+                    addb      entx0,u
+                    lda       a,x
+                    lbsr      Big
+                    inc       entdn,u
+                    lda       #1
+                    andcc     #$FE
+                    rts
+zzeh8                 clra
+                    andcc     #$FE
+zzeh9                 rts
+
+* Big - A = a character, B = its x in the name's strip (signed: the strip
+*   is x 0-127, cells 20-23, at 128-255 in the mapped block): its 5x7
+*   stamp (hud.a Text's) at twice the size, 10x14, in the name's yellow;
+*   what falls outside the strip isn't drawn
+Big                 pshs      d,x,y,u
+                    cmpa      #'a                 lower case to upper
+                    blo       zzbg1
+                    suba      #$20
+zzbg1                 suba      #32
+                    cmpa      #90-32
+                    bls       zzbg2
+                    lda       #'?-32
+zzbg2                 ldb       #35
+                    mul
+                    leay      GlyTab,pcr
+                    leay      d,y
+                    sty       <hstr               the stamp: column by column, 0 clear, 1 outline, 2 fill
+                    lda       #CI.Out
+                    sta       tpal+1,u
+                    lda       #CI.Yel
+                    sta       tpal+2,u
+                    leau      tpal,u
+                    clr       <hcnt               the pixel column, 0-9
+zzbg3                 lda       <hcnt
+                    adda      1,s                 x in the strip
+                    bmi       zzbg8                 (off either end)
+                    tfr       a,b
+                    addb      #128
+                    clra
+                    lbsr      PixCol
+                    lda       <hcnt               the stamp's column
+                    lsra
+                    ldb       #7
+                    mul
+                    ldy       <hstr
+                    leay      b,y
+                    lda       ,y                  seven rows, each twice
+                    beq       zzbg4a
+                    lda       a,u
+                    sta       ,x
+                    sta       32,x
+zzbg4a                lda       1,y
+                    beq       zzbg4b
+                    lda       a,u
+                    sta       64,x
+                    sta       96,x
+zzbg4b                lda       2,y
+                    beq       zzbg4c
+                    lda       a,u
+                    sta       128,x
+                    sta       160,x
+zzbg4c                lda       3,y
+                    beq       zzbg4d
+                    lda       a,u
+                    sta       192,x
+                    sta       224,x
+zzbg4d                lda       4,y
+                    beq       zzbg4e
+                    lda       a,u
+                    sta       256,x
+                    sta       288,x
+zzbg4e                lda       5,y
+                    beq       zzbg4f
+                    lda       a,u
+                    sta       320,x
+                    sta       352,x
+zzbg4f                lda       6,y
+                    beq       zzbg8
+                    lda       a,u
+                    sta       384,x
+                    sta       416,x
+zzbg8                 inc       <hcnt
+                    lda       <hcnt
+                    cmpa      #10
+                    blo       zzbg3
+                    puls      d,x,y,u,pc
+
+********************************************************************
+* EntrTop - (DrawTop) his name, what he is, his line; or a line he's
+*   saying (Say).  Y = the next sprite record.
+********************************************************************
+EntrTop             ldd       <bslot              (no boss: nothing)
+                    beq       zzet9
+                    tst       entact,u
+                    bne       zzet1
+                    tst       saydl,u             a line he's saying
+                    bne       zzet9
+                    tst       sayl,u
+                    beq       zzet9
+                    lbsr      BossTop
+                    ldd       sayf,u
+                    lbra      Bubble
+zzet9                 rts
+zzet1                 ldd       entarr,u            (not arrived, or the name not started: nothing yet)
+                    cmpd      #$FFFF
+                    beq       zzet9
+                    ldd       entt,u
+                    subd      entarr,u
+                    blt       zzet9
+                    std       etrel,u
+                    lbsr      BossTop
+                    tst       entdn,u             the name's strip, once a letter's in: centred over him
+                    beq       zzet3
+                    ldd       ebx,u
+                    subd      #64
+                    bge       zzet2a
+                    ldd       #0
+zzet2a                cmpd      #192
+                    ble       zzet2b
+                    ldd       #192
+zzet2b                std       etx,u
+                    ldd       etop,u
+                    subd      #26
+                    std       <bcy
+                    clr       <tmpi
+zzet2                 lda       <tmpi               four cells, 32 px apart
+                    ldb       #32
+                    mul
+                    addd      etx,u
+                    std       <bcx
+                    ldb       <tmpi
+                    clra
+                    addd      #NmCell
+                    lbsr      BuildRaw
+                    inc       <tmpi
+                    lda       <tmpi
+                    cmpa      #4
+                    blo       zzet2
+zzet3                 tst       entst,u             what he is, under it
+                    beq       zzet4
+                    ldd       ebx,u
+                    cmpd      #56
+                    bge       zzet3a
+                    ldd       #56
+zzet3a                cmpd      #264
+                    ble       zzet3b
+                    ldd       #264
+zzet3b                std       <bcx
+                    ldd       etop,u
+                    subd      #13
+                    std       <bcy
+                    lbsr      EntRec
+                    ldd       ER.Nick,x
+                    lbsr      BuildChar
+zzet4                 ldd       etrel,u             his lines
+                    cmpd      entl1,u
+                    lblo      zzet9
+                    lbsr      EntRec
+                    ldd       entl2,u
+                    cmpd      etrel,u
+                    bhi       zzet5
+                    ldd       ER.L2,x
+                    bra       Bubble
+zzet5                 ldd       ER.L1,x
+                    bra       Bubble
+
+* BossTop - ebx = the boss's x on the screen, etop = his head's screen y (the
+*   top of how tall he stands)
+BossTop             ldx       <bslot
+                    ldd       <cam
+                    lbsr      To124
+                    pshs      d
+                    ldd       EN.X,x
+                    subd      ,s++
+                    lbsr      Asr4
+                    std       ebx,u
+                    ldd       EN.Z,x
+                    lbsr      Asr4
+                    addd      #FLOOR.Y
+                    pshs      d
+                    lbsr      EntRec
+                    ldb       ER.Tall,x
+                    clra
+                    pshs      d
+                    ldd       2,s
+                    subd      ,s++
+                    leas      2,s
+                    std       etop,u
+                    rts
+
+* Bubble - D = a bubble's 'a' frame: in front of the boss (the side he
+*   faces), its top 6 px below his head; the tail at the end nearest him
+Bubble              pshs      d
+                    ldd       etop,u
+                    addd      #6
+                    std       <bcy
+                    ldx       <bslot
+                    tst       EN.Fc,x             1 = he faces left: the bubble's to his left
+                    beq       zzbb1
+                    ldd       ebx,u               its right edge 22 px short of him: 'b', BubIn in
+                    subd      #22
+                    std       <bcx
+                    ldd       #BU.tailr
+                    lbsr      BuildChar
+                    ldd       <bcx
+                    subd      #BubIn
+                    std       <bcx
+                    puls      d
+                    addd      #1
+                    lbra      BuildChar
+zzbb1                 ldd       ebx,u               its left edge 22 px past him: 'a', BubIn in
+                    addd      #22
+                    std       <bcx
+                    ldd       #BU.taill
+                    lbsr      BuildChar
+                    ldd       <bcx
+                    addd      #BubIn
+                    std       <bcx
+                    puls      d
+                    lbra      BuildChar

@@ -190,6 +190,7 @@ CoreTab
                     fdb       DuskClut-CoreTab
                     fdb       EnMove-CoreTab
                     fdb       Ent-CoreTab
+                    fdb       EntrStart-CoreTab
                     fdb       EStop-CoreTab
                     fdb       FaceHero-CoreTab
                     fdb       Fire-CoreTab
@@ -219,6 +220,8 @@ CoreTab
                     fdb       RandN-CoreTab
                     fdb       RandS-CoreTab
                     fdb       Release-CoreTab
+                    fdb       Say-CoreTab
+                    fdb       SayLater-CoreTab
                     fdb       ScoreAt-CoreTab
                     fdb       Scrl-CoreTab
                     fdb       SetE-CoreTab

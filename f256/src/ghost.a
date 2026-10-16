@@ -259,6 +259,7 @@ StartGila           lda       #SF.Card
                     clr       gcov,u
                     lda       #4
                     lbsr      Puff
+                    lbsr      EntrStart           his entrance (entr.a)
 gsgl9x               rts
 
 * GSet - A = his state: its clock from 0; hittable unless he's talking,

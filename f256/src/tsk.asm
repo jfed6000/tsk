@@ -50,6 +50,7 @@ name                fcs       /tsk/
                     use       pickup.a
                     use       intro.a
                     use       boss.a
+                    use       entr.a
                     use       death.a
                     use       grab.a
                     use       rat.a

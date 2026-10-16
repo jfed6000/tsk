@@ -103,6 +103,7 @@ CV.DSet             rmb       2
 CV.DuskClut         rmb       2
 CV.EnMove           rmb       2
 CV.Ent              rmb       2
+CV.EntrStart        rmb       2
 CV.EStop            rmb       2
 CV.FaceHero         rmb       2
 CV.Fire             rmb       2
@@ -132,6 +133,8 @@ CV.Rand             rmb       2
 CV.RandN            rmb       2
 CV.RandS            rmb       2
 CV.Release          rmb       2
+CV.Say              rmb       2
+CV.SayLater         rmb       2
 CV.ScoreAt          rmb       2
 CV.Scrl             rmb       2
 CV.SetE             rmb       2
@@ -145,4 +148,4 @@ CV.Toward           rmb       2
 CV.Ttl              rmb       2
 CV.WordE            rmb       2
 CV.WordH            rmb       2
-NCv                 equ       58
+NCv                 equ       61

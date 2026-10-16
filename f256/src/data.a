@@ -344,6 +344,27 @@ twvh                rmb       2
 twt                 rmb       2                   passes before the next one
 stgarg              rmb       1                   tsk m: start at Main Street
 ldstg               rmb       1                   the stage whose art is loaded ($FF = none)
+* a boss's entrance and his lines (entr.a)
+entact              rmb       1                   1 = his entrance is on
+entt                rmb       2                   passes into it
+entarr              rmb       2                   when his name starts ($FFFF: he's not arrived yet)
+entn                rmb       1                   the letters of his name due
+entdn               rmb       1                   the letters drawn into its strip
+entst               rmb       1                   1 = what he is is stamped on
+entth               rmb       1                   1 = the boss theme's on
+entlen              rmb       1                   his name's length
+entx0               rmb       1                   where it starts in its strip (signed)
+entstp              rmb       2                   after the name starts: what he is,
+entl1               rmb       2                   his line,
+entl2               rmb       2                   his line about Ringo,
+entfin              rmb       2                   the end
+etrel               rmb       2                   (EntrStep, EntrTop: passes since the name started)
+ebx                 rmb       2                   (BossTop: his x on the screen, the top of him)
+etop                rmb       2
+etx                 rmb       2                   (EntrTop: the name strip's x)
+sayf                rmb       2                   a line he's saying: its bubble ('a' frame),
+sayl                rmb       1                   passes left,
+saydl               rmb       1                   passes before it shows
 hatarg              rmb       2                   tsk s: start with five hats (to see the HUD's count)
 nexthat             rmb       2                   the next score that earns a hat: its top four BCD digits (pickup.a HatScore)
 ptnx                rmb       2                   NewPt: where the next search starts (0 = the first)

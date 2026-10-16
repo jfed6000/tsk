@@ -230,9 +230,9 @@ T.runExport = function (A) {
     ['barred', 'BARRED AGAIN!', '#fff3c4', 1], ['prayers', 'SAY YER PRAYERS, BOOTS!', '#fff3c4', 1], ['snort', 'SNORT!', '#ff9d3c', 1],
     ['seered', "SEEIN' RED!", '#ff6b4a', 1], ['gored', 'GORED!', '#ff6b4a', 1], ['crash', 'CRASH!', '#ff9d3c', 2], ['stuck', 'STUCK!', '#ffd34a', 1],
     ['highnoon', 'HIGH NOON, BOOTS.', '#9ad46a', 2], ['hnoon', 'HIGH NOON', '#ffd34a', 3], ['mainsub', 'MAIN STREET', '#e8a070', 1],
-    ['needin', "I'VE BEEN NEEDIN' A NEW PAIR.", '#fff3c4', 1], ['draw', 'DRAW!', '#ffd34a', 4], ['outdrawn', 'OUTDRAWN!', '#ffd34a', 2],
+    ['draw', 'DRAW!', '#ffd34a', 4], ['outdrawn', 'OUTDRAWN!', '#ffd34a', 2],
     ['jumped', 'JUMPED THE GUN!', '#ff6b4a', 1], ['slowboot', 'TOO SLOW, BOOTS!', '#ff6b4a', 1], ['snakebit', 'SNAKEBIT!', '#ff6b4a', 1],
-    ['posse', "GET 'EM, POSSE!", '#ff9d3c', 1], ['theend', 'THE END', '#ff9d3c', 4], ['pressj', 'PRESS JUMP', '#c3c8d8', 1],
+    ['fight', 'FIGHT!', '#ff9d3c', 3], ['theend', 'THE END', '#ff9d3c', 4], ['pressj', 'PRESS JUMP', '#c3c8d8', 1],
     ['story0', 'RINGO WAS IN THE WAY', '#fff3c4', 1], ['story1', 'THE DIAMONDBACK GANG GUNNED HIM DOWN', '#fff3c4', 1],   // the story's page (brawler.js STORY)
     ['story2', 'AND BURIED HIM ON BOOT HILL', '#fff3c4', 1], ['story3', 'WITH HIS BOOTS ON', '#fff3c4', 1],
     ['story4', 'RINGO STAYED DEAD', '#e8a070', 2], ['story5', "HIS BOOTS DIDN'T", '#ff9d3c', 2],
@@ -252,13 +252,27 @@ T.runExport = function (A) {
     CD: 'cattle sunup cdclear whoa oof trampled roped hogtied finders tooslow nottoday stampede',
     TH: 'trainh midday thclear tunnel duckhold duck seeya swept watchstep mindhead nobody clank stung uhoh lightall kaboom',
     MI: 'mission sundown miclear herethey theyrein costhat barred prayers snort seered gored crash stuck highnoon mainst2 diamond',
-    HN: 'hnoon mainsub needin draw outdrawn jumped slowboot snakebit posse',
+    HN: 'hnoon mainsub draw outdrawn jumped slowboot snakebit',
     EN: 'theend pressj',
   };
   const bankOfWord = {}; for (const k in WORDBANK) for (const w of WORDBANK[k].split(' ')) bankOfWord[w] = k;
   const word = ([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; };
-  const wordsOf = k => TEXT.filter(t => bankOfWord[t[0]] === k).map(word);
+  // a boss's entrance (brawler.js ENTRANCE): what he is (a word: top centre), and his two lines as speech-bubble bodies,
+  // each twice - 'a' anchored near its left edge (he's left of it), 'b' near its right edge (he's right of it): the same
+  // cells, two frame records. The tails are shared (BU). Diamondback's spoken lines are bubbles too (T.DKSAY).
+  const BOSSOF = { BH: 'twobit', MS: 'dillon', GT: 'gila', CD: 'jack', TH: 'sting', MI: 'toro' };
+  // (anchored 32 px in from that edge, not at it: a cell can't sit more than 128 px from its frame's origin, and the
+  // longest line is 139 px; tsk allows for the 32: BubIn)
+  const bubble = (name, text) => { const b = T.bubbleBody(text); return [[name + 'a', [b], 1, false, 32, 0], [name + 'b', [b], 1, false, b.width - 32, 0]]; };
+  const entranceOf = k => {
+    if (k === 'HN') return [...bubble('dkneed', T.DKSAY.needin), ...bubble('dkslow', T.DKSAY.slow), ...bubble('dkposse', T.DKSAY.posse)];
+    const E = T.ENTRANCE[BOSSOF[k]]; if (!E) return [];
+    return [word(['nk' + k.toLowerCase(), E[0], '#e8a070', 1]), ...bubble('l1' + k.toLowerCase(), E[1]), ...bubble('l2' + k.toLowerCase(), E[2])];
+  };
+  const wordsOf = k => [...TEXT.filter(t => bankOfWord[t[0]] === k).map(word), ...entranceOf(k)];
   addGroup('TX', TEXT.filter(t => !bankOfWord[t[0]]).map(word), 0, 0, false);
+  // a speech bubble's tail, drawn at the bubble's anchor (T.TAIL): tailr at the right end (he's right of it), taill at the left
+  addGroup('BU', [['tailr', [T.bubbleTail(1)], 1, false, -T.TAIL[1].dx, -T.TAIL[1].dy], ['taill', [T.bubbleTail(-1)], 1, false, -T.TAIL[-1].dx, -T.TAIL[-1].dy]], 0, 0, false);
 
   // the stage banks: Boot Hill's Two-Bit; Main Street's mangy gang (the coyote art in the mangy palette) and tumbleweed
   // shared by Main Street and Ghost Town: the outlaw coyotes (the coyote art in the mangy palette), the tumbleweed

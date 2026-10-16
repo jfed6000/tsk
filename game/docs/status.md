@@ -106,5 +106,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 10. ✓ High Noon and the ending in the browser and on the F256 (2026-10-16): `?stage=highnoon` (`&wave=3`: the duel); `tsk n`, `make mamenoon`. The whole game now runs on the F256.
 11. ✓ The story questions are settled (2026-10-16, `story.md`): hats as lives, Vernon out, bloodless, Bullrush; player 2 (the Stompers) parked.
 12. ✓ The hats on the F256 (2026-10-16); a release zip (`make dist`, TSK-F256-<date>.zip) and a showreel (`make reel`).
-13. **Boss entrances** (PPM 976, the user, 2026-10-16): the bosses "just kind of appear". Give them gravitas: a pause, a
-    boss sting or theme, his name and title, a line of speech (a taunt about Ringo). Browser first, then the F256.
+13. ✓ **Boss entrances** (PPM 976, 2026-10-16), browser and F256: he arrives; his name types on over him (a telegraph
+    click a letter); what he is stamps on; his line and his line about Ringo in a speech bubble; FIGHT!; the sting and the
+    boss theme. F256: `src/entr.a` (the name typed by the 6809 into dynamic cells 20-23 at double size; the bubbles are
+    words in each stage's bank with two anchors, the tails shared; Say for Diamondback's lines); `tools/tskentr.lua`.

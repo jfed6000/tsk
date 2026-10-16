@@ -61,6 +61,8 @@ SF.Boom             equ       21                  dynamite
 SF.Bell             equ       22                  the mission bell: here they come (channel 11)
 SF.Thud             equ       23                  a blow on the church doors
 SF.Bellow           equ       24                  Bullrush (channel 9, a tuba sagging)
+SF.Tick             equ       25                  a telegraph key: a boss's name typing on (entr.a)
+SF.Stamp            equ       26                  what he is stamped on (a WANTED poster)
 
 ********************************************************************
 * SndInit - after the music is loaded: the effect channels' instruments
@@ -402,6 +404,8 @@ SfxTab              fdb       FxWhoosh-SfxTab
                     fdb       FxBell-SfxTab
                     fdb       FxThud-SfxTab
                     fdb       FxBellow-SfxTab
+                    fdb       FxTick-SfxTab
+                    fdb       FxStamp-SfxTab
 * delay, status, note, velocity, length
 FxWhistle           fcb       0,$9B,70,110,26     two blasts of a chord (Bb, D, F)
                     fcb       0,$9B,74,104,26
@@ -436,6 +440,12 @@ FxBellow            fcb       0,$E8,0,64,0        the bend centred, a low note, 
                     fcb       16,$E8,0,40,0
                     fcb       32,$E8,0,16,0
                     fcb       54,$E8,0,64,0
+                    fcb       $FF
+FxTick              fcb       0,$99,75,96,0       the claves, short and sharp: a telegraph key
+                    fcb       $FF
+FxStamp             fcb       0,$99,36,127,0      the kick, a low tom and a clap: a stamp coming down
+                    fcb       0,$99,41,110,0
+                    fcb       0,$99,39,80,0
                     fcb       $FF
 FxWhoosh            fcb       0,$9D,96,100,5      a breath, high and short
                     fcb       $FF

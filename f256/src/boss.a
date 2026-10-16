@@ -85,6 +85,7 @@ wsb1                 clr       ,y+
                     bne       wsb1
                     lda       #10
                     lbsr      DirtXZ
+                    lbsr      EntrStart           his entrance (entr.a)
 wsb9                 rts
 
 * BSet - A = what he does now: his clock starts again; hittable or not

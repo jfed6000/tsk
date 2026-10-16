@@ -60,6 +60,7 @@ StartToro           lbsr      NewSlot
                     lbsr      Sfx
                     lda       #8
                     lbsr      Shk
+                    lbsr      EntrStart           his entrance (entr.a)
 qst9                rts
 
 * TSet - A = his state: its clock from 0; not hittable coming in or KO'd
