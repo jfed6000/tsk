@@ -10,15 +10,18 @@ SAM2695 music. Tested on the F256K2.
 
 WHAT'S IN THE ZIP
 
-  tsk          the game (an OS-9 module)
+  CMDS/tsk     the game (an OS-9 module)
   TSK/         its stage modules, graphics and music
+
+(The game's in CMDS/ so the zip unpacks on a case-insensitive disk, like
+macOS's or Windows', where a file "tsk" and a folder "TSK" would clash.)
   install.sh   optional: installs onto a disk image with ToolShed
   README.txt   this file
 
 
 INSTALLING
 
-1. Copy  tsk  to your CMDS directory and make it executable:
+1. Copy  CMDS/tsk  to your CMDS directory and make it executable:
 
        copy tsk /dd/CMDS/tsk
        attr /dd/CMDS/tsk e pe
@@ -59,3 +62,7 @@ Look for something at the back of the street that glints, and kick it.
 It needs about 1.7 MB of free memory for its graphics and music (an
 F256K2 has room). If there isn't enough, it says so and stops: close
 other programs or windows, or reboot, and try again.
+
+In MAME, the F256's synth isn't emulated: run fluidsynth as a MIDI
+decoder to hear the music and the sound effects. See the note at the
+top of https://github.com/rlucente-retro/mame

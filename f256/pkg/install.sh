@@ -5,7 +5,7 @@ set -e
 DSK=${1:?usage: sh install.sh /path/to/disk.dsk}
 cd "$(dirname "$0")"
 os9 del "$DSK",CMDS/tsk 2>/dev/null || true
-os9 copy -r tsk "$DSK",CMDS/tsk
+os9 copy -r CMDS/tsk "$DSK",CMDS/tsk
 os9 attr -e -pe "$DSK",CMDS/tsk
 os9 makdir "$DSK",TSK 2>/dev/null || true
 for f in TSK/*; do
