@@ -204,6 +204,8 @@ function sfx(k) {
     case 'roar': noise(1.6, 0.5, 'lowpass', 700, 90); tone('sine', 70, 40, 1.2, 0.3); break;    // into the tunnel
     case 'bell': for (const d of [0, 0.9]) { tone('triangle', 392, 388, 1.4, 0.14, d); tone('sine', 784, 780, 0.9, 0.05, d); tone('sine', 1176, 1170, 0.5, 0.03, d); } break;   // the mission bell: here they come
     case 'thud': noise(0.16, 0.4, 'lowpass', 500, 70); tone('sine', 90, 45, 0.18, 0.3); break;    // a blow on the church doors
+    case 'tick': noise(0.018, 0.22, 'bandpass', 3200, 2600); tone('square', 1900, 1700, 0.012, 0.03); break;   // a telegraph key: the boss's name typing on
+    case 'stamp': noise(0.12, 0.45, 'lowpass', 1400, 90); tone('sine', 120, 50, 0.16, 0.35); tone('square', 240, 120, 0.05, 0.05); break;   // his nickname stamped on (a WANTED poster)
     case 'bellow': tone('sawtooth', 160, 70, 0.9, 0.12); tone('sawtooth', 120, 55, 0.9, 0.08, 0.05); noise(0.6, 0.15, 'lowpass', 500, 120); break;   // Bullrush
   }
 }

@@ -998,12 +998,17 @@ T.runBrawler = function (A) {
     sting: ['THE DYNAMITER', 'NOBODY GETS OFF THIS TRAIN!', 'RINGO TRIED. ASK HIM HOW IT WENT', 58],
     toro: ["DIAMONDBACK'S ENFORCER", 'SAY YER PRAYERS, BOOTS!', "RINGO'S GONE. YOU'RE NEXT", 72],
   };
-  // seconds into it: each line ~4 s (the user: "about 2 seconds more on each line"); the boss theme comes in as the
-  // sting ends (4.6 s), under his line about Ringo
-  const ENT = { card: 0.4, line: 0.5, ringo: 4.7, theme: 4.6, end: 9.0, skip: 0.8, hold: 2.0 };
+  // The order (the user, 2026-10-16): he arrives; when he's down and still, his name types on over his head, a telegraph
+  // click a letter, and what he is stamps on under it; a second and a half; then his line, then Ringo's, ~4 s each
+  // ("about 2 seconds more on each line"); FIGHT!. The boss theme comes in as the sting ends (4.6 s in).
+  const ENT = { arrive: 0.6, letter: 0.045, stamp: 0.15, pause: 1.5, line: 4.0, theme: 4.6, skip: 0.8, hold: 2.0 };
   const BUBBLE = !params.has('nobubble');        // (the user liked the bubble; ?nobubble for the bare words)
   let entr = null;
-  function startEntrance() { entr = { t: 0 }; boss.said = true; music('entrance'); }   // (his lines are the entrance's)
+  function startEntrance() { entr = { t: 0, arr: null, n: 0, stamped: false }; boss.said = true; music('entrance'); }   // (his lines are the entrance's)
+  function entrMarks() {                         // when each part comes, from his arrival (s into the entrance)
+    const name = entr.arr + boss.name.length * ENT.letter, nick = name + ENT.stamp, line = nick + ENT.pause;
+    return { name, nick, line, ringo: line + ENT.line, end: line + 2 * ENT.line };
+  }
   function say(b, text, dur) { b.say = text; b.sayEnd = time + dur; }   // a boss's line, in a bubble (Diamondback's)
   const bubbleCache = new Map();
   function bubbleSprite(text, side) {            // a speech bubble: the line on a pale card, the tail toward his mouth
@@ -1021,9 +1026,17 @@ T.runBrawler = function (A) {
     const b = boss;
     if (!entr || !b) { entr = null; return; }
     entr.t += dt;
-    if ((pressed.snap || pressed.side || pressed.jump) && entr.t > ENT.skip) entr.t = Math.max(entr.t, ENT.end);
+    if (entr.arr === null && entr.t >= ENT.arrive && b.h <= 0 && !(b.type === 'toro' && b.vx)) entr.arr = entr.t;   // down and still
     if (entr.t >= ENT.theme) music('bossfight');   // (music() ignores the song already playing)
-    if (entr.t >= ENT.end) {                     // FIGHT!
+    let end = false;
+    if (entr.arr !== null) {
+      const M = entrMarks(), n = Math.min(b.name.length, Math.floor((entr.t - entr.arr) / ENT.letter) + 1);
+      if (n > entr.n) { if (b.name[n - 1] !== ' ') sfx('tick'); entr.n = n; }       // a click a letter
+      if (!entr.stamped && entr.t >= M.nick) { entr.stamped = true; sfx('stamp'); shake = Math.max(shake, 2); }
+      end = entr.t >= M.end;
+    }
+    if ((pressed.snap || pressed.side || pressed.jump) && entr.t > ENT.skip) end = true;
+    if (end) {                                   // FIGHT!
       entr = null; if (b.state === 'intro') b.t = 99;
       popup(lock + VW / 2, 66, 'FIGHT!', '#ff9d3c', 3, 1.0); sfx('bell'); music('bossfight');
     }
@@ -2102,11 +2115,12 @@ T.runBrawler = function (A) {
         const f = boss.face || -1, bx = wx(boss.x), im = BUBBLE ? bubbleSprite(line, -f) : T.textSprite(line, '#fff3c4', 1);
         at(im, f < 0 ? bx - 22 - im.width : bx + 22, top + (BUBBLE ? 6 : 14));
       };
-      if (entr && boss && boss.h <= 0 && entr.t >= ENT.card && entr.t < ENT.end - 0.1) {   // his entrance: name, lines
-        const E2 = ENTRANCE[boss.type], bx = wx(boss.x), top = FLOOR + boss.z - E2[3];
-        const nm = T.textSprite(boss.name, '#ffd34a', 2), nk = T.textSprite(E2[0], '#e8a070', 1);
-        at(nm, bx - nm.width / 2, top - 26); at(nk, bx - nk.width / 2, top - 13);
-        const line = entr.t >= ENT.ringo ? E2[2] : entr.t >= ENT.line ? E2[1] : null;
+      if (entr && boss && entr.arr !== null) {   // his entrance: the name typing on, what he is, his lines
+        const E2 = ENTRANCE[boss.type], M = entrMarks(), bx = wx(boss.x), top = FLOOR + boss.z - E2[3];
+        const full = T.textSprite(boss.name, '#ffd34a', 2), x0 = Math.max(2, Math.min(VW - 2 - full.width, Math.round(bx - full.width / 2)));
+        if (entr.n) put(T.textSprite(boss.name.slice(0, entr.n), '#ffd34a', 2), x0, top - 26, 0, 0, 0);   // (left-aligned where the whole name will sit)
+        if (entr.stamped) { const nk = T.textSprite(E2[0], '#e8a070', 1); at(nk, bx - nk.width / 2, top - 13); }
+        const line = entr.t >= M.ringo ? E2[2] : entr.t >= M.line ? E2[1] : null;
         if (line) speech(line, top);
       } else if (boss && boss.say && time < boss.sayEnd && boss.state !== 'ko') speech(boss.say, FLOOR + boss.z - 64);
       if (phase === 'clear') { center(T.textSprite(S.name + ' CLEAR!', '#ffd34a', 3), 70); center(T.textSprite('SCORE ' + score, '#fff3c4', 1), 96); }
