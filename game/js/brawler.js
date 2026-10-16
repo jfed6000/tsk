@@ -71,7 +71,7 @@ T.runBrawler = function (A) {
   const TRS = T.buildTrainSprites(FLOOR), TR = T.TRAIN;   // the Train Heist: the tunnel's mouth; the cars and gaps
   const STING = T.buildSting();                    // its boss, Sting, and his dynamite
   let sticks = [], booms = [];                     // lit sticks of dynamite (flying, lying, kicked); the bangs
-  const MI = T.MISSION, MSP = T.buildMissionSprites(), TORO = T.buildToro();   // the Mission: the church doors; El Toro
+  const MI = T.MISSION, MSP = T.buildMissionSprites(), TORO = T.buildToro();   // the Mission: the church doors; Bullrush
   let door = null, shocks = [], siegeT = 0;
   const NO = T.NOON, NSP = T.buildNoonSprites(), DBK = T.buildDiamondback();   // High Noon: the clock's hands, the snakeskin boots; Diamondback
   let pebble = null, struck = false, ending = null;
@@ -176,7 +176,7 @@ T.runBrawler = function (A) {
         { cam: MI.YARD, siege: true, gang: ['coyote', 'skel', 'rattler', 'coyote', 'rattler'] },
         { cam: MI.YARD, siege: true, gang: ['rattler', 'coyote', 'skel', 'coyote', 'dillo', 'coyote'] },
         { cam: MI.YARD, siege: true, gang: ['coyote', 'rattler', 'skel', 'coyote', 'rattler', 'dillo'] },   // (six at most: the F256's NEn)
-        { cam: MI.YARD, boss: 'toro' },            // and through the side gate: El Toro
+        { cam: MI.YARD, boss: 'toro' },            // and through the side gate: Bullrush
       ],
       barrels: [[250, 30, 'beans'], [560, 60, 'whip'], [820, 20, 'gun'], [1000, 70, 'beans'], [1250, 64, 'whip']],
     },
@@ -946,8 +946,8 @@ T.runBrawler = function (A) {
       music('standoff');
       return;
     }
-    if (kind === 'toro') {                         // El Toro comes through the side gate at a charge
-      boss = { type: 'toro', name: 'EL TORO', x: lock + VW + 40, z: 40, h: 0, vx: -340, vz: 0, vh: 0, face: -1, hp: 60, max: 60,
+    if (kind === 'toro') {                         // Bullrush comes through the side gate at a charge
+      boss = { type: 'toro', name: 'BULLRUSH', x: lock + VW + 40, z: 40, h: 0, vx: -340, vz: 0, vh: 0, face: -1, hp: 60, max: 60,
         state: 'intro', t: 0, n: 0, flash: 0, said: false, summoned: false, anim: 0, armor: 0, rage: false, second: false };
       sfx('bellow'); shake = Math.max(shake, 4);
       return;
@@ -1581,7 +1581,7 @@ T.runBrawler = function (A) {
     b.x += b.vx * dt; b.z = Math.max(0, Math.min(ZMAX, b.z + b.vz * dt));
     b.x = Math.max(L0 - 4, Math.min(L1 + 4, b.x));
   }
-  // El Toro: walks you down, paws the dirt and snorts - then charges down the lane he's lined up on, trampling anyone
+  // Bullrush: walks you down, paws the dirt and snorts - then charges down the lane he's lined up on, trampling anyone
   // in it, till his horns go into a wall (stuck: open, and half again damage) or into the church doors (6 off them:
   // don't dodge him in front of the doors). Up close the horn hook (it launches you); now and then he rears up and
   // stomps, and a wall of dust rolls out both ways along the ground (jump it). His hide shrugs off hits on the move -
@@ -2227,7 +2227,7 @@ T.runBrawler = function (A) {
       return;
     }
     if (boss && boss.type === 'diamondback' && boss.state === 'coil' && boss.t > 0.35 && inLane(boss, p, 12) && Math.abs(boss.x - p.x) < 150 && p.h <= 0 && botT <= 0) { pressed.jump = true; botT = 0.5; return; }
-    if (boss && boss.type === 'toro' && boss.state !== 'ko' && !params.has('hug')) {   // El Toro: out of his lane when he paws, jump the dust
+    if (boss && boss.type === 'toro' && boss.state !== 'ko' && !params.has('hug')) {   // Bullrush: out of his lane when he paws, jump the dust
       const b = boss, sh = shocks.find(s => Math.abs(Math.abs(p.x - s.x) - s.r) < 34 && Math.abs(p.z - s.z) < 36 && Math.abs(p.x - s.x) > s.r - 4);
       if (sh && p.h <= 0 && botT <= 0) { pressed.jump = true; botT = 0.4; return; }
       if (b.state === 'rear' && p.h <= 0 && Math.abs(b.x - p.x) < 40 && botT <= 0 && b.t > 0.4) { pressed.jump = true; botT = 0.4; return; }

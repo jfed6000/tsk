@@ -393,7 +393,7 @@ siegt               rmb       1                   the lull between siege waves, 
 bnw                 rmb       6                   the banner: up to three TX frames, centred (0 = none)
 bnt                 rmb       1                   passes it has left
 bny                 rmb       1                   its first line's screen y
-tarm                rmb       1                   El Toro: hits taken on the move (the third, he turns on you)
+tarm                rmb       1                   Bullrush: hits taken on the move (the third, he turns on you)
 trage               rmb       1                   1 = seein' red
 tsec                rmb       1                   1 = this is the second of a pair of charges
 thitd               rmb       1                   his charge, hook or shove has landed

@@ -446,7 +446,7 @@ shu1                ldd       <hvh
 shu2                lda       <ht
                     cmpa      #HurtT
                     lblo      hmove
-                    ldd       <hh                 (tossed - El Toro's hook: not till he's down again)
+                    ldd       <hh                 (tossed - Bullrush's hook: not till he's down again)
                     lbne      hmove
                     lda       #ST.Idle
                     lbsr      SetS

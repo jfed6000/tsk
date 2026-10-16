@@ -21,7 +21,7 @@ Songs:
               harmonica answering, a stop-time breakdown with whip cracks (loops)
     heist     "Iron Horse": the Train Heist and Sting - the train whistle, then a ZZ Top-ish shuffle boogie in D on the
               overdrive over a chugging train beat, the harmonica wailing, a stop-time tunnel, a slide ride-out (loops)
-    laststand "Last Stand": the Mission and El Toro - the mission bell and a lone trumpet's Deguello (no quarter) over
+    laststand "Last Stand": the Mission and Bullrush - the mission bell and a lone trumpet's Deguello (no quarter) over
               tremolo strings, then a galloping D minor drive down the Andalusian cadence, the trumpets on top, a
               war-drum break with the call again (loops)
     standoff  "Standoff": High Noon's duel - a pocket watch's chime on a music box, the town clock ticking, tremolo
@@ -627,7 +627,7 @@ def heist():
 
 # ---------------------------------------------------------------------------------------------- the Mission
 def laststand():
-    """Last Stand: the Mission and El Toro. D minor, 138 bpm, straight. The bell tolling and a lone trumpet's
+    """Last Stand: the Mission and Bullrush. D minor, 138 bpm, straight. The bell tolling and a lone trumpet's
     Deguello - the no-quarter call - over tremolo strings (bars 0-3, the first time only); the drive: a galloping
     overdrive down the Andalusian cadence (Dm C Bb A), the bass, a nylon guitar's strums, the trumpet's tune and the
     second time a second trumpet a third under it (bars 4-19); the break: stop-time hits, the war drums rolling, the

@@ -54,7 +54,7 @@ make mamedeath       # the death scene: Dillon against a frail hero (tsk mkf), f
 make mamegila        # straight to Doc Gila (tsk hkg) in MAME
 make mamecattle      # the Cattle Drive: the ride, the corral, Jackrabbit Jack (tsk cbg) in MAME
 make mametrain       # the Train Heist: the roofs, the tunnels, Sting (tsk tbg) in MAME
-make mamemission     # the Mission: the siege of the church doors, El Toro (tsk ibg) in MAME
+make mamemission     # the Mission: the siege of the church doors, Bullrush (tsk ibg) in MAME
 make mamenoon        # High Noon: the duel, Diamondback, the ending and the boot shop (tsk nbg) in MAME
 make music           # compose, convert and render the music (game/music/*.mid, *.mp3)
 python3 tools/hostrun.py --args bg --passes 5000 --every 100 --watch phase,wavei,score --enemies --slow 80000
@@ -68,7 +68,7 @@ SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other lett
 | `d` | The scripted demo |
 | `b` | The autopilot plays |
 | `g` | Nothing hurts him |
-| `k` | Start at the stage's boss (Two-Bit; with `m` Big Shell Dillon, with `h` Doc Gila, with `c` Jackrabbit Jack, with `t` Sting, with `i` El Toro, with `n` the duel and Diamondback), skipping the opening and the waves |
+| `k` | Start at the stage's boss (Two-Bit; with `m` Big Shell Dillon, with `h` Doc Gila, with `c` Jackrabbit Jack, with `t` Sting, with `i` Bullrush, with `n` the duel and Diamondback), skipping the opening and the waves |
 | `m` | Start on Main Street |
 | `h` | Start in Ghost Town (haunted) |
 | `c` | Start on the Cattle Drive |

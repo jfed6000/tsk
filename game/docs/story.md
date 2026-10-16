@@ -50,7 +50,7 @@ scene on, he's sizing the hero up as footwear.
 | 3 | **Ghost Town** (built, browser) | **Doc Gila**, a Gila monster card sharp | Runs the saloon. A brawl through swinging doors, tables and falling signs. |
 | 4 | **The Cattle Drive** (built, browser) | **Jackrabbit Jack**, the rustler | A stampede chase on the back of a longhorn: the Metal Slug vehicle level. |
 | 5 | **The Train Heist** (built, browser and F256) | **Sting**, a scorpion with too much dynamite | Fighting along the roofs of a moving train. The tunnel ducking writes itself. |
-| 6 | **The Mission** (built, browser) | Waves, then Diamondback's enforcer **El Toro**, a minotaur bull | A last stand defending the town, *Magnificent Seven* or Alamo style: the gang batters the church doors the townsfolk are barred behind. The bull is the honest brute before the treacherous snake (the user weighed a snake; Diamondback is the snake, and the rattlers are already common enemies). Knocked out, Diamondback's word from the dark sets up High Noon. |
+| 6 | **The Mission** (built, browser) | Waves, then Diamondback's enforcer **Bullrush**, a minotaur bull (first called El Toro; renamed 2026-10-16, the user's call) | A last stand defending the town, *Magnificent Seven* or Alamo style: the gang batters the church doors the townsfolk are barred behind. The bull is the honest brute before the treacherous snake (the user weighed a snake; Diamondback is the snake, and the rattlers are already common enemies). Knocked out, Diamondback's word from the dark sets up High Noon. |
 | 7 | **High Noon** (built, browser) | **Diamondback** | The showdown on Main Street. It opens with a quick-draw duel, except he kicks: on DRAW! a stone off his boot knocks the gun from Diamondback's tail. Then the fight. |
 
 ### Optional subplot: the Ugly (cut, 2026-10-16)
@@ -102,7 +102,7 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
   - **Two-Bit:** *"I BURIED YOU MYSELF!"*
   - **Doc Gila:** *"CARE TO CUT THE DECK, PARDNER?"*
   - **Sting:** *"NOBODY GETS OFF THIS TRAIN!"*
-  - **El Toro:** *"SAY YER PRAYERS, BOOTS!"*
+  - **Bullrush:** *"SAY YER PRAYERS, BOOTS!"*
   - **Diamondback:** *"I'VE BEEN NEEDIN' A NEW PAIR."* (in the game, before the duel)
 
 ## Open questions

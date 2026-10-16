@@ -334,7 +334,7 @@ One program module, **`tsk`**, assembled from:
       the death scene's `Blowback`) - the train's loops keep theirs on the stack.
     - **Cost:** the worst pass in the chain Ghost Town → Cattle Drive → Train Heist is 91K cycles.
 15. ✓ **The Mission** *(2026-10-15: `tsk` 26.8K of 32,768; `tskmi` 3.7K of 8,192; data 5.6K of 7,936)*: stage 5
-    (`SG.Dusk+SG.Siege`), after the Train Heist; `tsk i` starts there (m, h and c together), `tsk ik` at El Toro,
+    (`SG.Dusk+SG.Siege`), after the Train Heist; `tsk i` starts there (m, h and c together), `tsk ik` at Bullrush,
     `make mamemission` runs `tsk ibg`.
     - **The doors are tiles**: the exporter's fourth map for the stage (`MI.MAP3`, `DOR`) holds their four states'
       64x80 patches side by side, and `mission.a DoorTiles` copies a state's 4x5 cells into the street map in RAM
@@ -346,7 +346,7 @@ One program module, **`tsk`**, assembled from:
       `RaidAppr` (the start of `DAppr`) sends them for the doors unless he's right there and fewer than two are at
       him; at the doors `ES.Batter`, a blow every 0.8 s (`HitDoor`: splinters, the thud). Busted (`BustDoor`), it
       costs a hat (none left: game over); after 2 s `Barred`, and the ones at the doors are thrown out.
-    - **El Toro** (`toro.a`, `bkind` 5, `TS.*`): his stuck is Dillon's dizzy number, so `HitBoss` gives it half
+    - **Bullrush** (`toro.a`, `bkind` 5, `TS.*`): his stuck is Dillon's dizzy number, so `HitBoss` gives it half
       again for free; `ToroReact` (his hide: the third hit on the move turns him), `ToroRage` (half health);
       `Trample` knocks his own down once a charge (a bit a slot); the stomp's dust walls (`tshk`, `ShkStep`,
       `DrawMission`); `TShove` (solid). KO'd: `Diamondback`'s banner (three centred words, `MissionWords` from

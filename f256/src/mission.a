@@ -7,7 +7,7 @@
 *   on him, the rest keep at it.  The doors are tiles: their state's 4x5
 *   cells copied from the fourth map (MI.MAP3: the four states side by
 *   side) into the street map (DoorTiles).  Busted, it costs a hat; the
-*   townsfolk throw them out and bar the doors again.  El Toro's walls of
+*   townsfolk throw them out and bar the doors again.  Bullrush's walls of
 *   dust (his stomp), the banners (HERE THEY COME!, Diamondback's word),
 *   and the autopilot here.  The tskmi stage module, with toro.a.
 ********************************************************************
@@ -268,7 +268,7 @@ SiegeBell           lda       #SF.Bell
                     ldb       #96
                     bra       Banner
 
-* Diamondback - El Toro's out cold: a word out of the dark
+* Diamondback - Bullrush's out cold: a word out of the dark
 Diamondback         lda       #SF.Rattle
                     lbsr      Sfx
                     ldx       #TX.highnoon
@@ -509,7 +509,7 @@ meb3                lda       EN.T,x
 meb9                lbra      EnMove
 
 ********************************************************************
-* El Toro's walls of dust: jump them (2); they bowl over his own too
+* Bullrush's walls of dust: jump them (2); they bowl over his own too
 ********************************************************************
 * NewShock - tdx, tdz = where it starts (12.4)
 NewShock            leax      tshk,u
@@ -696,7 +696,7 @@ mdm9                rts
 DzTab               fdb       0,24*16,-24*16
 
 ********************************************************************
-* BotMission - the autopilot and El Toro: over his dust, over the stomp
+* BotMission - the autopilot and Bullrush: over his dust, over the stomp
 *   coming, out of his lane when he paws or charges.  Exit: carry clear
 *   and B = the input if acting
 ********************************************************************

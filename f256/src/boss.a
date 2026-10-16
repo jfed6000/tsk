@@ -260,7 +260,7 @@ whb5                 tst       <bsum               half his health: he raises th
                     lbsr      DiamondRage
                     ldx       <bslot
                     lbra      whb9
-whs6                cmpa      #5                  El Toro: seein' red (toro.a)
+whs6                cmpa      #5                  Bullrush: seein' red (toro.a)
                     bne       whs5
                     lbsr      ToroRage
                     ldx       <bslot
@@ -305,7 +305,7 @@ whs0                lda       #66
                     lbsr      NewSkel
                     ldx       <bslot
 whb9                 lda       bkind,u             Doc Gila's tricks (ghost.a), Jack's way out (jack.a),
-                    cmpa      #6                  Sting's staggers and dropped sticks (sting.a), El Toro's
+                    cmpa      #6                  Sting's staggers and dropped sticks (sting.a), Bullrush's
                     lbeq      DiamondReact        hide (toro.a), Diamondback's staggers (diamond.a)
                     cmpa      #5
                     lbeq      ToroReact
@@ -353,7 +353,7 @@ BossStep            stx       <bslot
                     tst       EN.Hp,x
                     beq       wbs0
                     lbra      EStop
-wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila, 3 Jack, 4 Sting, 5 El Toro,
+wbs0                lda       bkind,u             0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila, 3 Jack, 4 Sting, 5 Bullrush,
                     cmpa      #6                  6 Diamondback
                     lbeq      DiamondStep
                     cmpa      #5

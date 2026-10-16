@@ -60,7 +60,7 @@ SF.Creak            equ       20                  a pit-prop coming
 SF.Boom             equ       21                  dynamite
 SF.Bell             equ       22                  the mission bell: here they come (channel 11)
 SF.Thud             equ       23                  a blow on the church doors
-SF.Bellow           equ       24                  El Toro (channel 9, a tuba sagging)
+SF.Bellow           equ       24                  Bullrush (channel 9, a tuba sagging)
 
 ********************************************************************
 * SndInit - after the music is loaded: the effect channels' instruments
@@ -90,7 +90,7 @@ nsi3                 lbsr      MidiFlush
                     andcc     #$FE
 nsi9                 rts
 
-* channels 9, 11-15: the tuba (El Toro), the bells, the whistle, gunshot, breath (the whoosh), timpani
+* channels 9, 11-15: the tuba (Bullrush), the bells, the whistle, gunshot, breath (the whoosh), timpani
 SfxInit             fcb       $C8,58,$B8,7,120
                     fcb       $CA,14,$BA,7,110
                     fcb       $CB,78,$BB,7,100

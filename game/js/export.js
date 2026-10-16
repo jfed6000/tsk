@@ -310,7 +310,7 @@ T.runExport = function (A) {
     ['stick', SG.stick, 14, true, SG.stick[0].ox, SG.stick[0].oy]], B.OX, B.OY);
   addGroup('TP', [['portal', [TRS.portal], 1, false, TRS.portal.ox, TRS.portal.oy]], 0, 0);              // (mirrored: the way out)
   addGroup('TQ', [['boom', SG.boom, 1, false, SG.boom[0].ox, SG.boom[0].oy], ['prop', [TRS.prop], 1, false, TRS.prop.ox, TRS.prop.oy]], 0, 0, false);
-  bank = 'MI';                                     // the Mission: El Toro, and the splinters off the church doors
+  bank = 'MI';                                     // the Mission: Bullrush, and the splinters off the church doors
   addGroup('XMI', wordsOf('MI'), 0, 0, false, 'TX');
   const TO = T.buildToro(), MSP = T.buildMissionSprites();
   addGroup('TO', [['idle', TO.idle, 3, true], ['walk', TO.walk, 7, true], ['talk', TO.talk, 6, true], ['paw', TO.paw, 6, true],

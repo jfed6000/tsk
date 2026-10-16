@@ -104,7 +104,7 @@ BM.X                equ       1
 BM.Z                equ       3
 BM.Size             equ       5
 
-* the Mission (mission.a, toro.a): El Toro's states (1 approach, 4 recover, 5 stagger, 8 stuck - Dillon's dizzy: half
+* the Mission (mission.a, toro.a): Bullrush's states (1 approach, 4 recover, 5 stagger, 8 stuck - Dillon's dizzy: half
 *   again damage - and 9 KO as Dillon's, where boss.a's shared code tests them), his health; the doors; the dust walls
 TS.Intro            equ       0                   through the side gate at a charge: "SAY YER PRAYERS, BOOTS!"
 TS.Appr             equ       1

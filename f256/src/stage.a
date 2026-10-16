@@ -321,7 +321,7 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BarTH-StgTab
                     fdb       TX.trainh,TX.midday,TX.thclear
                     fdb       FileTH-StgTab
-                    fdb       MI.W                the Mission at sundown: the siege of the church doors, El Toro
+                    fdb       MI.W                the Mission at sundown: the siege of the church doors, Bullrush
                     fdb       MI.MAP0.W,MI.MAP0.Of,MI.MAP1.W,MI.MAP1.Of,MI.MAP2.W,MI.MAP2.Of
                     fcb       MI.TIL.Sets,SG.Dusk+SG.Siege,MU.laststand,7
                     fdb       WaveMI-StgTab
@@ -614,7 +614,7 @@ StartWave           ldd       ,x++
                     sta       <lock
                     lda       ,x+                 how many ($FF = the boss; +$80 = the siege: over the walls)
                     cmpa      #$FF                (then which: 0 Two-Bit, 1 Big Shell Dillon, 2 Doc Gila,
-                    bne       swb9                3 Jack, 4 Sting, 5 El Toro)
+                    bne       swb9                3 Jack, 4 Sting, 5 Bullrush)
                     ldb       ,x
                     lbeq      StartBoss
                     decb
@@ -749,7 +749,7 @@ WaveMI              fdb       0                   the Mission: along the wall, t
                     fdb       960
                     fcb       $80+6,TY.Coy,TY.Rat,TY.SkelW,TY.Coy,TY.Rat,TY.Dillo
                     fdb       960
-                    fcb       $FF,5               El Toro
+                    fcb       $FF,5               Bullrush
 WaveHN              fdb       0                   High Noon: down Main Street, then the duel at the clock tower
                     fcb       4,TY.Coy,TY.SkelW,TY.Rat,TY.Coy
                     fdb       420

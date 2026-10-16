@@ -2,7 +2,7 @@
 AimT                equ       $0021
 AttractLen          equ       $0BB8
 AttractT            equ       $04B0
-BarEN               equ       $3A78
+BarEN               equ       $3A79
 BossHp              equ       $0024
 BossTall            equ       $002C
 BR.It               equ       $0005
@@ -53,7 +53,7 @@ CySpd               equ       $000F
 CyStrikeT           equ       $000F
 CyTall              equ       $002C
 CyWindT             equ       $0019
-ddm0                equ       $4C77
+ddm0                equ       $4C78
 DGetupT             equ       $0015
 DieDur              equ       $001E
 DlEnter             equ       $0010
@@ -63,7 +63,7 @@ DlSpd               equ       $0013
 DlTall              equ       $0010
 DownT               equ       $0036
 DriftT              equ       $0080
-ds1x                equ       $5CB0
+ds1x                equ       $5CB1
 DuskEvery           equ       $0007
 DynCell             equ       $04B0
 ES.Aim              equ       $0003
@@ -88,7 +88,7 @@ ES.Strike           equ       $000C
 ES.Thrown           equ       $0013
 ES.Vault            equ       $0015
 ES.Wind             equ       $000B
-eth0                equ       $5215
+eth0                equ       $5216
 FlashLen            equ       $0008
 FlashT              equ       $0006
 FlyV                equ       $002D
@@ -295,12 +295,12 @@ TwG                 equ       $0003
 WaitT               equ       $0078
 WalkX               equ       $001C
 WalkZ               equ       $0011
-whb00               equ       $42D3
-whb1x               equ       $4304
+whb00               equ       $42D4
+whb1x               equ       $4305
 WhipDur             equ       $0012
 WhipN               equ       $000E
-whk1                equ       $4354
+whk1                equ       $4355
 WindT               equ       $0012
 wv3                 equ       $2C74
-xdi0                equ       $4CAF
-xhdd2               equ       $4E5B
+xdi0                equ       $4CB0
+xhdd2               equ       $4E5C

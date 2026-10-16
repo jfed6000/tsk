@@ -124,7 +124,7 @@ dw0a
                     lbsr      DrawRide            the Cattle Drive's fences, rocks, runners (ride.a)
                     lbsr      DrawLasso           Jack's rope (jack.a)
                     lbsr      DrawTrain           the tunnel's mouth, its pit-props, Sting's dynamite (train.a)
-                    lbsr      DrawMission         El Toro's walls of dust (mission.a)
+                    lbsr      DrawMission         Bullrush's walls of dust (mission.a)
                     lbsr      DrawNoon            the town clock's hands, the duel's stone (diamond.a)
                     lbsr      DrawEnding          Ringo's grave, the snakeskin boot (ending.a)
                     lda       sflags,u            Boot Hill: Ringo's grave; Main Street: a tumbleweed

@@ -1,5 +1,5 @@
 ********************************************************************
-* tskmi - Texas Shitkickers: the Mission's code: the siege, El Toro.
+* tskmi - Texas Shitkickers: the Mission's code: the siege, Bullrush.
 *
 * A stage module (stgmod.a): F$Loaded with the stage's art, from the
 * execution directory (CMDS), into the process's free 8K slot.  Its hook
@@ -8,7 +8,7 @@
 ********************************************************************
 
                     nam       tskmi
-                    ttl       Texas Shitkickers - the Mission's code: the siege, El Toro
+                    ttl       Texas Shitkickers - the Mission's code: the siege, Bullrush
 
                     ifp1
                     use       defsfile

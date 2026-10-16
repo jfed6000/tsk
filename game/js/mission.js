@@ -6,7 +6,7 @@
 //          the cloister arcades and the church, its doors the townsfolk are barred in behind (YARD on)
 // The church doors are tiles (L.doors: a 64x80 patch of the street map over the doorway, one a state - on the F256, 20
 // map entries rewritten when they change), never sprites: they can't be dropped when the sprites run out, and they
-// darken with the night like the church. Sprites: a splinter; and the gang's enforcer, El Toro, the minotaur bull
+// darken with the night like the church. Sprites: a splinter; and the gang's enforcer, Bullrush, the minotaur bull
 // (64x64 like the other bosses, facing right, origin at his feet).
 (function () {
 'use strict';
@@ -232,7 +232,7 @@ T.buildMissionSprites = function () {
   return { splinter };
 };
 
-// ---------------------------------------------------------------- El Toro
+// ---------------------------------------------------------------- Bullrush
 // A minotaur in the gang's colours: a bull's head on a wall of a chest, horns that sweep back and curl forward, a brass
 // ring through his nose, a red bandana, blue jeans and a big buckle, hooves. Pose: lean (forward, rad), head (down, rad),
 // legs (the stride's phase) and stride, arms ('hang', 'pump', 'up', 'down', 'hook', 'flex', 'brace'), crouch, eyes,
