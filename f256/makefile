@@ -15,7 +15,7 @@
 #   make mametrain               the Train Heist (tsk tbg) in MAME
 #   make mamemission             the Mission (tsk ibg) in MAME
 #   make mamenoon                High Noon and the ending (tsk nbg) in MAME
-#   make dist                    the release: dist/TexasShitkickers-F256-<date>.zip (tsk, TSK/, pkg/README.txt, pkg/install.sh)
+#   make dist                    the release: dist/TSK-F256.zip (tsk, TSK/, pkg/README.txt, pkg/install.sh)
 #   make reel                    the showreel: tools/reelrec.sh records every stage in MAME (reel/raw.avi, ~13 GB),
 #                                tools/reel.sh cuts it to reel/tsk-reel.mp4 over the Shitkicker Shuffle
 #   make mametitle               the title screen and its music in MAME: the MIDI the 6809 sends, as mame/midi.mid
@@ -144,5 +144,5 @@ dist: tsk $(STAGEMODS)
 	cp tsk pkg/README.txt pkg/install.sh dist/pkg/
 	cp $(STAGEMODS) dist/pkg/TSK/
 	for f in $(ASSETFILES); do cp assets/$$f dist/pkg/TSK/ || exit 1; done
-	cd dist/pkg && rm -f ../TexasShitkickers-F256-$$(date +%F).zip && zip -q -X -r ../TexasShitkickers-F256-$$(date +%F).zip README.txt install.sh tsk TSK
+	cd dist/pkg && rm -f ../TSK-F256.zip && zip -q -X -r ../TSK-F256.zip README.txt install.sh tsk TSK
 	ls -la dist/*.zip
