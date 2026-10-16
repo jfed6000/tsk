@@ -4,8 +4,10 @@
 //   mid    (scroll x0.5): the town at the edge of the desert, its windows lit
 //   street (scroll x1, one strip): the edge of town, the mission's long outer wall and its gate, then the courtyard -
 //          the cloister arcades and the church, its doors the townsfolk are barred in behind (YARD on)
-// Sprites: the church doors (DOOR: battered down in three steps, brawler.js door), a splinter; and the gang's enforcer,
-// El Toro, the minotaur bull (64x64 like the other bosses, facing right, origin at his feet).
+// The church doors are tiles (L.doors: a 64x80 patch of the street map over the doorway, one a state - on the F256, 20
+// map entries rewritten when they change), never sprites: they can't be dropped when the sprites run out, and they
+// darken with the night like the church. Sprites: a splinter; and the gang's enforcer, El Toro, the minotaur bull
+// (64x64 like the other bosses, facing right, origin at his feet).
 (function () {
 'use strict';
 const T = window.TSK;
@@ -15,7 +17,8 @@ function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483
 
 // W: the strip; YARD: where the courtyard starts (the siege's locked screen, YARD .. YARD + 320); DOOR: the church
 // doors' x (the screen's middle), their foot on the back edge of the walking band
-T.MISSION = { W: 1280, YARD: 960, DOOR: 1120 };
+T.MISSION = { W: 1280, YARD: 960, DOOR: 1120, DOORS: { x: 1088, y: 80, w: 64, h: 80 } };   // (DOORS: the patch, on the 16-px tile grid)
+const DP = { out: PAL.out, w0: '#7a4e2c', w1: '#5a361e', w2: '#94643a', ir: '#2e2a2c', ir2: '#5a5458', dk: '#24140e', bm: '#6a4428', bm2: '#8a5a34' };
 const LIGHT = { win: '#ffcc66', win2: '#f0a848', fl0: '#ffe080', fl1: '#ffb040', fl2: '#e86a20' };   // lamplight and torches: night spares them
 for (const c of Object.values(LIGHT)) T.MAIN_STREET_LIGHTS.add(c.toLowerCase());
 
@@ -170,18 +173,26 @@ T.buildMission = function (VW, VH, FLOOR) {
     s.fillStyle = LIGHT.fl2; ell(s, tx, 96, 4, 6); s.fill(); s.fillStyle = LIGHT.fl1; ell(s, tx, 97, 3, 4); s.fill(); s.fillStyle = LIGHT.fl0; ell(s, tx, 98, 1.5, 2); s.fill();
   }
   T.drawText(s, 'MISION SAN ROQUE', 790, WTOP + 16, '#5a3a24', 1, null, 'center');   // painted on the wall by the gate
-  L.street = T.pixelize(st, { out: OUT, d0: D0, d1: D1, d2: D2, f0: F0, f1: F1, f2: F2, w0: W0, w1: W1, w2: W2, br: BR, bm: BM, dk: DK,
+  const SPAL = { out: OUT, d0: D0, d1: D1, d2: D2, f0: F0, f1: F1, f2: F2, w0: W0, w1: W1, w2: W2, br: BR, bm: BM, dk: DK,
     wd: WD, wd2: WD2, tl: TL, tl2: TL2, bz: BZ, bz2: BZ2, iron: IRON, pr0: '#3e5a2a', pr1: '#5a7a3a', sign: '#5a3a24',
-    win2: LIGHT.win2, fl0: LIGHT.fl0, fl1: LIGHT.fl1, fl2: LIGHT.fl2 }, null, CLUT.bg);
+    win2: LIGHT.win2, fl0: LIGHT.fl0, fl1: LIGHT.fl1, fl2: LIGHT.fl2 };
+  L.street = T.pixelize(st, SPAL, null, CLUT.bg);
+  // the doors, one patch of street a state: the doorway with the doors drawn in (shut, battered, nearly through, busted)
+  const P = M.DOORS, pal = Object.assign({}, SPAL); Object.entries(DP).forEach(([k, v]) => pal['door_' + k] = v);
+  L.doors = doorFrames().map(fr => {
+    const cv = T.canvas(P.w, P.h), c = cv.getContext('2d');
+    c.drawImage(L.street, P.x, P.y, P.w, P.h, 0, 0, P.w, P.h);
+    c.drawImage(fr, M.DOOR - 24 - P.x, BASE + 1 - 63 - P.y);
+    return T.pixelize(cv, pal, null, CLUT.bg);
+  });
   return L;
 };
 
 // the church doors: two plank leaves under the arch, iron straps, a beam barred across. 0 shut, 1 battered (splintered
 // planks), 2 nearly through (holes, the beam cracked), 3 busted in (a leaf hanging, the dark showing). 48x64, the origin
-// at the foot of the middle. And a splinter flying off them.
-T.buildMissionSprites = function () {
-  const DP = { out: PAL.out, w0: '#7a4e2c', w1: '#5a361e', w2: '#94643a', ir: '#2e2a2c', ir2: '#5a5458', dk: '#24140e', bm: '#6a4428', bm2: '#8a5a34' };
-  const door = [0, 1, 2, 3].map(k => {
+// at the foot of the middle (drawn into the street's door patches above).
+function doorFrames() {
+  return [0, 1, 2, 3].map(k => {
     const cv = T.canvas(48, 64), c = cv.getContext('2d'), rr = rng(7 + k);
     c.translate(24, 63);
     c.save(); c.beginPath(); c.rect(-22, -54, 44, 54); c.ellipse(0, -54, 22, 10, 0, Math.PI, 0); c.clip();
@@ -210,12 +221,15 @@ T.buildMissionSprites = function () {
       c.fillStyle = DP.out; c.fillRect(-23, -33, 46, 7); c.fillStyle = DP.bm; c.fillRect(-22, -32, 44, 5); c.fillStyle = DP.bm2; c.fillRect(-22, -32, 44, 1);
       if (k === 2) { c.fillStyle = DP.out; c.beginPath(); c.moveTo(-3, -33); c.lineTo(2, -29); c.lineTo(-1, -26); c.lineTo(1, -29); c.fill(); }
     }
-    const o = T.pixelize(cv, DP, PAL.out, CLUT.spr); o.ox = 24; o.oy = 63; return o;
+    return cv;
   });
+}
+// a splinter flying off the doors
+T.buildMissionSprites = function () {
   const sp = T.canvas(8, 8), c = sp.getContext('2d');
   c.fillStyle = DP.w0; c.fillRect(1, 3, 6, 2); c.fillStyle = DP.w2; c.fillRect(1, 3, 6, 1);
   const splinter = T.pixelize(sp, DP, PAL.out, CLUT.spr); splinter.ox = 4; splinter.oy = 4;
-  return { door, splinter };
+  return { splinter };
 };
 
 // ---------------------------------------------------------------- El Toro

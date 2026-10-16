@@ -264,7 +264,7 @@ T.runBrawler = function (A) {
     ride = S.ride ? { on: true, spawnI: 0, d: 0 } : null; player.mounted = !!S.ride;
     obstacles = (S.obstacles || []).map(([kind, d, z]) => ({ kind, d, x: d, z: z ?? 40, hit: false }));
     runners = []; stampede = []; sticks = []; booms = [];
-    door = S.door ? { x: S.door.x, hp: S.door.hp, max: S.door.hp, shake: 0, bustT: 0 } : null; shocks = []; siegeT = 0;
+    door = S.door ? { x: S.door.x, hp: S.door.hp, max: S.door.hp, bustT: 0 } : null; shocks = []; siegeT = 0;
   }
 
   // ---------------------------------------------------------------- spawning
@@ -688,7 +688,7 @@ T.runBrawler = function (A) {
   // before the townsfolk throw the gang back out and bar them again
   function hitDoor(n) {
     if (!door || door.hp <= 0) return;
-    door.hp -= n; door.shake = 0.18; sfx('thud');
+    door.hp -= n; sfx('thud');
     for (let i = 0; i <= n; i++) parts.push({ k: 'chunk', img: MSP.splinter, x: door.x + (Math.random() - 0.5) * 30, z: 1, h: 16 + Math.random() * 34,
       vx: (Math.random() - 0.5) * 160, vh: 80 + Math.random() * 120, life: 0.8, max: 0.8 });
     if (door.hp <= 0) bustDoor();
@@ -706,7 +706,6 @@ T.runBrawler = function (A) {
   }
   function updateDoor(dt) {
     if (!door) return;
-    door.shake -= dt;
     if (door.bustT > 0 && (door.bustT -= dt) <= 0) {   // the townsfolk throw them out and bar the doors again
       door.bustT = 0; door.hp = door.max; sfx('tip'); popup(door.x, 64, 'BARRED AGAIN!', '#fff3c4', 1, 1.4);
       for (const e of enemies) if (e.raid && hittable(e) && Math.abs(e.x - door.x) < 60 && e.z < 30) { e.state = 'air'; e.vx = Math.sign(e.x - door.x || 1) * 150; e.vh = 260; e.t = 0; }
@@ -1917,10 +1916,6 @@ T.runBrawler = function (A) {
         if (b.state !== 'ko' && b.state !== 'vanish') put(PICK.shadow, wx(b.x), sy(b.z, 0), 16, 4, 9);
       }
     }
-    if (door) {                                  // the church doors, under everyone
-      const k = door.hp <= 0 ? 3 : door.hp <= door.max / 3 ? 2 : door.hp <= door.max * 2 / 3 ? 1 : 0, jig = door.shake > 0 ? (Math.floor(time * 40) % 2) * 2 - 1 : 0;
-      put(MSP.door[k], wx(door.x) + jig, FLOOR - 3, 24, 63, 8.8);
-    }
     for (const s of shocks) for (const sd of [-1, 1]) for (const dz of [-24, 0, 24]) {   // his stomp: a wall of dust rolling out along the ground
       const z = Math.max(0, Math.min(ZMAX, s.z + dz)), f = FX.dust[Math.min(4, (s.r / 36) | 0)][(time * 12 | 0) % 2];
       put(f, wx(s.x + sd * s.r), sy(z, 0), 4, 6, depth(z) + 0.01);
@@ -1962,6 +1957,7 @@ T.runBrawler = function (A) {
     let used = 0, dropped = 0;
     for (const d of DL) { if (used + d.n > MAX_SPRITES) { d.dropped = true; dropped += d.n; } else used += d.n; }
     stats = { records: used, dropped };
+    tally.maxRec = Math.max(tally.maxRec || 0, used + dropped);
   }
 
   function render() {
@@ -1978,6 +1974,11 @@ T.runBrawler = function (A) {
     layer(ART.far, (cx + bg) * 0.25 + run * TR.FAR); layer(ART.mid, (cx + bg) * 0.5 + run * TR.V);
     if (rockOn()) layer(ART.rock, cx * 0.5 + run * TR.V);   // in the tunnel: its rock wall behind the train (the middle layer's other map)
     layer(ART.street, ride && ride.d < S.ride.tread ? Math.floor(ride.d) % T.RANCH.LOOP : cx);
+    if (door && ART.doors) {                       // the church doors: their patch of the street map, by how battered they are
+      const k = door.hp <= 0 ? 3 : door.hp <= door.max / 3 ? 2 : door.hp <= door.max * 2 / 3 ? 1 : 0, img = ART.doors[k], P = MI.DOORS;
+      const src = S.dusk ? T.shadeOf(img, dark) : img;
+      if (P.x - cx < VW && P.x + P.w - cx > 0) ctx.drawImage(src, P.x - cx + sx, P.y + syy);
+    }
     for (let i = DL.length - 1; i >= 0; i--) {
       const d = DL[i]; if (d.dropped) continue;
       const img = d.clut ? T.variant(d.img, d.clut) : d.img;
