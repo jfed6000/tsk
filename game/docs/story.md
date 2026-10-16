@@ -170,9 +170,11 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
 
 ## Boss entrances (DECIDED 2026-10-16, the user's call)
 
-Every boss but Diamondback (his duel is his entrance) arrives with a ~4.8 s entrance: the music cuts to "Entrance" (a
-sting), everything else holds, he arrives his own way and says his line, his name card comes up, then his line about
-Ringo; then FIGHT! and the shared boss theme, "Bad Company" (the user: "Shared boss theme is good"). A kick skips it.
+Every boss but Diamondback (his duel is his entrance) arrives with a ~9 s entrance: the music cuts to "Entrance" (a
+sting), everything else holds, he arrives his own way; his name and what he is sit just over his head, and his two lines
+(his own, then Ringo's, ~4 s each) come in a speech bubble in front of his face (the user: "the bubble actually looks
+better than I thought", "about 2 seconds more on each line"). The shared boss theme, "Bad Company", comes in as the sting
+ends (the user: "Shared boss theme is good"); then FIGHT!. A kick skips it.
 
 | Boss | Name card | His line | About Ringo |
 |---|---|---|---|

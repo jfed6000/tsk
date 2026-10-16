@@ -228,8 +228,10 @@ T.runBrawler = function (A) {
     if (!name || musicOff) return;
     song = new Audio('music/' + name + '.mp3');
     song.loop = SONGS[name]; song.volume = 0.6;
-    song.play().catch(() => {});                 // (no sound until a key's been pressed: the browser's rule)
-  }
+    song.play().catch(() => { songBlocked = true; });   // (no sound until a key's been pressed: the browser's rule;
+  }                                              //  the first key starts it)
+  let songBlocked = false;
+  addEventListener('keydown', () => { if (songBlocked && song) { songBlocked = false; song.play().catch(() => { songBlocked = true; }); } });
   let hiScore = 0;
   try { hiScore = +localStorage.getItem('tsk-hi') || 0; } catch (e) {}
   function saveHi() { if (score > hiScore && !params.has('bot')) { hiScore = score; try { localStorage.setItem('tsk-hi', hiScore); } catch (e) {} } }
@@ -986,23 +988,40 @@ T.runBrawler = function (A) {
   // duel is his): the music cuts to the sting, everything else holds (the hero, his gang, their shots), he arrives in his
   // own way and says his line (his 'intro', held open), his name and what he is come up, then a line about Ringo; at the
   // end FIGHT! and the boss theme. A kick after the first beat skips it. (story.md: the user's lines, 2026-10-16)
-  const ENTRANCE = {
-    twobit: ['THE GRAVEDIGGER', 'SIX FEET UNDER WITH RINGO'],
-    dillon: ['THE TOUGHEST HIDE IN TEXAS', 'RINGO THOUGHT IT WAS HIS'],
-    gila: ['THE CARD SHARP', "RINGO DREW A DEAD MAN'S HAND"],
-    jack: ['THE RUSTLER', 'RINGO RAN TOO. NOT FAST ENOUGH'],
-    sting: ['THE DYNAMITER', 'RINGO TRIED. ASK HIM HOW IT WENT'],
-    toro: ["DIAMONDBACK'S ENFORCER", "RINGO'S GONE. YOU'RE NEXT"],
+  // His name and what he is sit just over his head; his two lines (his own, then Ringo's) come one after the other right
+  // in front of his face in a speech bubble, held still (the user, 2026-10-16).
+  const ENTRANCE = {                             // what he is, his line, his line about Ringo, how tall he stands (px)
+    twobit: ['THE GRAVEDIGGER', 'I BURIED YOU MYSELF!', 'SIX FEET UNDER WITH RINGO', 62],
+    dillon: ['THE TOUGHEST HIDE IN TEXAS', "THIS HERE'S MY TOWN!", 'RINGO THOUGHT IT WAS HIS', 60],
+    gila: ['THE CARD SHARP', "READ 'EM AND WEEP, BOOTS!", "RINGO DREW A DEAD MAN'S HAND", 62],
+    jack: ['THE RUSTLER', 'FINDERS KEEPERS, BOOTS!', 'RINGO RAN TOO. NOT FAST ENOUGH', 60],
+    sting: ['THE DYNAMITER', 'NOBODY GETS OFF THIS TRAIN!', 'RINGO TRIED. ASK HIM HOW IT WENT', 58],
+    toro: ["DIAMONDBACK'S ENFORCER", 'SAY YER PRAYERS, BOOTS!', "RINGO'S GONE. YOU'RE NEXT", 72],
   };
-  const ENT = { card: 0.8, ringo: 2.7, end: 4.8, skip: 0.8, hold: 2.0 };   // seconds into it
+  // seconds into it: each line ~4 s (the user: "about 2 seconds more on each line"); the boss theme comes in as the
+  // sting ends (4.6 s), under his line about Ringo
+  const ENT = { card: 0.4, line: 0.5, ringo: 4.7, theme: 4.6, end: 9.0, skip: 0.8, hold: 2.0 };
+  const BUBBLE = !params.has('nobubble');        // (the user liked the bubble; ?nobubble for the bare words)
   let entr = null;
-  function startEntrance() { entr = { t: 0, said: false }; music('entrance'); }
+  function startEntrance() { entr = { t: 0 }; boss.said = true; music('entrance'); }   // (his lines are the entrance's)
+  const bubbleCache = new Map();
+  function bubbleSprite(text, side) {            // a speech bubble: the line on a pale card, the tail toward his mouth
+    const key = text + side; let c = bubbleCache.get(key); if (c) return c;
+    const w = T.textWidth(text) + 10, h = 13, cv = T.canvas(w + 2, h + 6), x = cv.getContext('2d');
+    x.fillStyle = '#1f0f07'; x.fillRect(1, 0, w, h + 2); x.fillRect(0, 1, w + 2, h);
+    x.fillStyle = '#fff3c4'; x.fillRect(2, 1, w - 2, h); x.fillRect(1, 2, w, h - 2);
+    const tx = side > 0 ? w - 8 : 6;             // the tail, at the end nearest him
+    x.fillStyle = '#1f0f07'; x.fillRect(tx - 1, h + 1, 6, 2); x.fillRect(tx + (side > 0 ? 3 : 0), h + 3, 3, 2);
+    x.fillStyle = '#fff3c4'; x.fillRect(tx, h, 4, 2); x.fillRect(tx + (side > 0 ? 3 : 1), h + 2, 1, 1);
+    T.drawText(x, text, 6, 4, '#1f0f07', 1, null);
+    c = T.pixelize(cv, { k: '#1f0f07', p: '#fff3c4' }, null, T.CLUT.spr); bubbleCache.set(key, c); return c;
+  }
   function updateEntrance(dt) {                  // (before the boss's own update)
     const b = boss;
     if (!entr || !b) { entr = null; return; }
     entr.t += dt;
-    if ((pressed.snap || pressed.side || pressed.jump) && entr.t > ENT.skip) { entr.t = Math.max(entr.t, ENT.end); entr.said = true; }
-    if (!entr.said && entr.t >= ENT.ringo) { entr.said = true; popup(b.x, FLOOR + b.z - 66, ENTRANCE[b.type][1], '#fff3c4', 1, 2.0); }
+    if ((pressed.snap || pressed.side || pressed.jump) && entr.t > ENT.skip) entr.t = Math.max(entr.t, ENT.end);
+    if (entr.t >= ENT.theme) music('bossfight');   // (music() ignores the song already playing)
     if (entr.t >= ENT.end) {                     // FIGHT!
       entr = null; if (b.state === 'intro') b.t = 99;
       popup(lock + VW / 2, 66, 'FIGHT!', '#ff9d3c', 3, 1.0); sfx('bell'); music('bossfight');
@@ -2077,8 +2096,17 @@ T.runBrawler = function (A) {
         if (S.intro) { center(T.textSprite('TEXAS', '#ffe7b0', 4), 50); center(T.textSprite('SHITKICKERS', '#ff9d3c', 4), 78); }
         center(T.textSprite(S.name, '#ffd34a', S.intro ? 2 : 3), S.intro ? 114 : 66); center(T.textSprite(S.sub, '#e8a070', 1), S.intro ? 132 : 88);
       }
-      if (entr && boss && entr.t >= ENT.card && entr.t < ENT.end - 0.2) {   // the boss's name card
-        center(T.textSprite(boss.name, '#ffd34a', 3), 56); center(T.textSprite(ENTRANCE[boss.type][0], '#e8a070', 1), 78);
+      if (entr && boss && boss.h <= 0 && entr.t >= ENT.card && entr.t < ENT.end - 0.1) {   // his entrance: name, lines
+        const E2 = ENTRANCE[boss.type], bx = wx(boss.x), top = FLOOR + boss.z - E2[3];
+        const at = (img, x, y) => put(img, Math.max(2, Math.min(VW - 2 - img.width, Math.round(x))), Math.round(y), 0, 0, 0);
+        const nm = T.textSprite(boss.name, '#ffd34a', 2), nk = T.textSprite(E2[0], '#e8a070', 1);
+        at(nm, bx - nm.width / 2, top - 26); at(nk, bx - nk.width / 2, top - 13);
+        const line = entr.t >= ENT.ringo ? E2[2] : entr.t >= ENT.line ? E2[1] : null;
+        if (line) {                              // in front of his face, on the side he faces
+          const f = boss.face || -1, im = BUBBLE ? bubbleSprite(line, -f) : T.textSprite(line, '#fff3c4', 1);
+          const y = top + (BUBBLE ? 6 : 14);
+          at(im, f < 0 ? bx - 22 - im.width : bx + 22, y);
+        }
       }
       if (phase === 'clear') { center(T.textSprite(S.name + ' CLEAR!', '#ffd34a', 3), 70); center(T.textSprite('SCORE ' + score, '#fff3c4', 1), 96); }
       if (phase === 'end') { center(T.textSprite('TO BE CONTINUED...', '#ff9d3c', 2), 80); if (Math.floor(phaseT * 3) % 2) center(T.textSprite('PRESS JUMP TO RIDE AGAIN', '#c3c8d8', 1), 110); }
