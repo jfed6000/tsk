@@ -74,7 +74,9 @@ T.runBrawler = function (A) {
   const MI = T.MISSION, MSP = T.buildMissionSprites(), TORO = T.buildToro();   // the Mission: the church doors; El Toro
   let door = null, shocks = [], siegeT = 0;
   const NO = T.NOON, NSP = T.buildNoonSprites(), DBK = T.buildDiamondback();   // High Noon: the clock's hands, the snakeskin boots; Diamondback
-  let pebble = null, struck = false, ending = null;   // the duel's kicked stone; the clock's struck noon; the ending, while it plays        // the doors (hp, shaking, busted), his stomp's shockwaves, the lull between siege waves
+  let pebble = null, struck = false, ending = null;
+  const SECRETS = T.buildSecrets(), MAX_HATS = 9, HAT_EVERY = 30000;   // the hidden hats (one a stage); a hat every 30,000 points
+  let secret = null, nextHat = HAT_EVERY;   // the duel's kicked stone; the clock's struck noon; the ending, while it plays        // the doors (hp, shaking, busted), his stomp's shockwaves, the lull between siege waves
   let tunnel = null, tunnelT = 0, tdark = 0;
   const tally = { fell: 0, swept: 0, ko: 0, clank: 0, shove: 0, kicked: 0 };   // (for the test harness: outlaws down the gaps, swept off, KO'd)       // a tunnel coming or going by; the next one's in tunnelT; the dark in it
 
@@ -88,7 +90,7 @@ T.runBrawler = function (A) {
   };
   const STAGES = {
     boothill: {
-      name: 'BOOT HILL', sub: 'MIDNIGHT', W: 1920, gang: COYOTE, lightning: true, intro: true, next: 'mainstreet',
+      name: 'BOOT HILL', sub: 'MIDNIGHT', W: 1920, secret: [1060, 2, 'bh'],  gang: COYOTE, lightning: true, intro: true, next: 'mainstreet',
       art: () => { const L = T.buildNightLayers(VW, VH, FLOOR); return { far: L.far, mid: L.mid, street: T.buildGraveyardStreet(VW, VH, FLOOR) }; },
       waves: [
         { cam: 0, gang: ['skel@', 'dillo', 'skel@'] },
@@ -100,7 +102,7 @@ T.runBrawler = function (A) {
       barrels: [[300, 64, 'beans'], [700, 20, 'whip'], [1100, 60, 'beans'], [1350, 30, 'gun'], [1560, 50, 'beans']],
     },
     mainstreet: {
-      name: 'MAIN STREET', sub: 'DUSK', W: 2400, gang: MANGY, dusk: true, next: 'ghosttown',
+      name: 'MAIN STREET', sub: 'DUSK', W: 2400, secret: [1530, 2, 'ms'],  gang: MANGY, dusk: true, next: 'ghosttown',
       art: () => T.buildMainStreet(VW, VH, FLOOR),
       waves: [
         { cam: 0, gang: ['coyote', 'coyote', 'dillo'] },
@@ -113,7 +115,7 @@ T.runBrawler = function (A) {
       barrels: [[250, 20, 'beans'], [560, 60, 'whip'], [960, 10, 'beans'], [1330, 50, 'gun'], [1520, 15, 'whip'], [1800, 66, 'gun'], [1900, 20, 'beans']],
     },
     ghosttown: {                                 // level 3: Doc Gila's town, the street then his saloon
-      name: 'GHOST TOWN', sub: 'MOONRISE', W: T.GHOST.W, gang: MANGY, next: 'cattledrive',
+      name: 'GHOST TOWN', sub: 'MOONRISE', W: T.GHOST.W, secret: [1500, 2, 'gt'],  gang: MANGY, next: 'cattledrive',
       art: () => T.buildGhostTown(VW, VH, FLOOR),
       waves: [
         { cam: 0, gang: ['rattler', 'coyote', 'skel'] },
@@ -128,7 +130,7 @@ T.runBrawler = function (A) {
       signs: [[200, 'BARBER'], [470, 'DENTIST'], [760, 'WHISKEY'], [980, 'GUNS']],   // hanging signs that fall as you pass
     },
     cattledrive: {                               // level 4: on a longhorn along the trail, then Jackrabbit Jack's corral
-      name: 'THE CATTLE DRIVE', sub: 'SUNUP', W: T.RANCH.W, gang: MANGY, next: 'train',
+      name: 'THE CATTLE DRIVE', sub: 'SUNUP', W: T.RANCH.W, secret: [1300, 2, 'cd'],  gang: MANGY, next: 'train',
       art: () => T.buildRanch(VW, VH, FLOOR),
       // the ride (d = how far he's ridden): the first TREAD px the camera holds still and the trail runs under him (its
       // first LOOP px, twice: ranch.js), then the camera rolls on to the corral; it ends at camera end: WHOA!
@@ -147,7 +149,7 @@ T.runBrawler = function (A) {
       barrels: [[1300, 30, 'beans'], [1420, 64, 'whip'], [1560, 20, 'gun'], [1660, 50, 'beans']],
     },
     train: {                                     // level 5: along the roofs of a moving train, caboose to engine
-      name: 'THE TRAIN HEIST', sub: 'MIDDAY', W: TR.W, gang: MANGY, next: 'mission', zmax: TR.ZMAX, train: true,
+      name: 'THE TRAIN HEIST', sub: 'MIDDAY', W: TR.W, secret: [1500, 2, 'th'],  gang: MANGY, next: 'mission', zmax: TR.ZMAX, train: true,
       art: () => T.buildTrain(VW, VH, FLOOR),
       gaps: TR.GAPS,                             // between the cars: jump them (fall in: 3, and back on the car)
       tunnel: { first: 12, every: 24, warn: 2.4, inside: 5, props: [0.6, 2.6] },   // TUNNEL! - duck (hold down) or be knocked flat; then two pit-props in the dark
@@ -162,7 +164,7 @@ T.runBrawler = function (A) {
       barrels: [[300, 16, 'beans'], [640, 30, 'whip'], [980, 10, 'beans'], [1300, 36, 'gun'], [1600, 20, 'beans'], [1800, 30, 'beans']],
     },
     mission: {                                   // level 6: the last stand at the mission, from sundown into the night
-      name: 'THE MISSION', sub: 'SUNDOWN', W: MI.W, gang: MANGY, next: 'highnoon', dusk: true, dark: [0, 0.06, 0.14, 0.22, 0.3, 0.38, 0.46],
+      name: 'THE MISSION', sub: 'SUNDOWN', W: MI.W, secret: [700, 2, 'mi'],  gang: MANGY, next: 'highnoon', dusk: true, dark: [0, 0.06, 0.14, 0.22, 0.3, 0.38, 0.46],
       art: () => T.buildMission(VW, VH, FLOOR),
       door: { x: MI.DOOR, hp: 30 },              // the church doors, the town barred in behind them: the gang batters them
       waves: [
@@ -179,7 +181,7 @@ T.runBrawler = function (A) {
       barrels: [[250, 30, 'beans'], [560, 60, 'whip'], [820, 20, 'gun'], [1000, 70, 'beans'], [1250, 64, 'whip']],
     },
     highnoon: {                                  // level 7: back down Main Street at noon, the last of the gang; at the clock tower, Diamondback
-      name: 'HIGH NOON', sub: 'MAIN STREET', W: NO.W, gang: MANGY, next: null, noon: true,
+      name: 'HIGH NOON', sub: 'MAIN STREET', W: NO.W, secret: [1010, 2, 'hn'],  gang: MANGY, next: null, noon: true,
       art: () => T.buildNoon(VW, VH, FLOOR),
       waves: [
         { cam: 0, gang: ['coyote', 'skel', 'rattler', 'coyote'] },
@@ -287,6 +289,8 @@ T.runBrawler = function (A) {
     runners = []; stampede = []; sticks = []; booms = [];
     door = S.door ? { x: S.door.x, hp: S.door.hp, max: S.door.hp, bustT: 0 } : null; shocks = []; siegeT = 0;
     pebble = null; struck = false; ending = null;
+    secret = S.secret ? { x: S.secret[0], z: S.secret[1], key: S.secret[2], open: false } : null;
+    if (!keep) { score = 0; nextHat = HAT_EVERY; }    // (a new game)
   }
 
   // ---------------------------------------------------------------- spawning
@@ -478,7 +482,7 @@ T.runBrawler = function (A) {
   function setS(s) { const p = player; p.state = s; p.t = 0; p.hitSet.clear(); }
   function underfoot() {
     const p = player;
-    return items.find(it => it.type !== 'beans' && it.h <= 0 && Math.abs(it.x - p.x) < 16 && Math.abs(it.z - p.z) < 10);
+    return items.find(it => it.type !== 'beans' && it.type !== 'hat' && it.h <= 0 && Math.abs(it.x - p.x) < 16 && Math.abs(it.z - p.z) < 10);
   }
   function grabTarget(dir) {
     const p = player;
@@ -488,7 +492,7 @@ T.runBrawler = function (A) {
   // the death scene: he falls, a hat lifts off the lives and floats down like a leaf; he reaches up, catches it,
   // gets up with it held high and puts it on. Those near him are blown back as he falls and again as he gets up;
   // meanwhile the gang hangs back and the boss waits.
-  const HUD_HAT = i => [108 + i * 24 + T.HAT.OX, 6 + T.HAT.OY];   // a lives hat's place on the screen
+  const HUD_HAT = i => [108 + (i >= 3 ? 0 : i) * 24 + T.HAT.OX, 6 + T.HAT.OY];   // a lives hat's place on the screen (four or more: the one with the count)
   function updateDeath(dt) {
     const p = player, d = death;
     d.t += dt; p.t += dt;
@@ -659,8 +663,10 @@ T.runBrawler = function (A) {
       setS('fall'); p.vh = 0; p.h = 0; sfx('hurt');
     }
     if (!['knee', 'grab', 'throw', 'fall'].includes(p.state)) resolveHeroAttacks();
-    for (const it of items) if (it.type === 'beans' && it.h <= 0 && Math.abs(it.x - p.x) < 14 && Math.abs(it.z - p.z) < 10) {
-      it.gone = true; p.hp = Math.min(MAX_HP, p.hp + 7); sfx('check'); popup(it.x, FLOOR + it.z - 30, 'BEANS!', '#ffd34a', 1);
+    for (const it of items) if ((it.type === 'beans' || it.type === 'hat') && it.h <= 0 && Math.abs(it.x - p.x) < 14 && Math.abs(it.z - p.z) < 10) {
+      it.gone = true;
+      if (it.type === 'hat') gainHat(it.x, it.z);
+      else { p.hp = Math.min(MAX_HP, p.hp + 7); sfx('check'); popup(it.x, FLOOR + it.z - 30, 'BEANS!', '#ffd34a', 1); }
     }
     items = items.filter(it => !it.gone);
     pickAnim(p);
@@ -691,6 +697,7 @@ T.runBrawler = function (A) {
     }
     for (const br of barrels) if (br.alive && !p.hitSet.has(br) && inLane(br, p) && b.x0 < br.x + 9 && b.x1 > br.x - 9) { p.hitSet.add(br); breakBarrel(br); }
     kickShell(b); kickTable(b); kickSticks(b);
+    if (secret && !secret.open && inLane(secret, p, 14) && b.x0 < secret.x + 12 && b.x1 > secret.x - 12 && b.h0 < 30) openSecret();
     for (const s of skulls) if (s.state === 'ground' && !p.hitSet.has(s) && inLane(s, p) && b.x0 < s.x + 6 && b.x1 > s.x - 6 && b.h0 < 14) {
       p.hitSet.add(s); s.state = 'kicked'; s.vx = p.face * 330; s.vh = 70; s.h = 6;      // kick the skull down the lane
       sfx('hit'); spark(s.x, s.z, 6, true); popup(s.x, FLOOR + s.z - 20, 'FORE!', '#ffd34a', 1);
@@ -733,6 +740,19 @@ T.runBrawler = function (A) {
       door.bustT = 0; door.hp = door.max; sfx('tip'); popup(door.x, 64, 'BARRED AGAIN!', '#fff3c4', 1, 1.4);
       for (const e of enemies) if (e.raid && hittable(e) && Math.abs(e.x - door.x) < 60 && e.z < 30) { e.state = 'air'; e.vx = Math.sign(e.x - door.x || 1) * 150; e.vh = 260; e.t = 0; }
     }
+  }
+
+  // the hidden hat: kick the thing at the back of the street (its glint's the tell) and a hat tumbles out of it
+  function openSecret() {
+    secret.open = true; sfx('break'); hitstop = 0.05; shake = Math.max(shake, 3);
+    for (let i = 0; i < 8; i++) parts.push({ k: 'chunk', img: FX.chunk[(Math.random() * FX.chunk.length) | 0], x: secret.x, z: secret.z, h: 8 + Math.random() * 16,
+      vx: (Math.random() - 0.5) * 160, vh: 80 + Math.random() * 140, life: 0.9, max: 0.9 });
+    items.push({ type: 'hat', x: secret.x, z: secret.z + 10, h: 24, vh: 230 });
+  }
+  function gainHat(x, z) {                        // a hat: a spare life (at most nine); a full rack, points instead
+    const p = player;
+    if (p.lives < MAX_HATS) { p.lives++; sfx('tip'); popup(x, FLOOR + z - 44, 'ANOTHER HAT!', '#ffd34a', 1, 1.4); }
+    else { score += 5000; sfx('check'); popup(x, FLOOR + z - 44, 'FULL HAT RACK!', '#ffd34a', 1, 1.4); }
   }
 
   function breakBarrel(b) {
@@ -2007,7 +2027,8 @@ T.runBrawler = function (A) {
       if (Math.floor(phaseT * 2) % 2 === 0) center(T.textSprite('PRESS JUMP', '#ffd34a', 2), 204);
     } else if (phase !== 'intro' && phase !== 'ending') {
       put(T.bossBar('SHITKICKERS', Math.max(0, p.hp), MAX_HP), 6, 6, 0, 0, 0);
-      for (let i = 0; i < p.lives; i++) put(HAT, 108 + i * 24, 6, 0, 0, 0);
+      if (p.lives <= 3) for (let i = 0; i < p.lives; i++) put(HAT, 108 + i * 24, 6, 0, 0, 0);   // the hats: up to three, then one and a count
+      else { put(HAT, 108, 6, 0, 0, 0); put(T.textSprite('X' + p.lives, '#ffd34a', 2), 134, 10, 0, 0, 0); }
       put(T.textSprite('SCORE ' + String(score).padStart(7, '0'), '#fff3c4', 1), 6, 26, 0, 0, 0);
       if (p.weapon) {
         if (p.weapon.type === 'gun') for (let i = 0; i < p.weapon.ammo; i++) put(PICK.bulletIcon, 10 + i * 6, 38, 4, 4, 0);
@@ -2119,7 +2140,15 @@ T.runBrawler = function (A) {
       if (g.state !== 'hang') put(PICK.shadowS, wx(g.x), sy(g.z, 0), 12, 4, 9);
     }
     if (boss && boss.table) { const t = boss.table; put(GPROPS.flipped, wx(t.x), sy(t.z, 0), GPROPS.flipped.ox, GPROPS.flipped.oy, depth(t.z)); put(PICK.shadow, wx(t.x), sy(t.z, 0), 16, 4, 9); }
-    for (const it of items) { put(PICK[it.type], wx(it.x), sy(it.z, it.h), 12, 12, depth(it.z) + 0.002); if (Math.floor(time * 4) % 2 && it.type !== 'beans') put(T.textSprite('X', '#ffd34a', 1), wx(it.x), sy(it.z, it.h) - 18, 1, 0, 1); }
+    for (const it of items) {
+      if (it.type === 'hat') { put(HAT, wx(it.x), sy(it.z, it.h), T.HAT.OX, T.HAT.OY, depth(it.z) + 0.002); put(PICK.shadowS, wx(it.x), sy(it.z, 0), 12, 4, 9); continue; }
+      put(PICK[it.type], wx(it.x), sy(it.z, it.h), 12, 12, depth(it.z) + 0.002); if (Math.floor(time * 4) % 2 && it.type !== 'beans') put(T.textSprite('X', '#ffd34a', 1), wx(it.x), sy(it.z, it.h) - 18, 1, 0, 1);
+    }
+    if (secret && !ending) {                       // the hidden hat's hiding place; whole, it glints now and then
+      const im = SECRETS[secret.key][secret.open ? 1 : 0];
+      put(im, wx(secret.x), sy(secret.z, 0), im.ox, im.oy, depth(secret.z) + 0.003);
+      if (!secret.open && (time % 2.6) < 0.16) put(FX.star[2], wx(secret.x) + 4, sy(secret.z, 26), 16, 16, 2);
+    }
     if (tumble) { put(TUMBLE[(time * 10 | 0) % 4], wx(tumble.x), sy(tumble.z, tumble.h), 12, 22, depth(tumble.z)); put(PICK.shadowS, wx(tumble.x), sy(tumble.z, 0), 12, 4, 9); }
     for (const s of sticks) { put(STING.stick[(time * 14 | 0) % 2], wx(s.x), sy(s.z, s.h + 3), 8, 6, depth(s.z) - 0.002, s.vx < 0 ? -1 : 1); put(PICK.shadowS, wx(s.x), sy(s.z, 0), 12, 4, 9); }
     for (const q of booms) if (q.t >= 0) put(STING.boom[q.t < 0.08 ? 0 : q.t < 0.26 ? 1 : 2], wx(q.x), sy(q.z, 0), 24, 34, depth(q.z) - 0.004);
@@ -2301,6 +2330,7 @@ T.runBrawler = function (A) {
     }
     updateEnemies(dt); updateBoss(dt); updateDoor(dt); updateShocks(dt); updatePebble(dt); updateSkulls(dt); updateShots(dt); updateClods(dt); updateParts(dt); updateSigns(dt); updateRide(dt); updateTunnel(dt); updateSticks(dt);
     if (phase === 'play' && !death) updateWaves(dt);
+    if (phase === 'play' && score >= nextHat) { nextHat += HAT_EVERY; gainHat(player.x, player.z); }   // a hat every 30,000 points
     const DK = S.dark || DARK;
     if (S.dusk) dark += (DK[Math.min(waveI, DK.length - 1)] - dark) * Math.min(1, dt * 0.6);
     // ambience: a tumbleweed now and then; on Main Street, dust motes in the low sun
@@ -2324,7 +2354,7 @@ T.runBrawler = function (A) {
   }
 
   if (params.has('bot') || params.has('dbg')) T.dbgP = () => player;
-  if (params.has('bot') || params.has('dbg')) T.dbgSet = o => { if ('lock' in o) lock = o.lock; if ('camX' in o) camX = o.camX; if ('bossHp' in o && boss) boss.hp = o.bossHp; if ('doorHp' in o && door) door.hp = o.doorHp; };
+  if (params.has('bot') || params.has('dbg')) T.dbgSet = o => { if ('lock' in o) lock = o.lock; if ('camX' in o) camX = o.camX; if ('bossHp' in o && boss) boss.hp = o.bossHp; if ('doorHp' in o && door) door.hp = o.doorHp; if ('score' in o) score = o.score; };
   if (params.has('bot') || params.has('dbg')) T.dbg = () => ({ stage: S.name, zmax: ZMAX, tally, phase, camX, waveI, lock, score, time, tunnel: tunnel && { st: tunnel.st, x: tunnel.x }, tdark, door: door && door.hp, ending: ending && ending.step, duel: boss && boss.res, spr: stats.records, drop: stats.dropped, boss: boss && { type: boss.type, state: boss.state, hp: boss.hp, x: Math.round(boss.x) }, sticks: sticks.length,
     p: { x: player.x, z: player.z, h: player.h, hp: player.hp, lives: player.lives, state: player.state },
     enemies: enemies.map(e => ({ type: e.type, state: e.state, x: Math.round(e.x), h: Math.round(e.h), fell: !!e.fell })) });   // (the test harness reads it)

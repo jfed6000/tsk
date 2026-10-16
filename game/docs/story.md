@@ -117,7 +117,10 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
 - Is Vernon (the Ugly) in or out?
 - **Pickup weapons (wanted, 2026-10-12):** a bullwhip and a six-shooter with exactly six shots, then he tosses it.
   Both are in the brawler test. Throwing spurs are still an option for a permanent sub-weapon.
-- Lives and continues: arcade continues, or Mario-style lives with 1-ups (a spare hat?).
+- **Lives: DECIDED (2026-10-16):** the hats are the lives, no continues. Another hat every 30,000 points (merit) and one
+  hidden on each stage behind something at the back of the street you kick (a glint's the tell): a cracked headstone, a
+  coffin, a whiskey crate, the corral's trough, a roof hatch, a loose stone in the mission's wall, the barber's pole.
+  At most nine; the HUD shows three, then one and a count ("X5"); a hat at nine is 5,000 points ("FULL HAT RACK!").
 - **What kind of game? DECIDED (2026-10-12): a brawler.** The user: "let's add the undead posse skeleton gunslingers and
   make a brawler." The platformer is kept at `?mode=platformer`. The options considered were:
   - **Ninja Gaiden** (action platformer): the natural evolution of what's built. Sharper combat, a wall-kick, the
