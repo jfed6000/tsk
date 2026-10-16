@@ -45,6 +45,7 @@ ShootDur            equ       HR.shoot.N*HR.shoot.T+3
 PickInit            leax      br,u                this stage's barrels
                     ldy       stgp,u
                     lda       SR.NBar,y
+                    beq       pi9                 (the ending has none: 0 isn't 256)
                     sta       <tmpn
                     ldd       SR.Bars,y
                     leay      StgTab,pcr
@@ -70,7 +71,7 @@ pi1                 lda       #1
                     leax      BR.Size,x
                     dec       <tmpn
                     bne       pi1
-                    rts
+pi9                 rts
 
 * the barrels: x, z, what's in it (brawler.js STAGES.*.barrels)
 BarBH               fdb       300
@@ -84,6 +85,15 @@ BarBH               fdb       300
                     fdb       1560
                     fcb       50,IT.Beans
 * Ghost Town: barrels on the street, card tables in the saloon (the item's top bit: a table)
+BarHN               fdb       300                 High Noon's: down Main Street
+                    fcb       30,IT.Beans
+                    fdb       620
+                    fcb       60,WP.Gun
+                    fdb       1000
+                    fcb       20,IT.Beans
+                    fdb       1180
+                    fcb       64,WP.Whip
+BarEN               equ       *                   (the ending: none)
 BarMI               fdb       250                 the Mission's: along the wall, in the courtyard
                     fcb       30,IT.Beans
                     fdb       560

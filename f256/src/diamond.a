@@ -1,0 +1,900 @@
+********************************************************************
+* diamond.a - High Noon (brawler.js updateDiamondback, duelPlayer,
+*   dbFire, updatePebble; highnoon.js): Main Street at noon, and
+*   Diamondback at the clock tower.  The duel first: the hero walks to
+*   his mark (DuelInput: his input is the duel's), "I'VE BEEN NEEDIN' A
+*   NEW PAIR.", the clock strikes noon - DRAW! - and he kicks: in time, a
+*   stone off his boot knocks the gun from the snake's tail (OUTDRAWN!,
+*   6, dizzy); too soon or too slow and he's shot (3).  Then the fight:
+*   Diamondback keeps his distance and fans the hammer (three shots, six
+*   to a reload - open), coils and strikes long and low (a miss leaves
+*   him stretched out: open, half again damage - his open is Dillon's
+*   dizzy number), whips his tail if you crowd him; at half health the
+*   posse rises and his volleys double.  KO'd: on to the ending (stage.a).
+*   The tskhn stage module.  bkind 6 (stages.d DK.*).
+********************************************************************
+
+ClockX              equ       1440                the town clock's middle (highnoon.js NOON.CLOCK)
+ClockY              equ       44
+Mark                equ       90                  the hero's mark: cam + 90
+DbWalk              equ       14                  54 px/s
+DbWalkZ             equ       10                  36 px/s
+DbLunge             equ       112                 the strike: 420 px/s
+PebV                equ       123                 the stone: 460 px/s
+
+* StartDiamond - waiting at the clock tower: the duel
+StartDiamond        lbsr      NewSlot
+                    lbcs      jst9
+                    stx       <bslot
+                    lda       #6
+                    sta       bkind,u
+                    lda       #TY.Boss
+                    sta       EN.Ty,x
+                    lda       #ES.BossX
+                    sta       EN.St,x
+                    lda       #DbHp
+                    sta       EN.Hp,x
+                    lda       #1
+                    sta       EN.Fc,x
+                    ldd       <cam
+                    addd      #240
+                    lbsr      To124
+                    std       EN.X,x
+                    ldd       #40*16
+                    std       EN.Z,x
+                    clr       <bst
+                    clr       <bn
+                    clr       <bsaid
+                    clr       <bsum
+                    ldd       #0
+                    std       dbt,u
+                    std       dbdrt,u
+                    clr       dbres,u
+                    clr       dbkick,u
+                    clr       dbrage,u
+                    clr       dbstun,u
+                    clr       dbflash,u
+                    clr       pbon,u
+                    lda       #6
+                    sta       dbammo,u
+                    lda       #96                 noon strikes 3.2 to 4.8 s in
+                    lbsr      RandN
+                    tfr       a,b
+                    clra
+                    addd      #192
+                    std       dbdat,u
+                    lda       #MU.standoff
+                    lbsr      Music
+jst9                rts
+
+* DbSet - A = his state: its clock from 0; not hittable in the duel or KO'd
+DbSet               ldx       <bslot
+                    sta       <bst
+                    clr       EN.T,x
+                    ldb       #ES.BossX
+                    cmpa      #DK.Duel
+                    beq       jss1
+                    cmpa      #DK.Ko
+                    beq       jss1
+                    ldb       #ES.Boss
+jss1                stb       EN.St,x
+                    rts
+
+* JLane - X = him, D = a width: carry clear if you're in his lane
+JLane               std       <tmp
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      <tmp
+                    blo       jln1
+                    orcc      #1
+                    rts
+jln1                andcc     #$FE
+                    rts
+
+* JDx - X = him: D = |your x - his| (12.4)
+JDx                 ldd       <hx
+                    subd      EN.X,x
+                    lbra      AbsD
+
+********************************************************************
+* DuelInput - the start of Hero: in the standoff his input is the
+*   duel's - walking to his mark, then still; a kick there (after 1.2 s,
+*   once) is the duel's kick, the side kick facing the snake.  The
+*   autopilot kicks just after DRAW!
+********************************************************************
+DuelInput           lda       bkind,u
+                    cmpa      #6
+                    lbne      jdi9
+                    ldx       <bslot
+                    lbeq      jdi9
+                    tst       EN.St,x
+                    lbeq      jdi9
+                    lda       <bst
+                    cmpa      #DK.Duel
+                    lbne      jdi9
+                    lda       <hst                mid-kick: let it play
+                    cmpa      #ST.Side
+                    bne       jdi0
+                    clr       <inp
+                    clr       <ipress
+                    rts
+jdi0                tst       <bot                the autopilot: just after the draw
+                    beq       jdi1
+                    clr       <ipress
+                    ldd       dbdrt,u
+                    beq       jdi1
+                    ldd       dbt,u
+                    subd      dbdrt,u
+                    cmpd      #9
+                    blo       jdi1
+                    lda       #IN.Side
+                    sta       <ipress
+jdi1                lda       <ipress             a kick: the duel's (at the mark, after 1.2 s, once)
+                    anda      #IN.Kick+IN.Side
+                    beq       jdi3
+                    tst       dbres,u
+                    bne       jdi3
+                    ldd       dbt,u
+                    cmpd      #72
+                    blo       jdi3
+                    bsr       JAtMark
+                    bcs       jdi3
+                    lda       #1
+                    sta       dbkick,u
+                    clr       <hface
+                    clr       <inp
+                    lda       #IN.Side
+                    sta       <ipress
+                    rts
+jdi3                clr       <ipress             to the mark, then still, facing him
+                    clr       ,-s
+                    ldd       <cam
+                    addd      #Mark
+                    lbsr      To124
+                    subd      <hx
+                    cmpd      #2*16
+                    ble       jdi4
+                    lda       #IN.Right
+                    sta       ,s
+                    bra       jdi5
+jdi4                cmpd      #-2*16
+                    bge       jdi5
+                    lda       #IN.Left
+                    sta       ,s
+jdi5                ldd       EN.Z,x
+                    subd      <hz
+                    cmpd      #2*16
+                    ble       jdi6
+                    lda       ,s
+                    ora       #IN.Down
+                    sta       ,s
+                    bra       jdi7
+jdi6                cmpd      #-2*16
+                    bge       jdi7
+                    lda       ,s
+                    ora       #IN.Up
+                    sta       ,s
+jdi7                lda       ,s+
+                    sta       <inp
+                    bne       jdi9
+                    clr       <hface
+jdi9                rts
+
+* JAtMark - X = him: carry clear if the hero's on his mark
+JAtMark             ldd       <cam
+                    addd      #Mark
+                    lbsr      To124
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bhi       jam8
+                    ldd       EN.Z,x
+                    subd      <hz
+                    lbsr      AbsD
+                    cmpd      #3*16
+                    bhi       jam8
+                    andcc     #$FE
+                    rts
+jam8                orcc      #1
+                    rts
+
+********************************************************************
+* DiamondStep - X = him: one pass
+********************************************************************
+DiamondStep         stx       <bslot
+                    tst       dbflash,u
+                    beq       jds1
+                    dec       dbflash,u
+jds1                lda       <bst
+                    leay      NtTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+NtTab               fdb       NtDuel-NtTab
+                    fdb       NtAppr-NtTab
+                    fdb       NtDraw-NtTab
+                    fdb       NtFan-NtTab
+                    fdb       NtRecov-NtTab
+                    fdb       NtStag-NtTab
+                    fdb       NtReload-NtTab
+                    fdb       NtCoil-NtTab
+                    fdb       NtOpen-NtTab
+                    fdb       NtKo-NtTab
+                    fdb       NtStrike-NtTab
+                    fdb       NtWhip-NtTab
+
+NtDuel              lbsr      EStop               the standoff
+                    lda       #1
+                    sta       EN.Fc,x
+                    ldd       dbt,u
+                    addd      #1
+                    std       dbt,u
+                    tst       <bsaid              his word
+                    bne       jdu1
+                    cmpd      #48
+                    blo       jdu1
+                    inc       <bsaid
+                    lda       #66
+                    ldy       #TX.needin
+                    lbsr      WordE
+jdu1                tst       dbres,u
+                    lbne      jdu8
+                    ldd       dbdrt,u             noon: DRAW!
+                    bne       jdu2
+                    ldd       dbt,u
+                    cmpd      dbdat,u
+                    blo       jdu2
+                    std       dbdrt,u
+                    lda       #1
+                    sta       struck,u
+                    lda       #SF.Bell
+                    lbsr      Sfx
+jdu2                tst       dbkick,u            how it went
+                    beq       jdu3
+                    lda       #2                  (too soon)
+                    ldx       dbdrt,u
+                    beq       jdu4
+                    lda       #1                  (in time)
+                    bra       jdu4
+jdu3                ldd       dbdrt,u             (too slow)
+                    lbeq      jdu9
+                    ldd       dbt,u
+                    subd      dbdrt,u
+                    cmpd      #33
+                    lbls      jdu9
+                    lda       #3
+jdu4                sta       dbres,u
+                    lda       #MU.showdown
+                    lbsr      Music
+                    ldx       <bslot
+                    lda       dbres,u
+                    cmpa      #1
+                    bne       jdu5
+                    ldx       #TX.outdrawn        OUTDRAWN!: the stone off his boot
+                    lda       #62
+                    lbsr      WordH
+                    ldd       <hx
+                    addd      #16*16
+                    std       pbx,u
+                    ldd       <hz
+                    std       pbz,u
+                    lda       #1
+                    sta       pbon,u
+                    ldx       <bslot
+                    clr       EN.T,x
+                    bra       jdu9
+jdu5                lda       #1                  too soon, too slow: he shoots
+                    sta       struck,u
+                    lda       dbres,u
+                    cmpa      #2
+                    bne       jdu6
+                    ldx       #TX.jumped
+                    lda       #62
+                    lbsr      WordH
+                    bra       jdu7
+jdu6                ldx       <bslot
+                    lda       #62
+                    ldy       #TX.slowboot
+                    lbsr      WordE
+jdu7                ldx       <bslot
+                    lda       #7
+                    sta       dbflash,u
+                    dec       dbammo,u
+                    lda       #SF.Shot
+                    lbsr      Sfx
+                    ldx       <bslot
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+                    clr       dbshot,u
+                    lda       #DK.Fan
+                    lbsr      DbSet
+                    bra       jdu9
+jdu8                lda       dbres,u             (the stone missed somehow: on)
+                    cmpa      #1
+                    bne       jdu9
+                    tst       pbon,u
+                    bne       jdu9
+                    lda       EN.T,x
+                    cmpa      #72
+                    blo       jdu9
+                    lda       #DK.Appr
+                    lbsr      DbSet
+jdu9                lbra      DMove
+
+NtAppr              lbsr      FaceHero            his distance: 120 px off, in your lane
+                    ldd       #120*16
+                    tst       EN.Fc,x
+                    bne       jap1
+                    lbsr      NegD
+jap1                addd      <hx
+                    subd      EN.X,x
+                    std       <tdx
+                    ldd       #DbWalk
+                    std       <tcap
+                    ldd       <tdx
+                    lbsr      Toward
+                    std       EN.VX,x
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #DbWalkZ
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #54
+                    lbls      DMove
+                    lbsr      EStop
+                    inc       <bn
+                    lbsr      JDx                 close: the coil, or the whip
+                    cmpd      #64*16
+                    bhs       jap4
+                    ldd       #12*16
+                    lbsr      JLane
+                    bcs       jap4
+                    lbsr      JDx
+                    cmpd      #30*16
+                    blo       jap2
+                    lda       <bn
+                    ldb       #3
+                    lbsr      JMod
+                    tsta
+                    bne       jap3
+jap2                lda       #DK.Whip
+                    lbsr      DbSet
+                    clr       dbhitd,u
+                    lbra      DMove
+jap3                lbra      JToCoil
+jap4                lda       <bn                 further: every fourth the strike (from up to 150 px), else the draw
+                    anda      #3
+                    bne       jap5
+                    lbsr      JDx
+                    cmpd      #150*16
+                    lblo      JToCoil
+jap5                lda       #DK.Draw
+                    lbsr      DbSet
+                    lbra      DMove
+
+* JMod - A mod B -> A
+JMod                pshs      b
+jmd1                cmpa      ,s
+                    blo       jmd2
+                    suba      ,s
+                    bra       jmd1
+jmd2                puls      b,pc
+
+JToCoil             lda       #DK.Coil            rattling: the strike's coming
+                    lbsr      DbSet
+                    lda       #SF.Rattle
+                    lbsr      Sfx
+                    ldx       <bslot
+                    lbra      DMove
+
+NtDraw              lbsr      EStop               the gun up
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #3
+                    tst       dbrage,u
+                    beq       jdr1
+                    lda       #6
+jdr1                sta       dbshot,u
+                    lda       #DK.Fan
+                    lbsr      DbSet
+                    lda       #12
+                    sta       EN.T,x
+                    lbra      DMove
+
+NtFan               lbsr      EStop               fanning the hammer: a shot every 0.16 s
+                    tst       dbshot,u
+                    beq       jfa2
+                    tst       dbammo,u
+                    beq       jfa2
+                    lda       EN.T,x
+                    cmpa      #10
+                    blo       jfa9
+                    clr       EN.T,x
+                    dec       dbshot,u
+                    dec       dbammo,u
+                    lda       #5
+                    sta       dbflash,u
+                    lbsr      Fire
+                    ldx       <bslot
+                    bra       jfa9
+jfa2                lda       EN.T,x              done, or empty: reload, or a moment
+                    cmpa      #18
+                    blo       jfa9
+                    tst       dbammo,u
+                    bne       jfa3
+                    lda       #DK.Reload
+                    lbsr      DbSet
+                    lda       #SF.Shell
+                    lbsr      Sfx
+                    ldx       <bslot
+                    bra       jfa9
+jfa3                lda       #DK.Recov
+                    lbsr      DbSet
+jfa9                lbra      DMove
+
+NtReload            lbsr      EStop               spinning the cylinder: get in there
+                    lda       EN.T,x
+                    cmpa      #84
+                    lbls      DMove
+                    lda       #6
+                    sta       dbammo,u
+                    lda       #DK.Appr
+                    lbsr      DbSet
+                    lbra      DMove
+
+NtCoil              lbsr      EStop               drawn back, lining up
+                    lbsr      FaceHero
+                    lda       EN.T,x
+                    cmpa      #18
+                    bhs       jco1
+                    ldd       <hz
+                    subd      EN.Z,x
+                    std       <tdz
+                    ldd       #8
+                    std       <tcap
+                    ldd       <tdz
+                    lbsr      Toward
+                    std       EN.VZ,x
+jco1                lda       EN.T,x
+                    cmpa      #33
+                    lbls      DMove
+                    clr       dbhitd,u
+                    lda       #SF.Whoosh
+                    lbsr      Sfx
+                    lda       #DK.Strike
+                    lbsr      DbSet
+                    lbra      DMove
+
+NtStrike            ldd       #0                  long and low: jump it
+                    std       EN.VZ,x
+                    std       EN.VX,x
+                    lda       EN.T,x
+                    cmpa      #16
+                    bhs       jsk1
+                    ldd       #DbLunge
+                    lbsr      ByFace
+                    std       EN.VX,x
+jsk1                tst       dbhitd,u
+                    bne       jsk2
+                    lda       EN.T,x
+                    cmpa      #18
+                    bhs       jsk2
+                    ldd       <hh
+                    cmpd      #16*16
+                    bge       jsk2
+                    ldd       #10*16
+                    lbsr      JLane
+                    bcs       jsk2
+                    ldd       #22*16              his head: 22 px ahead of him
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    subd      <hx
+                    lbsr      AbsD
+                    cmpd      #22*16
+                    bhs       jsk2
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #3
+                    lbsr      HurtHero
+                    ldx       <bslot
+                    tsta
+                    beq       jsk2
+                    inc       dbhitd,u
+                    ldx       #TX.snakebit
+                    lda       #62
+                    lbsr      WordH
+                    ldx       <bslot
+jsk2                lda       EN.T,x
+                    cmpa      #19
+                    lbls      DMove
+                    lbsr      EStop
+                    tst       dbhitd,u
+                    beq       jsk3
+                    lda       #DK.Recov
+                    lbsr      DbSet
+                    lbra      DMove
+jsk3                clr       dbstun,u            a miss: stretched out
+                    lda       #DK.Open
+                    lbsr      DbSet
+                    lbra      DMove
+
+NtOpen              lbsr      EStop               stretched out (0.9 s) or dizzy (1.6 s)
+                    lda       #54
+                    tst       dbstun,u
+                    beq       jop1
+                    lda       #96
+jop1                cmpa      EN.T,x
+                    lbhs      DMove
+                    lda       #DK.Appr
+                    lbsr      DbSet
+                    lbra      DMove
+
+NtWhip              lbsr      EStop               the tail round him: crowd him and it's 2
+                    tst       dbhitd,u
+                    bne       jwh1
+                    lda       EN.T,x
+                    cmpa      #9
+                    blo       jwh1
+                    cmpa      #19
+                    bhi       jwh1
+                    ldd       <hh
+                    cmpd      #20*16
+                    bge       jwh1
+                    ldd       #14*16
+                    lbsr      JLane
+                    bcs       jwh1
+                    lbsr      JDx
+                    cmpd      #44*16
+                    bhs       jwh1
+                    ldd       EN.X,x
+                    std       <sx
+                    lda       #2
+                    lbsr      HurtHero
+                    ldx       <bslot
+                    tsta
+                    beq       jwh1
+                    inc       dbhitd,u
+jwh1                lda       EN.T,x
+                    cmpa      #30
+                    lbls      DMove
+                    lda       #DK.Recov
+                    lbsr      DbSet
+                    lbra      DMove
+
+NtRecov             lbsr      EStop
+                    lda       EN.T,x
+                    cmpa      #30
+                    lbls      DMove
+                    lda       #DK.Appr
+                    lbsr      DbSet
+                    lbra      DMove
+
+NtStag              ldd       EN.VX,x
+                    lbsr      Decay
+                    std       EN.VX,x
+                    ldd       #0
+                    std       EN.VZ,x
+                    lda       EN.T,x
+                    cmpa      #21
+                    lbls      DMove
+                    lda       #DK.Appr
+                    lbsr      DbSet
+                    lbra      DMove
+
+NtKo                tst       gdown,u             out cold, the gang with him; then the ending
+                    beq       jko0
+                    lbsr      GangDown
+jko0                ldx       <bslot
+                    ldd       EN.H,x
+                    bne       jko1
+                    ldd       EN.VH,x
+                    beq       jko3
+jko1                ldd       EN.VH,x
+                    subd      #3
+                    std       EN.VH,x
+                    addd      EN.H,x
+                    std       EN.H,x
+                    bgt       jko2
+                    ldd       #0                  down: a thump
+                    std       EN.VH,x
+                    std       EN.H,x
+                    lbsr      EStop
+                    ldd       EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    lda       #8
+                    lbsr      Puff
+                    ldx       <bslot
+                    lda       #12
+                    lbsr      Shk
+                    lda       #SF.Stomp
+                    lbsr      Sfx
+                    ldx       <bslot
+                    bra       jko3
+jko2                lbsr      DMove
+jko3                lda       EN.T,x              3 s: he's gone (the wave ends: the ending)
+                    cmpa      #180
+                    blo       jko9
+                    clr       EN.St,x
+jko9                rts
+
+* DiamondReact - the end of HitBoss: reloading or stretched out, he staggers
+DiamondReact        ldx       <bslot
+                    tst       EN.Hp,x
+                    ble       jrc9
+                    lda       <bst
+                    cmpa      #DK.Reload
+                    beq       jrc1
+                    cmpa      #DK.Open
+                    bne       jrc9
+                    tst       dbstun,u
+                    bne       jrc9
+jrc1                lda       #DK.Stag
+                    lbsr      DbSet
+                    ldd       #19
+                    lbsr      ByDir
+                    std       EN.VX,x
+jrc9                rts
+
+* DiamondRage - half health: GET 'EM, POSSE! - two of the dead rise; two volleys now
+DiamondRage         lda       #66
+                    ldy       #TX.posse
+                    lbsr      WordE
+                    lda       #SF.Rattle
+                    lbsr      Sfx
+                    lda       #1
+                    sta       dbrage,u
+                    lbsr      NewSkel
+                    lbsr      NewSkel
+                    ldx       <bslot
+                    rts
+
+********************************************************************
+* NoonStep - one pass (Stage): the duel's stone, off his boot at the gun
+********************************************************************
+NoonStep            tst       pbon,u
+                    beq       jns9
+                    ldd       pbx,u
+                    addd      #PebV
+                    std       pbx,u
+                    ldx       <bslot
+                    beq       jns8
+                    ldd       EN.X,x
+                    subd      #10*16
+                    cmpd      pbx,u
+                    bgt       jns9
+                    clr       pbon,u              it's there: the gun out of his tail, 6, dizzy
+                    ldd       #14*16
+                    lbsr      ByFace
+                    addd      EN.X,x
+                    std       <sx
+                    ldd       EN.Z,x
+                    std       <sz
+                    ldd       #24*16
+                    std       <sh
+                    lda       #1
+                    lbsr      Spark
+                    ldx       <bslot
+                    clr       <hdir
+                    lda       #6
+                    clrb
+                    lbsr      HitE
+                    ldx       <bslot
+                    tst       EN.Hp,x
+                    ble       jns9
+                    lda       #1
+                    sta       dbstun,u
+                    lda       #DK.Open
+                    lbsr      DbSet
+                    lda       #62
+                    ldy       #TX.dizzy
+                    lbra      WordE
+jns8                clr       pbon,u
+jns9                rts
+
+********************************************************************
+* Drawing
+********************************************************************
+* DiamondFrame - X = him -> D = his frame (brawler.js bossImg)
+DiamondFrame        lda       <bst
+                    leay      NfTab,pcr
+                    lsla
+                    ldd       a,y
+                    jmp       d,y
+NfTab               fdb       NfDuel-NfTab
+                    fdb       NfAppr-NfTab
+                    fdb       NfDraw-NfTab
+                    fdb       NfFan-NfTab
+                    fdb       NfIdle0-NfTab
+                    fdb       NfHurt-NfTab
+                    fdb       NfReload-NfTab
+                    fdb       NfCoil-NfTab
+                    fdb       NfOpen-NfTab
+                    fdb       NfKo-NfTab
+                    fdb       NfStrike-NfTab
+                    fdb       NfWhip-NfTab
+NfDuel              lda       dbres,u             outdrawn: gunless; noon: the gun up; his word; else idle
+                    cmpa      #1
+                    bne       jfd1
+                    lda       EN.An,x
+                    ldb       #20
+                    lbsr      Div
+                    anda      #1
+                    adda      #DB.nogun-DB.First
+                    lbra      jfx
+jfd1                ldd       dbdrt,u
+                    bne       NfDraw
+                    tst       <bsaid
+                    beq       NfIdle
+                    ldd       dbt,u
+                    cmpd      #156
+                    bhs       NfIdle
+                    lda       EN.An,x
+                    ldb       #10
+                    lbsr      Div
+                    anda      #1
+                    adda      #DB.talk-DB.First
+                    bra       jfx
+NfAppr              ldd       EN.VX,x             slithering, or still
+                    bne       jfa1
+                    ldd       EN.VZ,x
+                    bne       jfa1
+NfIdle              lda       EN.An,x
+                    ldb       #30
+                    lbsr      Div
+                    anda      #1
+                    adda      #DB.idle-DB.First
+                    bra       jfx
+jfa1                lda       EN.An,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #DB.walk-DB.First
+                    bra       jfx
+NfIdle0             lda       #DB.idle-DB.First
+                    bra       jfx
+NfDraw              lda       #DB.draw-DB.First
+                    bra       jfx
+NfFan               lda       #DB.draw-DB.First
+                    tst       dbflash,u
+                    beq       jfx
+                    lda       #DB.fire-DB.First
+                    bra       jfx
+NfReload            lda       EN.An,x
+                    ldb       #15
+                    lbsr      Div
+                    anda      #1
+                    adda      #DB.reload-DB.First
+                    bra       jfx
+NfCoil              lda       #DB.coil-DB.First
+                    bra       jfx
+NfStrike            lda       #DB.strike-DB.First
+                    bra       jfx
+NfOpen              tst       dbstun,u            stretched out, or dizzy
+                    bne       jfo1
+                    lda       #DB.stretch-DB.First
+                    bra       jfx
+jfo1                lda       EN.T,x
+                    ldb       #8
+                    lbsr      Div
+                    anda      #3
+                    adda      #DB.daze-DB.First
+                    bra       jfx
+NfWhip              lda       EN.T,x
+                    ldb       #6
+                    lbsr      Div
+                    anda      #1
+                    adda      #DB.whip-DB.First
+                    bra       jfx
+NfHurt              lda       #DB.hurt-DB.First
+                    bra       jfx
+NfKo                lda       #DB.ko-DB.First
+jfx                 tst       EN.Fc,x
+                    beq       jfx1
+                    adda      #DB.Mir
+jfx1                tfr       a,b
+                    clra
+                    addd      #DB.First
+                    rts
+
+* DrawNoon - the town clock's hands (11:59, then noon), the duel's stone
+DrawNoon            lda       sflags,u
+                    bita      #SG.Noon
+                    beq       jdn9
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <ekey
+                    clr       <eshk
+                    ldb       struck,u
+                    clra
+                    addd      #CH.hands
+                    std       <efrm
+                    ldd       #ClockX*16
+                    std       <ex
+                    ldd       #0
+                    std       <ez
+                    ldd       #(FLOOR.Y-ClockY)*16
+                    std       <eh
+                    lbsr      Ent
+                    tst       pbon,u
+                    beq       jdn9
+                    ldd       #PR.clod
+                    std       <efrm
+                    ldd       pbx,u
+                    std       <ex
+                    ldd       pbz,u
+                    std       <ez
+                    ldd       #24*16
+                    std       <eh
+                    lda       #2
+                    sta       <eshk
+                    lbsr      Ent
+                    clr       <eshk
+jdn9                rts
+
+* NoonWords - the HUD's pass (Titles): DRAW!, the moment the clock strikes
+NoonWords           lda       bkind,u
+                    cmpa      #6
+                    bne       jnw9
+                    lda       sflags,u
+                    bita      #SG.Noon
+                    beq       jnw9
+                    lda       <bst
+                    cmpa      #DK.Duel
+                    bne       jnw9
+                    ldd       dbdrt,u
+                    beq       jnw9
+                    lda       dbres,u
+                    cmpa      #2
+                    beq       jnw9
+                    ldd       dbt,u
+                    subd      dbdrt,u
+                    cmpd      #54
+                    bhs       jnw9
+                    ldx       #TX.draw
+                    ldd       #56
+                    lbra      Ttl
+jnw9                rts
+
+* BotNoon - the autopilot and Diamondback: over his strike.  Exit: carry
+*   clear and B = the input if acting
+BotNoon             lda       bkind,u
+                    cmpa      #6
+                    bne       jbt9
+                    lda       sflags,u
+                    bita      #SG.Noon
+                    beq       jbt9
+                    ldx       <bslot
+                    beq       jbt9
+                    tst       EN.St,x
+                    beq       jbt9
+                    lda       <bst
+                    cmpa      #DK.Coil
+                    bne       jbt9
+                    lda       EN.T,x
+                    cmpa      #21
+                    blo       jbt9
+                    ldd       <hh
+                    bne       jbt9
+                    ldd       #12*16
+                    lbsr      JLane
+                    bcs       jbt9
+                    lbsr      JDx
+                    cmpd      #150*16
+                    bhs       jbt9
+                    ldb       #IN.Jump
+                    andcc     #$FE
+                    rts
+jbt9                orcc      #1
+                    rts

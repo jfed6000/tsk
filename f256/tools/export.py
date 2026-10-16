@@ -80,7 +80,7 @@ def previews():
                         p = tiles[n * 256 + y * 16 + x]
                         if p and 0 <= x0 + x < img.width:
                             img.putpixel((x0 + x, ty * 16 + y), tc[p])
-    for sk, sf in (('BH', 'bh'), ('MS', 'ms'), ('TH', 'th'), ('MI', 'mi')):
+    for sk, sf in (('BH', 'bh'), ('MS', 'ms'), ('TH', 'th'), ('MI', 'mi'), ('HN', 'hn'), ('EN', 'en')):
         tc = clut(f'tpal_{sf}.bin')                              # (its own tile palette, and its shades)
         dusk = (ASSETS / f'shade_{sf}.bin').read_bytes() if (ASSETS / f'shade_{sf}.bin').exists() else b''
         tiles = (ASSETS / f'tiles_{sf}.bin').read_bytes()
@@ -91,13 +91,13 @@ def previews():
             img = Image.new('RGBA', (320, 240), (0, 0, 0, 255))
             mid = 3 if sk == 'TH' and shade else 1             # (the train in a tunnel: the rock wall for the desert)
             for i, rate in ((0, 0.25), (mid, 0.5), (2, 1.0)):
-                draw_map(img, i, (scroll * rate) % (D[f'{sk}.MAP{i}.W'] * 16 - 336) if sk in ('TH', 'MI') and i != 2 else scroll * rate)
+                draw_map(img, i, (scroll * rate) % (D[f'{sk}.MAP{i}.W'] * 16 - 336) if sk in ('TH', 'MI', 'HN') and i != 2 else scroll * rate)
             img.convert('RGB').resize((640, 480), Image.NEAREST).save(PREVIEW / f'layers_{sf}_{scroll}{"_night" if shade else ""}.png')
             tc = clut(f'tpal_{sf}.bin')
 
     # every animation frame rebuilt from cells + frame table, facing right and mirrored
     shared = (ASSETS / 'sprites.bin').read_bytes()
-    banks = {'TB': 'bh', 'BD': 'ms', 'RT': 'gt', 'GL': 'gt', 'GP': 'gt', 'RD': 'cd', 'RO': 'cd', 'JK': 'cd', 'SC': 'th', 'TP': 'th', 'TQ': 'th', 'TO': 'mi'}       # stage groups: their cells come from spr_<stage>.bin
+    banks = {'TB': 'bh', 'BD': 'ms', 'RT': 'gt', 'GL': 'gt', 'GP': 'gt', 'RD': 'cd', 'RO': 'cd', 'JK': 'cd', 'SC': 'th', 'TP': 'th', 'TQ': 'th', 'TO': 'mi', 'DB': 'hn', 'CH': 'hn', 'BO': 'en'}       # stage groups: their cells come from spr_<stage>.bin
     frm = (ASSETS / 'frames.bin').read_bytes()
     sc = clut('clut_spr.bin')
     nf = struct.unpack('>H', frm[:2])[0]
@@ -134,6 +134,10 @@ def previews():
             if mir:
                 draw_frame(img, first + mir + i, x0 + col * cw, y0 + (row + 1) * 80)
         img.convert('RGB').save(PREVIEW / f'frames_{prefix}.png')
+    sh, sp = (ASSETS / 'bmp_shop.bin').read_bytes(), clut('clut_shop.bin')   # the shop's bitmap, through its CLUT
+    img = Image.new('RGB', (320, 240))
+    img.putdata([sp[p][:3] for p in sh])
+    img.resize((640, 480), Image.NEAREST).save(PREVIEW / 'bitmap_shop.png')
     print(f'previews: {PREVIEW} ({nf} frames checked)')
 
 

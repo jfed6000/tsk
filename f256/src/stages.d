@@ -128,3 +128,26 @@ SH.Z                equ       3
 SH.R                equ       5                   how far it's rolled, 12.4
 SH.Hit              equ       7                   who it's hit: a bit a slot, bit 7 the hero
 SH.Size             equ       8
+
+* High Noon (diamond.a): Diamondback's states (1 approach, 4 recover, 5 stagger, 8 open - stretched out after a missed
+*   strike, or dizzy after the duel: Dillon's dizzy, half again damage - and 9 KO as Dillon's), his health; the
+*   ending's steps (ending.a)
+DK.Duel             equ       0                   the standoff at the clock tower (not hittable)
+DK.Appr             equ       1
+DK.Draw             equ       2                   the gun up
+DK.Fan              equ       3                   fanning the hammer
+DK.Recov            equ       4
+DK.Stag             equ       5
+DK.Reload           equ       6
+DK.Coil             equ       7                   drawn back, rattling: the strike coming
+DK.Open             equ       8                   stretched out (dbstun 0) or dizzy (1): open
+DK.Ko               equ       9
+DK.Strike           equ       10
+DK.Whip             equ       11
+DbHp                equ       64
+EQ.Walk             equ       0                   the ending: up to Ringo's grave
+EQ.Stand            equ       1
+EQ.Tip              equ       2                   the hat tip
+EQ.Leave            equ       3                   off into the sunset
+EQ.TheEnd           equ       4
+EQ.Shop             equ       5                   the boot shop (the bitmap)

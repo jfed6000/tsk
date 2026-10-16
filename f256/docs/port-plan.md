@@ -361,7 +361,30 @@ One program module, **`tsk`**, assembled from:
       module's local labels that share a name with the core's (`wch1`) become calls into the core (`toro.a`'s
       locals are `q`-prefixed); `shk` against the core's `Shk` (stagegen compares without case).
     - **Cost:** the worst pass in the whole stage is 80K cycles.
-16. The pad harness, co-op, High Noon.
+16. ✓ **High Noon and the ending** *(2026-10-16: `tsk` 27.4K of 32,768; `tskhn` 2.3K, `tsken` 0.9K of 8,192; data 5.8K
+    of 7,936)*: stage 6 (`SG.Noon`), then stage 7, the ending (`SG.Ending`); `tsk n` starts at High Noon (m and c
+    together), `tsk nk` at the duel, `make mamenoon` runs `tsk nbg`.
+    - **The duel** (`diamond.a`, `bkind` 6, `DK.*`): `DuelInput` (the start of `Hero`) makes his input the duel's -
+      walking to his mark, then still; a kick there after 1.2 s is the duel's kick (the side kick, facing the snake).
+      DRAW! when `dbt` reaches `dbdat` (3.2 to 4.8 s); the result in `dbres`; the stone (`pbon`, `NoonStep`) hits
+      him through `HitE`. The town clock's hands (`CH`, 11:59 then noon) and DRAW! (`NoonWords`, from `Titles`).
+    - **Diamondback**: his open (stretched out after a missed strike, or dizzy after the duel: `dbstun`) is Dillon's
+      dizzy number, so `HitBoss` gives it half again; `DiamondReact` (staggers reloading or stretched out),
+      `DiamondRage` (the posse: two `NewSkel`); his shots are the skeletons' `Fire`. KO'd: the wave ends, and
+      `StageClear` sends stage 6 straight on (no clear) to stage 7.
+    - **The ending** (`ending.a`, `PH.Ending` 6): its own stage record and art (Main Street's sunset over the
+      graveyard: 207 tiles), no waves; `EndingInit` (from `StageInit`), `EndingStep` (from `Stage`): the walk to
+      Ringo's grave (`DrawGrave`), the hat tip, the walk off, THE END. **The boot shop is a bitmap**: `bmp_shop.bin`
+      (76,800 bytes, 248 colours) loaded into the tile blocks (consecutive, and nothing else wants them now), its CLUT
+      into CLUT 3, bitmap 0 there (`SS.BmDef`, `SS.BmCfg`) on layer 0 with 1 and 2 blank, bitmaps on in the MCR; the
+      twitching boot a sprite over it (`BO`). A jump: `ShopOff` undoes it all and sets `endq`, and `Stage` (the core)
+      goes back to the title, which loads Boot Hill again (`ldstg` $FF) - the module mustn't be running when its slot
+      is emptied.
+    - **Bugs found on the way:** `PickInit` with no barrels looped 256 times (writing barrels over the data area -
+      the ending's stray sprites in MAME, and its missing boot); the ending's walk compared a negative x unsigned
+      (`lblo` for `lblt`); `DB.*` states against the exported `DB` frame group (the assembler ignores case: they're
+      `DK.*`); stagegen read `fcn "DIAMONDBACK"` as a call to `Diamondback` (it skips `fcn` strings now).
+17. The pad harness, co-op.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

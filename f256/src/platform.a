@@ -52,8 +52,12 @@ st0t                cmpa      #'t                 t = start on the Train Heist (
                     orb       #192
                     lbra      st0
 st0i                cmpa      #'i                 i = start at the Mission (m, h and c together)
-                    lbne      st0
+                    bne       st0n
                     orb       #208
+                    lbra      st0
+st0n                cmpa      #'n                 n = start at High Noon (m and c together)
+                    lbne      st0
+                    orb       #144
                     lbra      st0
 st0d                pshs      b
                     tfr       u,x                 clear the data area below the stack
@@ -93,7 +97,10 @@ st1h                lsrb
                     bcc       st2
                     lda       #3                  (tsk c: the Cattle Drive; with h, tsk t: the Train Heist;
                     ldb       stgarg,u            with m and h, tsk i: the Mission)
-                    cmpb      #2
+                    cmpb      #1                  (m and c: tsk n, High Noon)
+                    bne       st1k
+                    lda       #6
+st1k                cmpb      #2
                     bne       st1j
                     lda       #4
 st1j                cmpb      #3

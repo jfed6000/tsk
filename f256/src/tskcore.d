@@ -2,6 +2,7 @@
 AimT                equ       $0021
 AttractLen          equ       $0BB8
 AttractT            equ       $04B0
+BarEN               equ       $3A78
 BossHp              equ       $0024
 BossTall            equ       $002C
 BR.It               equ       $0005
@@ -52,7 +53,7 @@ CySpd               equ       $000F
 CyStrikeT           equ       $000F
 CyTall              equ       $002C
 CyWindT             equ       $0019
-ddm0                equ       $4ADA
+ddm0                equ       $4C77
 DGetupT             equ       $0015
 DieDur              equ       $001E
 DlEnter             equ       $0010
@@ -62,9 +63,9 @@ DlSpd               equ       $0013
 DlTall              equ       $0010
 DownT               equ       $0036
 DriftT              equ       $0080
-ds1x                equ       $5A59
+ds1x                equ       $5C4E
 DuskEvery           equ       $0007
-DynCell             equ       $0530
+DynCell             equ       $0548
 ES.Aim              equ       $0003
 ES.Air              equ       $0008
 ES.Appr             equ       $0002
@@ -87,7 +88,7 @@ ES.Strike           equ       $000C
 ES.Thrown           equ       $0013
 ES.Vault            equ       $0015
 ES.Wind             equ       $000B
-eth0                equ       $5078
+eth0                equ       $5215
 FlashLen            equ       $0008
 FlashT              equ       $0006
 FlyV                equ       $002D
@@ -158,6 +159,7 @@ NPend               equ       $0010
 NPu                 equ       $0008
 PH.Clear            equ       $0001
 PH.End              equ       $0002
+PH.Ending           equ       $0006
 PH.Intro            equ       $0004
 PH.Over             equ       $0003
 PH.Play             equ       $0000
@@ -171,7 +173,7 @@ PK.StarB            equ       $0002
 PN.M                equ       $0001
 PN.Size             equ       $0004
 PN.T                equ       $0000
-PopCell             equ       $0538
+PopCell             equ       $0550
 PopLife             equ       $0036
 PU.F                equ       $0002
 PU.K                equ       $0001
@@ -218,8 +220,10 @@ SF.Tip              equ       $000A
 SF.Whistle          equ       $0012
 SF.Whoosh           equ       $0000
 SG.Dusk             equ       $0004
+SG.Ending           equ       $0080
 SG.Intro            equ       $0001
 SG.Light            equ       $0002
+SG.Noon             equ       $0040
 SG.Ride             equ       $0008
 SG.Siege            equ       $0020
 SG.Train            equ       $0010
@@ -291,12 +295,12 @@ TwG                 equ       $0003
 WaitT               equ       $0078
 WalkX               equ       $001C
 WalkZ               equ       $0011
-whb00               equ       $4156
-whb1x               equ       $4187
+whb00               equ       $42D3
+whb1x               equ       $4304
 WhipDur             equ       $0012
 WhipN               equ       $000E
-whk1                equ       $41D7
+whk1                equ       $4354
 WindT               equ       $0012
-wv3                 equ       $2B67
-xdi0                equ       $4B12
-xhdd2               equ       $4CBE
+wv3                 equ       $2C74
+xdi0                equ       $4CAF
+xhdd2               equ       $4E5B

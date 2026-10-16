@@ -2756,7 +2756,10 @@ bt9                 rts
 
 * BotMound - the autopilot keeps off Two-Bit's mound.  Exit: carry clear
 *   and B = the input if it's running from it
-BotMound            lbsr      BotMission          the Mission: out of El Toro's lane, over his dust (mission.a)
+BotMound            lbsr      BotNoon             High Noon: over Diamondback's strike (diamond.a)
+                    bcs       bm0n
+                    rts
+bm0n                lbsr      BotMission          the Mission: out of El Toro's lane, over his dust (mission.a)
                     bcs       bm0m
                     rts
 bm0m                lbsr      BotTrain            the train: ducking the tunnels, Sting's dynamite (train.a)

@@ -5,14 +5,21 @@ HookTab
                     fdb       0          BotGila
                     fdb       0          BotJack
                     fdb       0          BotMission
+                    fdb       0          BotNoon
                     fdb       0          BotShell
                     fdb       BotTrain-HookTab
+                    fdb       0          DiamondFrame
+                    fdb       0          DiamondRage
+                    fdb       0          DiamondReact
+                    fdb       0          DiamondStep
                     fdb       0          DillonStep
                     fdb       0          DlnFrame
                     fdb       0          DoorInit
+                    fdb       0          DrawEnding
                     fdb       0          DrawGila
                     fdb       0          DrawLasso
                     fdb       0          DrawMission
+                    fdb       0          DrawNoon
                     fdb       0          DrawRide
                     fdb       0          DrawRider
                     fdb       0          DrawSigns
@@ -20,8 +27,12 @@ HookTab
                     fdb       0          DrawTable
                     fdb       DrawTrain-HookTab
                     fdb       DuckNow-HookTab
+                    fdb       0          DuelInput
                     fdb       0          EBatter
                     fdb       0          ELeave
+                    fdb       0          EndingInit
+                    fdb       0          EndingStep
+                    fdb       0          EndingWords
                     fdb       0          EVault
                     fdb       FallStep-HookTab
                     fdb       0          GilaFrame
@@ -34,6 +45,8 @@ HookTab
                     fdb       0          JackStep
                     fdb       0          MissionStep
                     fdb       0          MissionWords
+                    fdb       0          NoonStep
+                    fdb       0          NoonWords
                     fdb       0          OverWall
                     fdb       0          RaidAppr
                     fdb       0          RAim
@@ -47,6 +60,7 @@ HookTab
                     fdb       0          SiegeBell
                     fdb       0          SignInit
                     fdb       0          Signs
+                    fdb       0          StartDiamond
                     fdb       0          StartDillon
                     fdb       0          StartGila
                     fdb       0          StartJack

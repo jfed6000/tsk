@@ -26,6 +26,7 @@ T.runExport = function (A) {
   const CD = T.buildRanch(VW, VH, FLOOR), TH = T.buildTrain(VW, VH, FLOOR), MI = T.buildMission(VW, VH, FLOOR);
   // the Mission's church doors, as a fourth map: its four states' patches (mission.js L.doors) side by side, at the
   // patch's rows (the 6809 copies a state's 4x5 cells into the street map: mission.a)
+  const HN = T.buildNoon(VW, VH, FLOOR), EN = T.buildEnding(VW, VH, FLOOR);   // High Noon; the ending (Boot Hill at sundown, the shop)
   const MD = T.MISSION.DOORS, doorMap = { width: MD.w * 4, height: VH, idx: new Uint16Array(MD.w * 4 * VH) };
   MI.doors.forEach((d, k) => { for (let y = 0; y < MD.h; y++) for (let x = 0; x < MD.w; x++) doorMap.idx[(MD.y + y) * doorMap.width + k * MD.w + x] = d.idx[y * MD.w + x]; });
   const STAGES = [
@@ -48,6 +49,11 @@ T.runExport = function (A) {
     { key: 'MI', file: 'mi', W: T.MISSION.W, layers: [
       { name: 'FAR', img: MI.far, rate: 0.25, wrap: MI.far.width }, { name: 'MID', img: MI.mid, rate: 0.5, wrap: MI.mid.width },
       { name: 'STR', img: MI.street, rate: 1 }, { name: 'DOR', img: doorMap, rate: 0, exact: true }] },
+    // High Noon: Main Street at noon to the town hall; the ending: one screen of Boot Hill at sundown (the shop's a bitmap)
+    { key: 'HN', file: 'hn', W: T.NOON.W, layers: [
+      { name: 'FAR', img: HN.far, rate: 0.25, wrap: HN.far.width }, { name: 'MID', img: HN.mid, rate: 0.5, wrap: HN.mid.width }, { name: 'STR', img: HN.street, rate: 1 }] },
+    { key: 'EN', file: 'en', W: VW, layers: [
+      { name: 'FAR', img: EN.far, rate: 0.25 }, { name: 'MID', img: EN.mid, rate: 0.5 }, { name: 'STR', img: EN.street, rate: 1 }] },
   ];
   const SKEL = T.buildSkeleton();
 
@@ -223,7 +229,10 @@ T.runExport = function (A) {
     ['herethey', 'HERE THEY COME!', '#ff9d3c', 2], ['theyrein', "THEY'RE IN!", '#ff6b4a', 2], ['costhat', 'THAT COST YA A HAT!', '#ffd34a', 1],
     ['barred', 'BARRED AGAIN!', '#fff3c4', 1], ['prayers', 'SAY YER PRAYERS, BOOTS!', '#fff3c4', 1], ['snort', 'SNORT!', '#ff9d3c', 1],
     ['seered', "SEEIN' RED!", '#ff6b4a', 1], ['gored', 'GORED!', '#ff6b4a', 1], ['crash', 'CRASH!', '#ff9d3c', 2], ['stuck', 'STUCK!', '#ffd34a', 1],
-    ['highnoon', 'HIGH NOON, BOOTS.', '#9ad46a', 2], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
+    ['highnoon', 'HIGH NOON, BOOTS.', '#9ad46a', 2], ['hnoon', 'HIGH NOON', '#ffd34a', 3], ['mainsub', 'MAIN STREET', '#e8a070', 1],
+    ['needin', "I'VE BEEN NEEDIN' A NEW PAIR.", '#fff3c4', 1], ['draw', 'DRAW!', '#ffd34a', 4], ['outdrawn', 'OUTDRAWN!', '#ffd34a', 2],
+    ['jumped', 'JUMPED THE GUN!', '#ff6b4a', 1], ['slowboot', 'TOO SLOW, BOOTS!', '#ff6b4a', 1], ['snakebit', 'SNAKEBIT!', '#ff6b4a', 1],
+    ['posse', "GET 'EM, POSSE!", '#ff9d3c', 1], ['theend', 'THE END', '#ff9d3c', 4], ['pressj', 'PRESS JUMP', '#c3c8d8', 1], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
   ];
   addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
 
@@ -281,6 +290,15 @@ T.runExport = function (A) {
     ['charge', TO.charge, 12, true], ['stuck', TO.stuck, 10, true], ['hookw', [TO.hookw], 1, false], ['hook', [TO.hook], 1, false],
     ['rear', [TO.rear], 1, false], ['stomp', [TO.stomp], 1, false], ['hurt', [TO.hurt], 1, false], ['daze', TO.daze, 8, true],
     ['ko', [TO.ko], 1, false], ['splint', [MSP.splinter], 1, false, MSP.splinter.ox, MSP.splinter.oy]], B.OX, B.OY);
+  bank = 'HN';                                     // High Noon: Diamondback, the town clock's hands
+  const DBK = T.buildDiamondback(), NSP = T.buildNoonSprites();
+  addGroup('DB', [['idle', DBK.idle, 2, true], ['walk', DBK.walk, 8, true], ['talk', DBK.talk, 6, true], ['draw', [DBK.draw], 1, false],
+    ['fire', [DBK.fire], 1, false], ['reload', DBK.reload, 4, true], ['coil', [DBK.coil], 1, false], ['strike', [DBK.strike], 1, false],
+    ['stretch', [DBK.stretch], 1, false], ['whip', DBK.whip, 10, true], ['hurt', [DBK.hurt], 1, false], ['daze', DBK.daze, 8, true],
+    ['ko', [DBK.ko], 1, false], ['nogun', DBK.nogun, 3, true]], B.OX, B.OY);
+  addGroup('CH', [['hands', NSP.hands, 1, false, 16, 16]], 16, 16, false);
+  bank = 'EN';                                     // the ending: the snakeskin boot that twitches (over the shop's bitmap)
+  addGroup('BO', [['boot', EN.shopBoot, 1, false, EN.shopBoot[0].ox, EN.shopBoot[0].oy]], 0, 0, false);
   bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
 
@@ -357,21 +375,23 @@ T.runExport = function (A) {
   };
   const files = {
     'sprites.bin': sprites,
-    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT, 'spr_cd.bin': ovl.CD, 'spr_th.bin': ovl.TH, 'spr_mi.bin': ovl.MI,
+    'spr_bh.bin': ovl.BH, 'spr_ms.bin': ovl.MS, 'spr_gt.bin': ovl.GT, 'spr_cd.bin': ovl.CD, 'spr_th.bin': ovl.TH, 'spr_mi.bin': ovl.MI, 'spr_hn.bin': ovl.HN, 'spr_en.bin': ovl.EN,
     'tiles_bh.bin': STAGES[0].tiles, 'maps_bh.bin': STAGES[0].mapBytes,
     'tiles_ms.bin': STAGES[1].tiles, 'maps_ms.bin': STAGES[1].mapBytes,
     'tiles_gt.bin': STAGES[2].tiles, 'maps_gt.bin': STAGES[2].mapBytes,
     'tiles_cd.bin': STAGES[3].tiles, 'maps_cd.bin': STAGES[3].mapBytes,
     'tiles_th.bin': STAGES[4].tiles, 'maps_th.bin': STAGES[4].mapBytes,
     'tiles_mi.bin': STAGES[5].tiles, 'maps_mi.bin': STAGES[5].mapBytes,
+    'tiles_hn.bin': STAGES[6].tiles, 'maps_hn.bin': STAGES[6].mapBytes, 'tiles_en.bin': STAGES[7].tiles, 'maps_en.bin': STAGES[7].mapBytes,
+    'bmp_shop.bin': Uint8Array.from(EN.shopBmp.idx), 'clut_shop.bin': clut([null, ...EN.shopBmp.pal]),   // the shop: 320x240 8bpp, its CLUT
     'frames.bin': frames,
-    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD), 'frr_th.bin': cat(frParts.TH), 'frr_mi.bin': cat(frParts.MI),
+    'fri.bin': fri, 'frr.bin': cat(frParts.null), 'frr_bh.bin': cat(frParts.BH), 'frr_ms.bin': cat(frParts.MS), 'frr_gt.bin': cat(frParts.GT), 'frr_cd.bin': cat(frParts.CD), 'frr_th.bin': cat(frParts.TH), 'frr_mi.bin': cat(frParts.MI), 'frr_hn.bin': cat(frParts.HN), 'frr_en.bin': cat(frParts.EN),
     'clut_spr.bin': clut(shCols),                 // the shared colours only (tskview; tsk loads a stage's pal_<s>)
-    'pal_bh.bin': palOf('BH'), 'pal_ms.bin': palOf('MS'), 'pal_gt.bin': palOf('GT'), 'pal_cd.bin': palOf('CD'), 'pal_th.bin': palOf('TH'), 'pal_mi.bin': palOf('MI'),
+    'pal_bh.bin': palOf('BH'), 'pal_ms.bin': palOf('MS'), 'pal_gt.bin': palOf('GT'), 'pal_cd.bin': palOf('CD'), 'pal_th.bin': palOf('TH'), 'pal_mi.bin': palOf('MI'), 'pal_hn.bin': palOf('HN'), 'pal_en.bin': palOf('EN'),
     // the tile palettes: a stage's own (tpal_<s>); clut_tile is Boot Hill's (the title, tskview), clut_flash Boot
     // Hill's lightning-lit
     'tpal_bh.bin': clut(STAGES[0].pal), 'tpal_ms.bin': clut(STAGES[1].pal), 'tpal_gt.bin': clut(STAGES[2].pal),
-    'tpal_cd.bin': clut(STAGES[3].pal), 'tpal_th.bin': clut(STAGES[4].pal), 'tpal_mi.bin': clut(STAGES[5].pal),
+    'tpal_cd.bin': clut(STAGES[3].pal), 'tpal_th.bin': clut(STAGES[4].pal), 'tpal_mi.bin': clut(STAGES[5].pal), 'tpal_hn.bin': clut(STAGES[6].pal), 'tpal_en.bin': clut(STAGES[7].pal),
     'clut_tile.bin': clut(STAGES[0].pal),
     'clut_flash.bin': clut(STAGES[0].pal, c => c.map((v, j) => Math.round(v * 0.35 + F[j] * 0.65))),   // lightning
     // the shades (mainstreet.js shadeOf), Main Street's night falling and the train's tunnels: 61 tile CLUTs of the

@@ -400,6 +400,26 @@ thitd               rmb       1                   his charge, hook or shove has 
 ttramp              rmb       1                   who he's trampled this charge: a bit a slot
 tsaid               rmb       1                   Diamondback's word: said
 tshk                rmb       NShk*SH.Size        his stomp's walls of dust
+* High Noon (diamond.a) and the ending (ending.a)
+dbt                 rmb       2                   passes since the duel began
+dbdat               rmb       2                   when the clock strikes noon (passes)
+dbdrt               rmb       2                   when it did (0 = not yet)
+dbres               rmb       1                   the duel: 0 on, 1 won, 2 too soon, 3 too slow
+dbkick              rmb       1                   1 = he kicked in the standoff
+struck              rmb       1                   1 = the clock's struck noon
+dbammo              rmb       1                   Diamondback's rounds
+dbshot              rmb       1                   shots left in this volley
+dbrage              rmb       1                   1 = half health: two volleys
+dbstun              rmb       1                   DB.Open: 0 stretched out, 1 dizzy
+dbhitd              rmb       1                   his strike or whip has landed
+dbflash             rmb       1                   the muzzle flash, passes
+pbon                rmb       1                   the duel's stone, flying
+pbx                 rmb       2
+pbz                 rmb       2
+endst               rmb       1                   the ending's step (EN.*)
+endt                rmb       2                   passes in it
+endtw               rmb       1                   the boot's twitch, passes
+endq                rmb       1                   1 = back to the title (Stage does it)
 riding              rmb       1                   1 = the Cattle Drive's ride is on (ride.a)
 hmount              rmb       1                   1 = he's in the saddle
 hremount            rmb       1                   (the death scene: back in the saddle after)

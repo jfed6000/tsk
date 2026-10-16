@@ -1,0 +1,265 @@
+********************************************************************
+* ending.a - the ending (brawler.js startEnding, updateEnding; the
+*   ending's backdrops, highnoon.js buildEnding, buildShopScene).
+*   Boot Hill at sundown: the boots walk up to Ringo's grave, tip the
+*   hat, and walk off into the sunset.  THE END.  Then the boot shop -
+*   a painted bitmap, not tiles: loaded into the tile blocks (nothing
+*   else wants them now) and shown on bitmap 0 through CLUT 3 - and the
+*   snakeskin boot over it that twitches.  A jump: back to the title
+*   (Stage does it, endq: this module mustn't be in its slot when the
+*   title's art goes in).  The tsken stage module.
+********************************************************************
+
+OoWalk              equ       14                  52 px/s up the hill
+OoLeave             equ       12                  46 px/s into the sunset
+BmpBlks             equ       10                  the shop: 76,800 bytes
+
+* EndingInit - the ending's stage is in (StageInit): the scene from the start
+EndingInit          lda       #PH.Ending
+                    lbsr      SetPh
+                    ldd       #-24*16             in from the left
+                    std       <hx
+                    ldd       #40*16
+                    std       <hz
+                    ldd       #0
+                    std       <hh
+                    std       <hvx
+                    std       <hvz
+                    std       <hvh
+                    std       endt,u
+                    clr       <hface
+                    clr       <hwep
+                    clr       endst,u
+                    clr       endtw,u
+                    clr       endq,u
+                    lda       #ST.Walk
+                    lbra      SetS
+
+* EndingStep - one pass (Stage, in PH.Ending)
+EndingStep          ldd       endt,u
+                    addd      #1
+                    std       endt,u
+                    lda       endst,u
+                    cmpa      #EQ.Walk            up to the grave
+                    bne       oos1
+                    ldd       <hx
+                    addd      #OoWalk
+                    std       <hx
+                    cmpd      #(StoneX+30)*16
+                    lblt      HeroPassive
+                    lda       #ST.Idle
+                    lbsr      SetS
+                    lda       #1                  facing the stone
+                    sta       <hface
+                    lda       #EQ.Stand
+                    lbra      OoNext
+oos1                cmpa      #EQ.Stand           a moment, then the hat tip
+                    bne       oos2
+                    ldd       endt,u
+                    cmpd      #84
+                    lblo      HeroPassive
+                    lda       #ST.Taunt
+                    lbsr      SetS
+                    lda       #SF.Tip
+                    lbsr      Sfx
+                    lda       #EQ.Tip
+                    lbra      OoNext
+oos2                cmpa      #EQ.Tip
+                    bne       oos3
+                    ldd       endt,u
+                    cmpd      #168
+                    lblo      HeroPassive
+                    clr       <hface
+                    lda       #ST.Walk
+                    lbsr      SetS
+                    lda       #EQ.Leave
+                    lbra      OoNext
+oos3                cmpa      #EQ.Leave           off into the sunset
+                    bne       oos4
+                    ldd       <hx
+                    addd      #OoLeave
+                    std       <hx
+                    cmpd      #350*16
+                    lblt      HeroPassive
+                    lda       #EQ.TheEnd
+                    lbra      OoNext
+oos4                cmpa      #EQ.TheEnd          THE END, a while
+                    bne       oos5
+                    ldd       endt,u
+                    cmpd      #270
+                    blo       oos9
+                    lda       #$FF                (silence)
+                    lbsr      Music
+                    lbsr      ShopOn
+                    lda       #EQ.Shop
+                    lbra      OoNext
+oos5                ldd       endt,u              the shop: the twitch at 2.4 s; a jump after 3.5 s
+                    cmpd      #144
+                    bne       oos6
+                    lda       #18
+                    sta       endtw,u
+                    lda       #SF.Rattle
+                    lbsr      Sfx
+oos6                tst       endtw,u
+                    beq       oos7
+                    dec       endtw,u
+oos7                ldd       endt,u
+                    cmpd      #210
+                    blo       oos9
+                    lda       <ipress
+                    bita      #IN.Jump
+                    beq       oos9
+                    lbsr      ShopOff
+                    lda       #1
+                    sta       endq,u
+oos9                rts
+
+* OoNext - A = the next step: its clock from 0
+OoNext              sta       endst,u
+                    ldd       #0
+                    std       endt,u
+                    rts
+
+********************************************************************
+* The shop: the bitmap in, and out again
+********************************************************************
+* ShopOn - the maps off; the picture into the tile blocks, its CLUT into
+*   CLUT 3; bitmap 0 there, on layer 0 (1 and 2 blank); bitmaps on
+ShopOn              lbsr      MapsOff
+                    leax      BmpName,pcr
+                    lda       <tilblk
+                    ldb       #BmpBlks
+                    ldy       #0
+                    lbsr      LoadFile
+                    leax      ClutName,pcr
+                    lda       clublk,u            (clublk's second K, then CLUT 3, as a stage's tiles' does)
+                    ldb       #1
+                    ldy       #1024
+                    lbsr      LoadFile
+                    ldb       #1
+                    ldy       #CLUT.Til*256
+                    lbsr      ClutK
+                    pshs      u
+                    clra
+                    ldb       <tilblk
+                    tfr       d,x                 R$X = the block
+                    ldu       #0                  R$U = the offset in it
+                    ldy       #0                  R$Y = 8 bpp, group 0 : bitmap 0
+                    ldb       #SS.BmDef
+                    os9       I$SetStt
+                    puls      u
+                    pshs      u
+                    ldy       #0                  bitmap 0
+                    ldx       #$0100+CLUT.Til     enabled, CLUT 3
+                    ldu       #0                  320 x 240, group 0
+                    clra
+                    ldb       #SS.BmCfg
+                    os9       I$SetStt
+                    puls      u
+                    ldx       #0                  layer 0: the bitmap; 1 and 2 blank
+                    ldy       #0
+                    lbsr      OneLayer
+                    ldx       #1
+                    ldy       #7
+                    lbsr      OneLayer
+                    ldx       #2
+                    ldy       #7
+                    lbsr      OneLayer
+                    ldx       #FX_GRF+FX_TIL+FX_SPR+FX_BM
+                    bra       OoMcr
+
+* ShopOff - bitmap 0 off and undefined, the layers back, bitmaps off; the
+*   tile blocks hold the picture now, so the title loads Boot Hill again
+ShopOff             pshs      u
+                    ldy       #0
+                    ldx       #0                  bitmap 0 disabled
+                    ldu       #0
+                    clra
+                    ldb       #SS.BmCfg
+                    os9       I$SetStt
+                    puls      u
+                    pshs      u
+                    ldx       #0                  block 0: undefined
+                    ldy       #0
+                    ldu       #0
+                    clra
+                    ldb       #SS.BmDef
+                    os9       I$SetStt
+                    puls      u
+                    ldx       #0
+                    ldy       #6
+                    lbsr      OneLayer
+                    ldx       #1
+                    ldy       #5
+                    lbsr      OneLayer
+                    ldx       #2
+                    ldy       #4
+                    lbsr      OneLayer
+                    lda       #$FF
+                    sta       ldstg,u
+                    ldx       #FX_GRF+FX_TIL+FX_SPR
+* OoMcr - X = the MCR's low byte
+OoMcr               pshs      u
+                    ldy       #FT_OMIT            (leave the mode byte alone)
+                    clra
+                    ldb       #SS.MCR
+                    os9       I$SetStt
+                    puls      u,pc
+
+BmpName             fcc       /bmp_shop.bin/
+                    fcb       $0D
+ClutName            fcc       /clut_shop.bin/
+                    fcb       $0D
+
+********************************************************************
+* Drawing
+********************************************************************
+* DrawEnding - Ringo's grave on the hill; in the shop, the boot that twitches
+DrawEnding          lda       sflags,u
+                    bita      #SG.Ending
+                    beq       ood9
+                    lda       endst,u
+                    cmpa      #EQ.Shop
+                    lbne      DrawGrave
+                    lda       #CTL.Spr
+                    sta       <ectl
+                    clr       <ekey
+                    clr       <eshk
+                    ldd       #BO.boot
+                    tst       endtw,u
+                    beq       ood1
+                    addd      #1
+ood1                std       <efrm
+                    ldd       <cam
+                    addd      #184
+                    lbsr      To124
+                    std       <ex
+                    ldd       #18*16              (its foot on the shelf, at screen y 168)
+                    std       <ez
+                    ldd       #0
+                    std       <eh
+                    lbra      Ent
+ood9                rts
+
+* EndingWords - the HUD's pass (Titles, in PH.Ending): THE END; PRESS JUMP
+EndingWords         lda       endst,u
+                    cmpa      #EQ.TheEnd
+                    bne       oow1
+                    ldd       endt,u
+                    cmpd      #36
+                    blo       oow9
+                    ldx       #TX.theend
+                    ldd       #84
+                    lbra      Ttl
+oow1                cmpa      #EQ.Shop
+                    bne       oow9
+                    ldd       endt,u
+                    cmpd      #210
+                    blo       oow9
+                    lda       endt+1,u
+                    bita      #32
+                    beq       oow9
+                    ldx       #TX.pressj
+                    ldd       #210
+                    lbra      Ttl
+oow9                rts

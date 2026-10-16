@@ -9,6 +9,7 @@ PH.Play             equ       0
 PH.Clear            equ       1                   the stage is won: a taunt, the title
 PH.End              equ       2                   TO BE CONTINUED... (Main Street comes in sprint 4)
 PH.Over             equ       3                   game over
+PH.Ending           equ       6                   the ending (ending.a): Boot Hill at sundown, the boot shop
 
 TitleLen              equ       192                 the stage title shows 3.2 s
 GoLen               equ       180                 "GO >>" blinks 3 s after a wave
@@ -131,6 +132,9 @@ si0a                stx       zmax16,u
                     ldx       stgp,u              its music (after the clear above: the MIDI buffer's in it)
                     lda       SR.Mus,x
                     lbsr      Music
+                    lda       sflags,u            the ending: a scene, no waves (ending.a)
+                    bita      #SG.Ending
+                    lbne      EndingInit
                     tst       <skipb              (tsk k: straight to the stage's boss)
                     bne       gi4
                     lda       sflags,u
@@ -272,6 +276,8 @@ SG.Dusk             equ       4                   night falls, wave by wave
 SG.Ride             equ       8                   the ride: in the saddle, the trail scrolling (ride.a)
 SG.Train            equ       16                  the train: its roof narrower, the scenery going by, gaps, tunnels (train.a)
 SG.Siege            equ       32                  the Mission: the church doors, the siege (mission.a)
+SG.Noon             equ       64                  High Noon: the clock tower, the duel (diamond.a)
+SG.Ending           equ       128                 the ending: no waves, a scene (ending.a)
 NOvlBlk             equ       (SPR.Ovl+7)/8
 MaxW                equ       2032                (x 16 = 32512: under 32767, so signed compares work)
 
@@ -323,6 +329,22 @@ StgTab              fdb       BH.W                Boot Hill at midnight
                     fdb       BarMI-StgTab
                     fdb       TX.mission,TX.sundown,TX.miclear
                     fdb       FileMI-StgTab
+                    fdb       HN.W                High Noon on Main Street: the last of the gang, the duel, Diamondback
+                    fdb       HN.MAP0.W,HN.MAP0.Of,HN.MAP1.W,HN.MAP1.Of,HN.MAP2.W,HN.MAP2.Of
+                    fcb       HN.TIL.Sets,SG.Noon,MU.boogie,4
+                    fdb       WaveHN-StgTab
+                    fcb       4
+                    fdb       BarHN-StgTab
+                    fdb       TX.hnoon,TX.mainsub,0          (no clear: the ending)
+                    fdb       FileHN-StgTab
+                    fdb       EN.W                the ending: Boot Hill at sundown, then the boot shop (a bitmap)
+                    fdb       EN.MAP0.W,EN.MAP0.Of,EN.MAP1.W,EN.MAP1.Of,EN.MAP2.W,EN.MAP2.Of
+                    fcb       EN.TIL.Sets,SG.Ending,MU.boothill,0
+                    fdb       WaveHN-StgTab
+                    fcb       0
+                    fdb       BarEN-StgTab
+                    fdb       0,0,0
+                    fdb       FileEN-StgTab
 
 FileBH              fcc       /tiles_bh.bin/
                     fcb       $0D
@@ -368,6 +390,36 @@ FileTH              fcc       /tiles_th.bin/
                     fcc       /shade_th.bin/
                     fcb       $0D
                     fcc       /tskth/
+                    fcb       $0D
+FileHN              fcc       /tiles_hn.bin/
+                    fcb       $0D
+                    fcc       /maps_hn.bin/
+                    fcb       $0D
+                    fcc       /spr_hn.bin/
+                    fcb       $0D
+                    fcc       /frr_hn.bin/
+                    fcb       $0D
+                    fcc       /pal_hn.bin/
+                    fcb       $0D
+                    fcc       /tpal_hn.bin/
+                    fcb       $0D
+                    fcb       $0D
+                    fcc       /tskhn/
+                    fcb       $0D
+FileEN              fcc       /tiles_en.bin/
+                    fcb       $0D
+                    fcc       /maps_en.bin/
+                    fcb       $0D
+                    fcc       /spr_en.bin/
+                    fcb       $0D
+                    fcc       /frr_en.bin/
+                    fcb       $0D
+                    fcc       /pal_en.bin/
+                    fcb       $0D
+                    fcc       /tpal_en.bin/
+                    fcb       $0D
+                    fcb       $0D
+                    fcc       /tsken/
                     fcb       $0D
 FileMI              fcc       /tiles_mi.bin/
                     fcb       $0D
@@ -444,18 +496,25 @@ sg1                 lda       <phase
                     lbsr      RideStep            the Cattle Drive's ride (ride.a)
                     lbsr      TrainStep           the Train Heist's train (train.a)
                     lbsr      MissionStep         the Mission's doors, banners, dust (mission.a)
+                    lbsr      NoonStep            High Noon's kicked stone (diamond.a)
                     tst       dying,u             (no wave while he's down)
                     bne       sgx
                     lbra      Waves
-sg2                 cmpa      #PH.Clear
+sg2                 cmpa      #PH.Ending          the ending's scene; it says when it's back to the title
+                    bne       sg2e
+                    lbsr      EndingStep
+                    tst       endq,u
+                    lbne      TitleInit
+                    rts
+sg2e                cmpa      #PH.Clear
                     bne       sg4
                     lbsr      HeroPassive         the taunt, then standing
                     ldd       <phaset
                     cmpd      #ClearT
                     blo       sgx
                     lda       stgn,u             a stage won: on to the next (health back up 6,
-                    cmpa      #5                  lives and score kept, the weapon left behind);
-                    bhs       sg3                 the Mission's the last for now
+                    cmpa      #7                  lives and score kept, the weapon left behind);
+                    bhs       sg3                 High Noon's next is the ending (7)
                     lda       <hhp
                     adda      #6
                     cmpa      #MaxHp
@@ -566,7 +625,9 @@ StartWave           ldd       ,x++
                     lbeq      StartJack
                     decb
                     lbeq      StartSting
-                    lbra      StartToro
+                    decb
+                    lbeq      StartToro
+                    lbra      StartDiamond
 swb9                clr       <tmpk               (tmpk: the siege flag)
                     tsta
                     bpl       swb9a
@@ -689,6 +750,14 @@ WaveMI              fdb       0                   the Mission: along the wall, t
                     fcb       $80+6,TY.Coy,TY.Rat,TY.SkelW,TY.Coy,TY.Rat,TY.Dillo
                     fdb       960
                     fcb       $FF,5               El Toro
+WaveHN              fdb       0                   High Noon: down Main Street, then the duel at the clock tower
+                    fcb       4,TY.Coy,TY.SkelW,TY.Rat,TY.Coy
+                    fdb       420
+                    fcb       5,TY.SkelW,TY.Coy,TY.Dillo,TY.Rat,TY.Coy
+                    fdb       860
+                    fcb       6,TY.Coy,TY.SkelW,TY.Coy,TY.Rat,TY.SkelW,TY.Coy
+                    fdb       1280
+                    fcb       $FF,6               Diamondback
 WaveCD              fdb       1150                the Cattle Drive: on foot at the corral gate
                     fcb       4,TY.Coy,TY.Rat,TY.Coy,TY.SkelW
                     fdb       1712
@@ -698,7 +767,15 @@ WaveCD              fdb       1150                the Cattle Drive: on foot at t
 * StageClear - the stage is won: he taunts
 ********************************************************************
 StageClear          clr       <lock
-                    lda       #MU.clear
+                    lda       stgn,u              High Noon: no clear, on to the ending at once
+                    cmpa      #6
+                    bne       sc1
+                    lda       #PH.Clear
+                    lbsr      SetPh
+                    ldd       #ClearT
+                    std       <phaset
+                    rts
+sc1                 lda       #MU.clear
                     lbsr      Music
                     lda       #PH.Clear
                     lbsr      SetPh

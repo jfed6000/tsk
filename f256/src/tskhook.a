@@ -4,14 +4,21 @@ BotGap              jmp       [HK.BotGap,u]
 BotGila             jmp       [HK.BotGila,u]
 BotJack             jmp       [HK.BotJack,u]
 BotMission          jmp       [HK.BotMission,u]
+BotNoon             jmp       [HK.BotNoon,u]
 BotShell            jmp       [HK.BotShell,u]
 BotTrain            jmp       [HK.BotTrain,u]
+DiamondFrame        jmp       [HK.DiamondFrame,u]
+DiamondRage         jmp       [HK.DiamondRage,u]
+DiamondReact        jmp       [HK.DiamondReact,u]
+DiamondStep         jmp       [HK.DiamondStep,u]
 DillonStep          jmp       [HK.DillonStep,u]
 DlnFrame            jmp       [HK.DlnFrame,u]
 DoorInit            jmp       [HK.DoorInit,u]
+DrawEnding          jmp       [HK.DrawEnding,u]
 DrawGila            jmp       [HK.DrawGila,u]
 DrawLasso           jmp       [HK.DrawLasso,u]
 DrawMission         jmp       [HK.DrawMission,u]
+DrawNoon            jmp       [HK.DrawNoon,u]
 DrawRide            jmp       [HK.DrawRide,u]
 DrawRider           jmp       [HK.DrawRider,u]
 DrawSigns           jmp       [HK.DrawSigns,u]
@@ -19,8 +26,12 @@ DrawSteer           jmp       [HK.DrawSteer,u]
 DrawTable           jmp       [HK.DrawTable,u]
 DrawTrain           jmp       [HK.DrawTrain,u]
 DuckNow             jmp       [HK.DuckNow,u]
+DuelInput           jmp       [HK.DuelInput,u]
 EBatter             jmp       [HK.EBatter,u]
 ELeave              jmp       [HK.ELeave,u]
+EndingInit          jmp       [HK.EndingInit,u]
+EndingStep          jmp       [HK.EndingStep,u]
+EndingWords         jmp       [HK.EndingWords,u]
 EVault              jmp       [HK.EVault,u]
 FallStep            jmp       [HK.FallStep,u]
 GilaFrame           jmp       [HK.GilaFrame,u]
@@ -33,6 +44,8 @@ JackReact           jmp       [HK.JackReact,u]
 JackStep            jmp       [HK.JackStep,u]
 MissionStep         jmp       [HK.MissionStep,u]
 MissionWords        jmp       [HK.MissionWords,u]
+NoonStep            jmp       [HK.NoonStep,u]
+NoonWords           jmp       [HK.NoonWords,u]
 OverWall            jmp       [HK.OverWall,u]
 RaidAppr            jmp       [HK.RaidAppr,u]
 RAim                jmp       [HK.RAim,u]
@@ -46,6 +59,7 @@ ShellHit            jmp       [HK.ShellHit,u]
 SiegeBell           jmp       [HK.SiegeBell,u]
 SignInit            jmp       [HK.SignInit,u]
 Signs               jmp       [HK.Signs,u]
+StartDiamond        jmp       [HK.StartDiamond,u]
 StartDillon         jmp       [HK.StartDillon,u]
 StartGila           jmp       [HK.StartGila,u]
 StartJack           jmp       [HK.StartJack,u]
@@ -77,14 +91,21 @@ HkDef
                     fcb       1          BotGila
                     fcb       1          BotJack
                     fcb       1          BotMission
+                    fcb       1          BotNoon
                     fcb       1          BotShell
                     fcb       1          BotTrain
+                    fcb       0          DiamondFrame
+                    fcb       0          DiamondRage
+                    fcb       0          DiamondReact
+                    fcb       0          DiamondStep
                     fcb       0          DillonStep
                     fcb       0          DlnFrame
                     fcb       0          DoorInit
+                    fcb       0          DrawEnding
                     fcb       0          DrawGila
                     fcb       0          DrawLasso
                     fcb       0          DrawMission
+                    fcb       0          DrawNoon
                     fcb       0          DrawRide
                     fcb       0          DrawRider
                     fcb       0          DrawSigns
@@ -92,8 +113,12 @@ HkDef
                     fcb       0          DrawTable
                     fcb       0          DrawTrain
                     fcb       0          DuckNow
+                    fcb       0          DuelInput
                     fcb       0          EBatter
                     fcb       0          ELeave
+                    fcb       0          EndingInit
+                    fcb       0          EndingStep
+                    fcb       0          EndingWords
                     fcb       0          EVault
                     fcb       0          FallStep
                     fcb       0          GilaFrame
@@ -106,6 +131,8 @@ HkDef
                     fcb       0          JackStep
                     fcb       0          MissionStep
                     fcb       0          MissionWords
+                    fcb       0          NoonStep
+                    fcb       0          NoonWords
                     fcb       0          OverWall
                     fcb       0          RaidAppr
                     fcb       0          RAim
@@ -119,6 +146,7 @@ HkDef
                     fcb       0          SiegeBell
                     fcb       0          SignInit
                     fcb       0          Signs
+                    fcb       0          StartDiamond
                     fcb       0          StartDillon
                     fcb       0          StartGila
                     fcb       0          StartJack
@@ -152,10 +180,12 @@ CoreTab
                     fdb       ByDir-CoreTab
                     fdb       ByFace-CoreTab
                     fdb       Cam16-CoreTab
+                    fdb       ClutK-CoreTab
                     fdb       Decay-CoreTab
                     fdb       DirtXZ-CoreTab
                     fdb       Div-CoreTab
                     fdb       DMove-CoreTab
+                    fdb       DrawGrave-CoreTab
                     fdb       DSet-CoreTab
                     fdb       DuskClut-CoreTab
                     fdb       EnMove-CoreTab
@@ -165,15 +195,21 @@ CoreTab
                     fdb       Fire-CoreTab
                     fdb       GameOver-CoreTab
                     fdb       GangDown-CoreTab
+                    fdb       HeroPassive-CoreTab
                     fdb       Hitbl-CoreTab
                     fdb       HitE-CoreTab
                     fdb       HurtHero-CoreTab
                     fdb       KO-CoreTab
+                    fdb       LoadFile-CoreTab
+                    fdb       MapsOff-CoreTab
+                    fdb       Music-CoreTab
                     fdb       NegD-CoreTab
                     fdb       NewCoy-CoreTab
                     fdb       NewPt-CoreTab
+                    fdb       NewSkel-CoreTab
                     fdb       NewSlot-CoreTab
                     fdb       NewWalk-CoreTab
+                    fdb       OneLayer-CoreTab
                     fdb       OneMap-CoreTab
                     fdb       OnScreen-CoreTab
                     fdb       PopSxz-CoreTab
@@ -186,6 +222,7 @@ CoreTab
                     fdb       ScoreAt-CoreTab
                     fdb       Scrl-CoreTab
                     fdb       SetE-CoreTab
+                    fdb       SetPh-CoreTab
                     fdb       SetS-CoreTab
                     fdb       Sfx-CoreTab
                     fdb       Shk-CoreTab

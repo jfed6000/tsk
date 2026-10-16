@@ -740,6 +740,10 @@ EName               lda       EN.Ty,x
                     decb
                     beq       enm00
                     leay      SToro,pcr
+                    decb
+                    decb
+                    bne       enm00
+                    leay      SDiamond,pcr
 enm00               cmpa      #TY.Boss
                     beq       enm0
                     cmpa      #TY.Rat
@@ -794,6 +798,9 @@ EMax                pshs      a                   (A is kept: the caller's healt
                     deca
                     beq       ex1
                     ldb       #ToroHp
+                    deca
+                    beq       ex1
+                    ldb       #DbHp
 ex1                 puls      a,pc
 
 SName               fcn       "SHITKICKERS"
@@ -807,6 +814,7 @@ SGila               fcn       "DOC GILA"
 SJack               fcn       "JACKRABBIT JACK"
 SSting              fcn       "STING"
 SToro               fcn       "EL TORO"
+SDiamond            fcn       "DIAMONDBACK"
 SDoors              fcn       "THE DOORS"
 SnakeNames          fcn       "SIDEWINDER"
                     fcn       "SLIM"
@@ -1031,10 +1039,12 @@ po2                 leax      PU.Size,x
 *   lower record is in front): the HUD, his hats, the titles, popups.
 *   Entry: Y = the first record.  Exit: Y = the next.
 ********************************************************************
-DrawTop             lda       <phase              no HUD in the opening
+DrawTop             lda       <phase              no HUD in the opening (or the ending)
                     cmpa      #PH.Title
                     lbeq      TitleTop
                     cmpa      #PH.Intro
+                    lbeq      dt5
+                    cmpa      #PH.Ending
                     lbeq      dt5
                     lda       #CTL.Spr            the HUD
                     sta       <bctl
@@ -1173,10 +1183,13 @@ dtp9                rts
 Titles              lda       <phase
                     cmpa      #PH.Intro
                     lbeq      ti9
+                    cmpa      #PH.Ending          (the ending's words: ending.a)
+                    lbeq      EndingWords
                     cmpa      #PH.Play
                     bne       ti3
                     lbsr      TrainWords          (the train's TUNNEL! and DUCK!: train.a)
                     lbsr      MissionWords        (the Mission's banners: mission.a)
+                    lbsr      NoonWords           (High Noon's DRAW!: diamond.a)
                     ldd       <titlet             the stage's name: Boot Hill under the big title,
                     cmpd      #TitleLen           the others on their own
                     bhs       ti2
@@ -1223,7 +1236,8 @@ ti2                 tst       <got                GO >>, blinking, once a wave's
 ti3                 cmpa      #PH.Clear
                     bne       ti4
                     ldx       stgp,u              BOOT HILL CLEAR!, MAIN STREET CLEAR!
-                    ldx       SR.Clr,x
+                    ldx       SR.Clr,x            (High Noon has none: on to the ending)
+                    beq       ti9
                     ldd       #70
                     bra       Ttl
 ti4                 cmpa      #PH.End

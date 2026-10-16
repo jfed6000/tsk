@@ -98,6 +98,7 @@ h0a                 lda       <hchain
 * dx, dz: -1, 0 or 1 from what is held
 h1                  tst       dying,u             the death scene: no input
                     lbne      HeroDeath
+                    lbsr      DuelInput           (High Noon's standoff: his input is the duel's - diamond.a)
                     clr       <hdx
                     clr       <hdz
                     lda       <inp
