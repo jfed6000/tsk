@@ -51,7 +51,7 @@ scene on, he's sizing the hero up as footwear.
 | 4 | **The Cattle Drive** (built, browser) | **Jackrabbit Jack**, the rustler | A stampede chase on the back of a longhorn: the Metal Slug vehicle level. |
 | 5 | **The Train Heist** (built, browser and F256) | **Sting**, a scorpion with too much dynamite | Fighting along the roofs of a moving train. The tunnel ducking writes itself. |
 | 6 | **The Mission** (built, browser) | Waves, then Diamondback's enforcer **El Toro**, a minotaur bull | A last stand defending the town, *Magnificent Seven* or Alamo style: the gang batters the church doors the townsfolk are barred behind. The bull is the honest brute before the treacherous snake (the user weighed a snake; Diamondback is the snake, and the rattlers are already common enemies). Knocked out, Diamondback's word from the dark sets up High Noon. |
-| 7 | **High Noon** | **Diamondback** | The showdown on Main Street. It opens with a quick-draw duel, except he kicks. |
+| 7 | **High Noon** (built, browser) | **Diamondback** | The showdown on Main Street. It opens with a quick-draw duel, except he kicks: on DRAW! a stone off his boot knocks the gun from Diamondback's tail. Then the fight. |
 
 ### Optional subplot: the Ugly
 
@@ -86,8 +86,8 @@ Each enemy has a job, Mario-style: one clear behaviour, readable at a glance.
 3. **The Mission:** the gang's full assault on the town Hoot wouldn't sell, and the only level where he defends
    rather than hunts. Vernon switches sides here, if he's in.
 4. **High Noon:** Diamondback, Main Street, clock tower. A duel, then the fight.
-5. **Ending:** Diamondback is down and the gang is scattered. The boots walk back up Boot Hill and stand on Hoot's
-   grave. A hat tip. He walks into the sunset, scowling.
+5. **Ending (built, browser):** Diamondback is down and the gang is scattered. The boots walk back up Boot Hill and stand on Ringo's
+   grave ("Hoot" was an older name for him). A hat tip. He walks into the sunset, scowling.
 6. **After the credits:** a pair of fine new *snakeskin* boots sits on a shop shelf. One of them twitches.
 
 ## Telling it on the F256
@@ -103,7 +103,7 @@ Text costs module space (40,192 bytes total, `../port-guide.md` section 3), so t
   - **Doc Gila:** *"CARE TO CUT THE DECK, PARDNER?"*
   - **Sting:** *"NOBODY GETS OFF THIS TRAIN!"*
   - **El Toro:** *"SAY YER PRAYERS, BOOTS!"*
-  - **Diamondback:** *"I'VE BEEN NEEDIN' A NEW PAIR."*
+  - **Diamondback:** *"I'VE BEEN NEEDIN' A NEW PAIR."* (in the game, before the duel)
 
 ## Open questions
 

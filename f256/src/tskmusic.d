@@ -10,5 +10,7 @@ MU.deadman    equ       5
 MU.stampede   equ       6
 MU.heist      equ       7
 MU.laststand  equ       8
+MU.standoff   equ       9
+MU.showdown   equ       10
 
-MU.N       equ       9
+MU.N       equ       11

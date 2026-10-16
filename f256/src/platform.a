@@ -1017,7 +1017,11 @@ MusFiles            fcc       /mus_title.bin/
                     fcb       $0D
                     fcc       /mus_laststand.bin/   (the Mission's)
                     fcb       $0D
-                    ifne      MU.N-9
+                    fcc       /mus_standoff.bin/    (High Noon's duel)
+                    fcb       $0D
+                    fcc       /mus_showdown.bin/    (and the fight)
+                    fcb       $0D
+                    ifne      MU.N-11
                     error     "the song list here doesn't match tskmusic.d"
                     endc
 MsgLoad             fcc       /Texas Shitkickers - saddling up.../

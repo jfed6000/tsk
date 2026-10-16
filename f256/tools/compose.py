@@ -24,6 +24,10 @@ Songs:
     laststand "Last Stand": the Mission and El Toro - the mission bell and a lone trumpet's Deguello (no quarter) over
               tremolo strings, then a galloping D minor drive down the Andalusian cadence, the trumpets on top, a
               war-drum break with the call again (loops)
+    standoff  "Standoff": High Noon's duel - a pocket watch's chime on a music box, the town clock ticking, tremolo
+              strings and a lone whistle, waiting for the draw (loops)
+    showdown  "Showdown": the fight with Diamondback - the watch's tune on two trumpets over a galloping E minor drive,
+              the overdrive and the bass, timpani, a stop-time break with the clock ticking again (loops)
     clear     a stage-clear tag (once)
     over      game over: a dying blues turnaround (once)
 """
@@ -39,6 +43,7 @@ TPB = 480                                       # ticks a beat
 OVERDRIVE, DISTORTION, CLEAN_GTR, MUTED_GTR, ACOUSTIC_BASS, SLAP_BASS, FINGER_BASS = 29, 30, 27, 28, 32, 36, 33
 HARMONICA, HONKYTONK, WHISTLE, CONTRABASS, TREMOLO_STR, STEEL_GTR, TIMPANI = 22, 3, 78, 43, 44, 25, 47
 TRUMPET, TUBULAR_BELLS, NYLON_GTR = 56, 14, 24
+MUSIC_BOX, WOODBLOCK = 10, 76                   # (76: the GM drum kit's high wood block)
 # GM drum notes (channel 9)
 KICK, KICK2, SNARE, RIM, CLAP, HAT_C, HAT_O, HAT_P, CRASH, RIDE, TOM_LO, TOM_MID, TOM_HI, TAMB = \
     36, 35, 38, 37, 39, 42, 46, 44, 49, 51, 45, 47, 50, 54
@@ -708,6 +713,84 @@ def laststand():
     return s, 4 * 4, 28 * 4                          # loops back to bar 4 (the call once), ends after bar 27
 
 
+# ---------------------------------------------------------------------------------------------- High Noon
+WATCH = [(0, 'A4', 1), (1, 'C5', 1), (2, 'E5', 1), (3, 'A5', 1), (4, 'G5', 1.5), (5.5, 'E5', 0.5), (6, 'C5', 1), (7, 'B4', 1),
+         (8, 'A4', 1), (9, 'C5', 1), (10, 'E5', 1), (11, 'G5', 1), (12, 'F5', 2), (14, 'E5', 2)]   # the pocket watch's tune
+
+
+def standoff():
+    """Standoff: High Noon's duel. A minor, 96 bpm, four bars that loop while they stare each other down: the watch's
+    chime on a music box, the clock ticking on a woodblock (and the tock on the low one), the strings trembling on A and
+    E, a lone whistle up high, a timpani roll creeping in on the last bar."""
+    s = Song(96)
+    s.prog(0, MUSIC_BOX, vol=110, pan=60)
+    s.prog(1, TREMOLO_STR, vol=78, pan=76)
+    s.prog(3, WHISTLE, vol=86, pan=50)
+    s.prog(4, TIMPANI, vol=96)
+    s.cc(9, 0, 7, 96)
+    for b, nt, ln in WATCH:
+        s.note(0, b, nt, ln * 0.9, 100)
+    s.chord(1, 0, ['A2', 'E3', 'A3'], 7.9, 64); s.chord(1, 8, ['F2', 'C3', 'A3'], 3.9, 66); s.chord(1, 12, ['E2', 'B2', 'G#3'], 3.9, 70)
+    for b in range(16):                              # tick, tock
+        s.drum(b, WOODBLOCK if b % 2 == 0 else 77, 84 if b % 2 == 0 else 70)
+    for b, nt, ln in ((2, 'E6', 4), (8, 'D6', 2), (10, 'C6', 2), (12, 'B5', 3.5)):
+        s.note(3, b, nt, ln * 0.95, 80)
+    for i in range(8):                               # the timpani creeping in
+        s.note(4, 12 + i * 0.5, 'E2', 0.45, 50 + i * 8)
+    return s, 0, 16
+
+
+def showdown():
+    """Showdown: the fight with Diamondback. E minor, 156 bpm, straight. A galloping overdrive and bass on E, C, D, B (the
+    watch's tune on two trumpets over it), timpani on the downbeats (bars 0-15); a stop-time break - the hits, the clock
+    ticking again on the woodblock, the whistle (16-19); back to bar 0."""
+    s = Song(156)
+    s.prog(0, TRUMPET, vol=104, pan=58)
+    s.prog(1, OVERDRIVE, vol=84, pan=40)
+    s.prog(2, FINGER_BASS, vol=112)
+    s.prog(3, WHISTLE, vol=90, pan=74)
+    s.prog(4, TIMPANI, vol=100)
+    s.prog(5, TRUMPET, vol=86, pan=78)
+    s.cc(9, 0, 7, 104)
+    ROOT = {'E': n('E2'), 'C': n('C2'), 'D': n('D2'), 'B': n('B1')}
+    prog_ = ['E', 'E', 'C', 'D', 'E', 'E', 'C', 'B']
+
+    def gallop(bar, ch, vel=88):
+        r = ROOT[ch]; base = bar * 4
+        for b in range(4):
+            for e, ln in ((0, 0.45), (0.5, 0.22), (0.75, 0.22)):
+                s.chord(1, base + b + e, [r + 12, r + 19], ln, vel - (10 if e else 0))
+            s.note(2, base + b, r, 0.45, 112); s.note(2, base + b + 0.5, r + 12, 0.4, 90)
+        s.drum(base, KICK, 116); s.drum(base + 0.75, KICK, 86); s.drum(base + 2, KICK, 110); s.drum(base + 2.75, KICK, 86)
+        s.drum(base + 1, SNARE, 112); s.drum(base + 3, SNARE, 116)
+        for i in range(8):
+            s.drum(base + i * 0.5, HAT_C, 70 if i % 2 == 0 else 52)
+        s.note(4, base, r + 12, 0.9, 100)
+    for k in range(16):
+        gallop(k, prog_[k % 8])
+    up = {'A4': 'B4', 'C5': 'E5', 'E5': 'G5', 'A5': 'B5', 'G5': 'A5', 'B4': 'D#5', 'F5': 'F#5'}   # the watch's tune, lifted into E minor
+    THIRD = {'B4': 'G4', 'E5': 'B4', 'G5': 'E5', 'B5': 'G5', 'A5': 'F#5', 'D#5': 'B4', 'F#5': 'D5'}
+    tune = [(b, up.get(nt, nt), ln) for b, nt, ln in WATCH]
+    for half in range(2):
+        b0 = half * 32
+        for b, nt, ln in tune:
+            s.note(0, b0 + b * 2, nt, ln * 2 * 0.92, 108)             # the tune at half speed over the gallop
+            if half:
+                s.note(5, b0 + b * 2, THIRD.get(nt, nt), ln * 2 * 0.92, 88)
+        s.drum(b0, CRASH, 112)
+    for k, (ch, chord) in enumerate((('E', ['E3', 'B3', 'E4', 'G4']), ('C', ['C3', 'G3', 'C4', 'E4']), ('D', ['D3', 'A3', 'D4', 'F#4']), ('B', ['B2', 'F#3', 'B3', 'D#4']))):
+        base = (16 + k) * 4                          # the break: hits, the clock ticking, the whistle
+        s.chord(1, base, chord, 0.6, 112); s.note(2, base, ROOT[ch], 0.6, 118); s.drum(base, KICK, 122); s.drum(base, CRASH if k % 2 == 0 else SPLASH, 100)
+        s.note(4, base, ROOT[ch] + 12, 1.5, 116)
+        for i in range(1, 4):
+            s.drum(base + i, WOODBLOCK, 80 + i * 6)
+    for b, nt, ln in ((64, 'B5', 4), (68, 'A5', 2), (70, 'G5', 2), (72, 'F#5', 4), (76, 'D#5', 3)):
+        s.note(3, b, nt, ln * 0.95, 96)
+    for i, v in enumerate(range(90, 126, 4)):
+        s.drum(76 + 3 + i * (1 / 9), SNARE, v)
+    return s, 0, 20 * 4
+
+
 # ---------------------------------------------------------------------------------------------- Boot Hill
 def boothill():
     """Boot Hill at midnight: E minor, 76 bpm. Tremolo guitar picking the chords, a whistle that could be the
@@ -792,7 +875,7 @@ def over():
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, fn in (('title', title), ('boothill', boothill), ('clear', clear), ('over', over), ('boogie', boogie),
-                     ('deadman', deadman), ('stampede', stampede), ('heist', heist), ('laststand', laststand)):
+                     ('deadman', deadman), ('stampede', stampede), ('heist', heist), ('laststand', laststand), ('standoff', standoff), ('showdown', showdown)):
         song, loop, end = fn()
         k = song.save(OUT / f'{name}.mid', loop, end)
         secs = end * 60 / song.bpm
