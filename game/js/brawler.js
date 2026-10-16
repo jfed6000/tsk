@@ -2071,7 +2071,7 @@ T.runBrawler = function (A) {
         center(T.textSprite('HE DIED WITH HIS BOOTS ON', '#e8a070', 1), 92); center(T.textSprite('NOW THE BOOTS WANT REVENGE', '#e8a070', 1), 102);
       }
       if (Math.floor(phaseT * 2) % 2 === 0) center(T.textSprite('PRESS JUMP', '#ffd34a', 2), 204);
-      center(T.textSprite('JFED (C) 2026', '#c3c8d8', 1), 228);
+      center(T.textSprite('JFED 2026', '#c3c8d8', 1), 228);
     } else if (phase !== 'intro' && phase !== 'ending') {
       put(T.bossBar('SHITKICKERS', Math.max(0, p.hp), MAX_HP), 6, 6, 0, 0, 0);
       if (p.lives <= 3) for (let i = 0; i < p.lives; i++) put(HAT, 108 + i * 24, 6, 0, 0, 0);   // the hats: up to three, then one and a count

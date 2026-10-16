@@ -193,7 +193,7 @@ ttt0                ldx       #TX.texas           the logo
                     ldx       #TX.tagline2
                     ldd       #102
                     lbsr      Ttl
-ttt0a               ldx       #TX.copyr           JFED (C) 2026, at the bottom
+ttt0a               ldx       #TX.copyr           JFED 2026, at the bottom
                     ldd       #228
                     lbsr      Ttl
                     lda       <phaset+1           PRESS JUMP, blinking
