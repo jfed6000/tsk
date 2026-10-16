@@ -1,5 +1,7 @@
 # Texas Shitkickers: the F256 side
 
+How the whole thing fits together, for anyone using it as an example: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+
 NitrOS-9 Level 2 on the Wildbits F256 (6809). Built the way `../game/port-guide.md` section 14 says: convert the
 assets on the host, show them with a standalone viewer, and prove every graphics primitive before any game code.
 

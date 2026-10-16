@@ -1,5 +1,7 @@
 # Texas Shitkickers
 
+How the prototype, the exporter and the F256 game fit together: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+
 A Final Fight / Double Dragon style brawler, prototyped in the browser for the Wildbits F256.
 Open `index.html` (no build step, no server needed).
 
