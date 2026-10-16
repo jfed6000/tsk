@@ -104,4 +104,7 @@ A browser prototype (`index.html`, no build step) that follows the F256 display 
 8. ✓ The Train Heist on the F256 (2026-10-15): `tsk t`, `make mametrain`.
 9. ✓ The Mission in the browser and on the F256 (2026-10-15): `?stage=mission` (`&wave=6`: Bullrush); `tsk i`, `make mamemission`.
 10. ✓ High Noon and the ending in the browser and on the F256 (2026-10-16): `?stage=highnoon` (`&wave=3`: the duel); `tsk n`, `make mamenoon`. The whole game now runs on the F256.
-11. Open questions in `story.md`: lives vs. continues, the vulture subplot, how violent (the blood CLUT entry).
+11. ✓ The story questions are settled (2026-10-16, `story.md`): hats as lives, Vernon out, bloodless, Bullrush; player 2 (the Stompers) parked.
+12. ✓ The hats on the F256 (2026-10-16); a release zip (`make dist`, TSK-F256-<date>.zip) and a showreel (`make reel`).
+13. **Boss entrances** (PPM 976, the user, 2026-10-16): the bosses "just kind of appear". Give them gravitas: a pause, a
+    boss sting or theme, his name and title, a line of speech (a taunt about Ringo). Browser first, then the F256.
