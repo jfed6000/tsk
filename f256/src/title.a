@@ -4,7 +4,8 @@
 *   The logo over Boot Hill at midnight, the camera drifting along it,
 *   the Shitkickers front and centre (a taunt now and then), the story's
 *   tagline, the high score, PRESS JUMP blinking, and the title theme.
-*   Jump starts a game.  Left alone for 20 s, the autopilot plays (the
+*   Jump shows the story (the backstory in nine lines, the hero out of
+*   the way); jump again starts a game.  Left alone for 20 s, the autopilot plays (the
 *   attract mode) until a button, a game over, the end, or 50 s, and
 *   then it's back to the title.
 ********************************************************************
@@ -22,6 +23,7 @@ TitleInit           clra                          Boot Hill for the backdrop (lo
                     lbcs      Fail
                     lda       #PH.Title
                     lbsr      SetPh
+                    clr       story,u
                     clr       <attract
                     lda       <botarg             (tsk b: the autopilot plays the games)
                     sta       <bot
@@ -92,10 +94,16 @@ tts5                 lda       <ht
                     lda       #12
                     sta       <ht
 tts6                 lbsr      PickAnim
-                    lda       <ipress             jump: the game
+                    lda       <ipress             jump: the story; jump again: the game
                     bita      #IN.Jump
                     beq       tts7
-                    clr       <attract
+                    tst       story,u
+                    bne       tts6a
+                    inc       story,u
+                    ldd       #0
+                    std       <phaset
+                    lbra      TitleHero
+tts6a               clr       <attract
                     lbra      GameInit
 tts7                 ldd       <phaset             left alone: the attract mode
                     cmpd      #AttractT
@@ -109,7 +117,10 @@ tts9                 rts
 * TitleHero - he stands in the middle of the screen
 TitleHero           ldd       <cam
                     addd      #160
-                    lbsr      To124
+                    tst       story,u             (off to the side while the story shows)
+                    beq       tth1
+                    addd      #300
+tth1                lbsr      To124
                     std       <hx
                     rts
 
@@ -158,7 +169,19 @@ ths9                 rts
 
 * TitleTop - the title's words, and the hero's strip showing the high
 *   score (DrawTop, title phase).  Y = the next record.
-TitleTop            ldx       #TX.texas           the logo
+TitleTop            tst       story,u             the story's page, or the logo
+                    beq       ttt0
+                    leax      StoryTab,pcr
+tst1                ldd       ,x                  each line: its frame, its y (Y stays the record pointer)
+                    beq       ttt0a
+                    pshs      x
+                    ldd       2,x
+                    ldx       ,x
+                    lbsr      Ttl
+                    puls      x
+                    leax      4,x
+                    bra       tst1
+ttt0                ldx       #TX.texas           the logo
                     ldd       #26
                     lbsr      Ttl
                     ldx       #TX.shitk
@@ -170,7 +193,7 @@ TitleTop            ldx       #TX.texas           the logo
                     ldx       #TX.tagline2
                     ldd       #102
                     lbsr      Ttl
-                    lda       <phaset+1           PRESS JUMP, blinking
+ttt0a               lda       <phaset+1           PRESS JUMP, blinking
                     bita      #32
                     beq       ttt1
                     ldx       #TX.press
@@ -266,3 +289,6 @@ tbt1x                lda       ,y
                     rts
 
 SHi                 fcn       "HI SCORE "
+* the story's page (brawler.js STORY): each line's frame and y
+StoryTab            fdb       TX.story0,30,TX.story1,44,TX.story2,54,TX.story3,64,TX.story4,82
+                    fdb       TX.story5,102,TX.story6,128,TX.story7,138,TX.story8,158,0

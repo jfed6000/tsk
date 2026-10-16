@@ -420,6 +420,7 @@ endst               rmb       1                   the ending's step (EN.*)
 endt                rmb       2                   passes in it
 endtw               rmb       1                   the boot's twitch, passes
 endq                rmb       1                   1 = back to the title (Stage does it)
+story               rmb       1                   1 = the title's showing the story (title.a)
 riding              rmb       1                   1 = the Cattle Drive's ride is on (ride.a)
 hmount              rmb       1                   1 = he's in the saddle
 hremount            rmb       1                   (the death scene: back in the saddle after)

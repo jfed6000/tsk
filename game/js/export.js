@@ -152,7 +152,7 @@ T.runExport = function (A) {
   }
   // a group = one character: its animations, every frame facing right, then every frame mirrored.
   // An animation may carry its own origin (ox, oy), else the group's.
-  function addGroup(prefix, anims, ox, oy, mirror = true) {
+  function addGroup(prefix, anims, ox, oy, mirror = true, alias = null) {
     if (bank && !OVL_BASE) throw new Error('a banked group before the shared ones are done');
     const list = [];
     for (const [name, frames, fps, loop, aox = ox, aoy = oy] of anims) list.push({ name, frames, fps, loop, ox: aox, oy: aoy });
@@ -160,7 +160,7 @@ T.runExport = function (A) {
     let n = 0;
     for (const a of list) { a.first = n; for (const f of a.frames) { addFrame(f, a.ox, a.oy, false); n++; } }
     if (mirror) for (const a of list) for (const f of a.frames) addFrame(f, a.ox, a.oy, true);
-    groups.push({ prefix, first, n, list, mirror, bank });
+    groups.push({ prefix, first, n, list, mirror, bank, alias });
   }
   const H = T.HERO, S = T.SKEL;
   addGroup('HR', Object.values(HERO).map(a => [a.name, a.frames, a.fps, a.loop]), H.OX, H.OY);
@@ -232,9 +232,30 @@ T.runExport = function (A) {
     ['highnoon', 'HIGH NOON, BOOTS.', '#9ad46a', 2], ['hnoon', 'HIGH NOON', '#ffd34a', 3], ['mainsub', 'MAIN STREET', '#e8a070', 1],
     ['needin', "I'VE BEEN NEEDIN' A NEW PAIR.", '#fff3c4', 1], ['draw', 'DRAW!', '#ffd34a', 4], ['outdrawn', 'OUTDRAWN!', '#ffd34a', 2],
     ['jumped', 'JUMPED THE GUN!', '#ff6b4a', 1], ['slowboot', 'TOO SLOW, BOOTS!', '#ff6b4a', 1], ['snakebit', 'SNAKEBIT!', '#ff6b4a', 1],
-    ['posse', "GET 'EM, POSSE!", '#ff9d3c', 1], ['theend', 'THE END', '#ff9d3c', 4], ['pressj', 'PRESS JUMP', '#c3c8d8', 1], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
+    ['posse', "GET 'EM, POSSE!", '#ff9d3c', 1], ['theend', 'THE END', '#ff9d3c', 4], ['pressj', 'PRESS JUMP', '#c3c8d8', 1],
+    ['story0', 'RINGO WAS IN THE WAY.', '#fff3c4', 1], ['story1', 'THE DIAMONDBACK GANG GUNNED HIM DOWN', '#fff3c4', 1],   // the story's page (brawler.js STORY)
+    ['story2', 'AND BURIED HIM ON BOOT HILL', '#fff3c4', 1], ['story3', 'WITH HIS BOOTS ON.', '#fff3c4', 1],
+    ['story4', 'RINGO STAYED DEAD.', '#e8a070', 2], ['story5', "HIS BOOTS DIDN'T.", '#ff9d3c', 2],
+    ['story6', 'THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1], ['story7', 'WITH HIS HAT, A SCOWL AND A GRUDGE.', '#fff3c4', 1],
+    ['story8', 'NOW THE BOOTS WANT REVENGE.', '#ffd34a', 1], ['mainst2', 'MAIN STREET.', '#9ad46a', 2], ['diamond', '- DIAMONDBACK', '#c3c8d8', 1],
   ];
-  addGroup('TX', TEXT.map(([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; }), 0, 0, false);
+  // A word only ever drawn on one stage lives in that stage's sprite bank (it's loaded only with the stage), not in
+  // the shared cells, which every stage pays for: the stage's title card, its boss's lines, its own messages. The
+  // title's words go with Boot Hill (the title is drawn over Boot Hill's art). Still TX.<name> to the 6809.
+  const WORDBANK = {
+    BH: 'texas shitk boothill midnight clear rise buried press tagline tagline2 story0 story1 story2 story3 story4 story5 story6 story7 story8',
+    MS: 'mainst dusk msclear mytown rollout',
+    GT: 'ghostt moonrise gtclear weep dealin anteup busted chomp timber pickcard squashed',
+    CD: 'cattle sunup cdclear whoa oof trampled roped hogtied finders tooslow nottoday stampede',
+    TH: 'trainh midday thclear tunnel duckhold duck seeya swept watchstep mindhead nobody clank stung uhoh lightall kaboom',
+    MI: 'mission sundown miclear herethey theyrein costhat barred prayers snort seered gored crash stuck highnoon mainst2 diamond',
+    HN: 'hnoon mainsub needin draw outdrawn jumped slowboot snakebit posse',
+    EN: 'theend pressj',
+  };
+  const bankOfWord = {}; for (const k in WORDBANK) for (const w of WORDBANK[k].split(' ')) bankOfWord[w] = k;
+  const word = ([name, str, col, sc]) => { const t = T.textSprite(str, col, sc); return [name, [t], 1, false, t.width >> 1, 0]; };
+  const wordsOf = k => TEXT.filter(t => bankOfWord[t[0]] === k).map(word);
+  addGroup('TX', TEXT.filter(t => !bankOfWord[t[0]]).map(word), 0, 0, false);
 
   // the stage banks: Boot Hill's Two-Bit; Main Street's mangy gang (the coyote art in the mangy palette) and tumbleweed
   // shared by Main Street and Ghost Town: the outlaw coyotes (the coyote art in the mangy palette), the tumbleweed
@@ -245,11 +266,13 @@ T.runExport = function (A) {
   addGroup('TW', [['roll', TUMBLE, 10, true]], 12, 22);
   OVL_BASE = Math.ceil(cellData.length / 8) * 8;
   bank = 'BH';
+  addGroup('XBH', wordsOf('BH'), 0, 0, false, 'TX');
   addGroup('TB', [['idle', COYOTE.idle, 3, true], ['walk', COYOTE.walk, 8, true], ['talk', COYOTE.talk, 6, true],
     ['windup', [COYOTE.windup], 1, false], ['swing', [COYOTE.swing], 1, false], ['throw', [COYOTE.throw], 1, false],
     ['dig', [COYOTE.dig], 1, false], ['pop', [COYOTE.pop], 1, false], ['daze', COYOTE.daze, 8, true],
     ['hurt', [COYOTE.hurt], 1, false], ['ko', [COYOTE.ko], 1, false], ['down', [COYOTE.down], 1, false]], B.OX, B.OY);
   bank = 'MS';
+  addGroup('XMS', wordsOf('MS'), 0, 0, false, 'TX');
   const DLN = T.buildDillon();                     // Big Shell Dillon, Main Street's boss
   addGroup('BD', [['idle', DLN.idle, 3, true], ['walk', DLN.walk, 7, true], ['talk', DLN.talk, 6, true],
     ['windup', [DLN.windup], 1, false], ['swipe', [DLN.swipe], 1, false], ['curl', [DLN.curl], 1, false],
@@ -259,6 +282,7 @@ T.runExport = function (A) {
   addGroup('RT', [['walk', RAT.walk, 8, true], ['coil', RAT.coil, 14, true], ['lunge', [RAT.lunge], 1, false],
     ['recover', [RAT.recover], 1, false], ['hurt', [RAT.hurt], 1, false], ['down', [RAT.down], 1, false], ['ko', [RAT.ko], 1, false]], B.OX, B.OY);
   bank = 'GT';                                     // Ghost Town: Doc Gila and his cards, the signs and tables
+  addGroup('XGT', wordsOf('GT'), 0, 0, false, 'TX');
   addGroup('GL', [['idle', GIL.idle, 3, true], ['walk', GIL.walk, 7, true], ['talk', GIL.talk, 6, true], ['deal', [GIL.deal], 1, false],
     ['flick', [GIL.flick], 1, false], ['jaws', [GIL.jaws], 1, false], ['bite', [GIL.bite], 1, false], ['duck', [GIL.duck], 1, false],
     ['hurt', [GIL.hurt], 1, false], ['daze', GIL.daze, 8, true], ['ko', [GIL.ko], 1, false],
@@ -268,6 +292,7 @@ T.runExport = function (A) {
     ['table', [GPR.table], 1, false, GPR.table.ox, GPR.table.oy], ['flipped', [GPR.flipped], 1, false, GPR.flipped.ox, GPR.flipped.oy],
     ['plank', [GPR.plank], 1, false, GPR.plank.ox, GPR.plank.oy]], 16, 16, false);
   bank = 'CD';                                     // the Cattle Drive: the longhorn, the horses, fences and rocks, Jackrabbit Jack
+  addGroup('XCD', wordsOf('CD'), 0, 0, false, 'TX');
   const RS = T.buildRanchSprites(), JK = T.buildJack();
   addGroup('RD', [['steer', RS.steer, 10, true], ['steerj', [RS.steerJump], 1, false], ['horse', RS.horse, 12, true]], B.OX, B.OY);
   addGroup('RO', [['fence', [RS.fence], 1, false, RS.fence.ox, RS.fence.oy], ['rock', [RS.rock], 1, false, RS.rock.ox, RS.rock.oy]], 16, 16, false);
@@ -276,6 +301,7 @@ T.runExport = function (A) {
     ['daze', JK.daze, 8, true], ['ko', [JK.ko], 1, false],
     ['loop', [JK.loop], 1, false, JK.loop.ox, JK.loop.oy], ['rope', [JK.rope], 1, false, JK.rope.ox, JK.rope.oy]], B.OX, B.OY);
   bank = 'TH';                                     // the Train Heist: Sting, his dynamite, the bang, the tunnel's mouth and its pit-props
+  addGroup('XTH', wordsOf('TH'), 0, 0, false, 'TX');
   const SG = T.buildSting(), TRS = T.buildTrainSprites(FLOOR);
   addGroup('SC', [['idle', SG.idle, 3, true], ['walk', SG.walk, 10, true], ['talk', SG.talk, 6, true], ['pinchw', [SG.pinchw], 1, false],
     ['pinch', [SG.pinch], 1, false], ['windup', [SG.windup], 1, false], ['sting', [SG.sting], 1, false], ['stuck', [SG.stuck], 1, false],
@@ -285,12 +311,14 @@ T.runExport = function (A) {
   addGroup('TP', [['portal', [TRS.portal], 1, false, TRS.portal.ox, TRS.portal.oy]], 0, 0);              // (mirrored: the way out)
   addGroup('TQ', [['boom', SG.boom, 1, false, SG.boom[0].ox, SG.boom[0].oy], ['prop', [TRS.prop], 1, false, TRS.prop.ox, TRS.prop.oy]], 0, 0, false);
   bank = 'MI';                                     // the Mission: El Toro, and the splinters off the church doors
+  addGroup('XMI', wordsOf('MI'), 0, 0, false, 'TX');
   const TO = T.buildToro(), MSP = T.buildMissionSprites();
   addGroup('TO', [['idle', TO.idle, 3, true], ['walk', TO.walk, 7, true], ['talk', TO.talk, 6, true], ['paw', TO.paw, 6, true],
     ['charge', TO.charge, 12, true], ['stuck', TO.stuck, 10, true], ['hookw', [TO.hookw], 1, false], ['hook', [TO.hook], 1, false],
     ['rear', [TO.rear], 1, false], ['stomp', [TO.stomp], 1, false], ['hurt', [TO.hurt], 1, false], ['daze', TO.daze, 8, true],
     ['ko', [TO.ko], 1, false], ['splint', [MSP.splinter], 1, false, MSP.splinter.ox, MSP.splinter.oy]], B.OX, B.OY);
   bank = 'HN';                                     // High Noon: Diamondback, the town clock's hands
+  addGroup('XHN', wordsOf('HN'), 0, 0, false, 'TX');
   const DBK = T.buildDiamondback(), NSP = T.buildNoonSprites();
   addGroup('DB', [['idle', DBK.idle, 2, true], ['walk', DBK.walk, 8, true], ['talk', DBK.talk, 6, true], ['draw', [DBK.draw], 1, false],
     ['fire', [DBK.fire], 1, false], ['reload', DBK.reload, 4, true], ['coil', [DBK.coil], 1, false], ['strike', [DBK.strike], 1, false],
@@ -298,6 +326,7 @@ T.runExport = function (A) {
     ['ko', [DBK.ko], 1, false], ['nogun', DBK.nogun, 3, true]], B.OX, B.OY);
   addGroup('CH', [['hands', NSP.hands, 1, false, 16, 16]], 16, 16, false);
   bank = 'EN';                                     // the ending: the snakeskin boot that twitches (over the shop's bitmap)
+  addGroup('XEN', wordsOf('EN'), 0, 0, false, 'TX');
   addGroup('BO', [['boot', EN.shopBoot, 1, false, EN.shopBoot[0].ox, EN.shopBoot[0].oy]], 0, 0, false);
   bank = null;
   for (const rec of frameRecs) for (const c of rec) if (c.dx < -128 || c.dx > 127 || c.dy < -128 || c.dy > 127) throw new Error('cell offset out of range');
@@ -441,7 +470,7 @@ T.runExport = function (A) {
   for (const g of groups) {
     L.push(`${g.prefix}.First equ ${g.first}`, `${g.prefix}.Mir equ ${g.mirror ? g.n : 0}`);
     for (const a of g.list) {
-      const nm = g.prefix + '.' + a.name;
+      const nm = (g.alias || g.prefix) + '.' + a.name;
       L.push(`${nm.padEnd(14)} equ ${g.first + a.first}`);
       L.push(`${(nm + '.N').padEnd(14)} equ ${a.frames.length}`);
       L.push(`${(nm + '.T').padEnd(14)} equ ${Math.max(1, Math.round(60 / a.fps))}`);

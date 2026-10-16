@@ -239,8 +239,16 @@ T.runBrawler = function (A) {
   }
 
   // ---------------------------------------------------------------- the title screen (f256/src/title.a)
-  let titleDir = 1;
+  let titleDir = 1, story = false;               // the story's page, over the title's backdrop
+  const STORY = [
+    ['RINGO WAS IN THE WAY.', '#fff3c4', 1, 30], ['THE DIAMONDBACK GANG GUNNED HIM DOWN', '#fff3c4', 1, 44],
+    ['AND BURIED HIM ON BOOT HILL', '#fff3c4', 1, 54], ['WITH HIS BOOTS ON.', '#fff3c4', 1, 64],
+    ['RINGO STAYED DEAD.', '#e8a070', 2, 82], ["HIS BOOTS DIDN'T.", '#ff9d3c', 2, 102],
+    ['THEY CLAWED UP OUT OF THE GRAVE', '#fff3c4', 1, 128], ['WITH HIS HAT, A SCOWL AND A GRUDGE.', '#fff3c4', 1, 138],
+    ['NOW THE BOOTS WANT REVENGE.', '#ffd34a', 1, 158],
+  ];
   function toTitle() {
+    story = false;
     loadStage('boothill');
     barrels = []; phase = 'title'; phaseT = 0;
     player.x = 160; player.z = 24; player.face = 1; setS('idle'); player.t = 0.2;
@@ -254,7 +262,7 @@ T.runBrawler = function (A) {
     if (p.state === 'idle' && p.t > 4) setS('taunt');
     else if (p.state === 'taunt' && p.t >= HERO.taunt.dur) { setS('idle'); p.t = 0.2; }
     pickAnim(p);
-    if (pressed.jump) { loadStage('boothill'); }
+    if (pressed.jump) { if (story) loadStage('boothill'); else { story = true; phaseT = 0; } }   // jump: the story; jump again: the game
   }
 
   function loadStage(name, keep) {
@@ -1991,8 +1999,11 @@ T.runBrawler = function (A) {
     // HUD
     if (phase === 'title') {
       center(T.textSprite('HI SCORE ' + String(hiScore).padStart(7, '0'), '#ffd34a', 1), 10);
-      center(T.textSprite('TEXAS', '#ffe7b0', 4), 26); center(T.textSprite('SHITKICKERS', '#ff9d3c', 4), 54);
-      center(T.textSprite('HE DIED WITH HIS BOOTS ON', '#e8a070', 1), 92); center(T.textSprite('NOW THE BOOTS WANT REVENGE', '#e8a070', 1), 102);
+      if (story) for (const [t, c, sc, y] of STORY) center(T.textSprite(t, c, sc), y);   // the story's page
+      else {
+        center(T.textSprite('TEXAS', '#ffe7b0', 4), 26); center(T.textSprite('SHITKICKERS', '#ff9d3c', 4), 54);
+        center(T.textSprite('HE DIED WITH HIS BOOTS ON', '#e8a070', 1), 92); center(T.textSprite('NOW THE BOOTS WANT REVENGE', '#e8a070', 1), 102);
+      }
       if (Math.floor(phaseT * 2) % 2 === 0) center(T.textSprite('PRESS JUMP', '#ffd34a', 2), 204);
     } else if (phase !== 'intro' && phase !== 'ending') {
       put(T.bossBar('SHITKICKERS', Math.max(0, p.hp), MAX_HP), 6, 6, 0, 0, 0);
@@ -2036,10 +2047,10 @@ T.runBrawler = function (A) {
       }
     } else {
       if (p.mounted) put(p.h > 0 ? RSP.steerJump : RSP.steer[(time * 10 | 0) % 4], wx(p.x), sy(p.z, p.h), CB.OX, CB.OY, depth(p.z) - 0.0005, p.face);
-      if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2) && !(p.state === 'fall' && p.h < -14)) put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h + (p.mounted ? SADDLE : 0)), H.OX, H.OY, depth(p.z) - 0.001, p.face);
+      if (!(p.inv > 0 && Math.floor(p.inv * 18) % 2) && !(p.state === 'fall' && p.h < -14) && !(phase === 'title' && story)) put(HERO[p.anim].frames[p.frame], wx(p.x), sy(p.z, p.h + (p.mounted ? SADDLE : 0)), H.OX, H.OY, depth(p.z) - 0.001, p.face);
     }
     if (death && death.hat) put(HAT, wx(death.hat.x), Math.round(death.hat.y), T.HAT.OX, T.HAT.OY, death.caught ? depth(p.z) - 0.002 : 0);
-    if ((phase !== 'intro' || phaseT >= IN.rise) && p.state !== 'fall' && !(ending && (ending.step === 'theend' || ending.step === 'shop'))) put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
+    if ((phase !== 'intro' || phaseT >= IN.rise) && p.state !== 'fall' && !(phase === 'title' && story) && !(ending && (ending.step === 'theend' || ending.step === 'shop'))) put(PICK.shadow, wx(p.x), sy(p.z, 0), 16, 4, 9);
     if (S.noon && !ending) put(NSP.hands[struck ? 1 : 0], wx(NO.CLOCK.x), NO.CLOCK.y, 16, 16, 8.9);   // the town hall's clock: 11:59, then noon
     if (boss && boss.type === 'diamondback' && boss.state === 'duel' && boss.drawT && boss.t - boss.drawT < 0.9 && boss.res !== 'early') center(T.textSprite('DRAW!', '#ffd34a', 4), 56);
     if (pebble) { put(PROPS.clod, wx(pebble.x), sy(pebble.z, pebble.h), 4, 4, depth(pebble.z) - 0.002); put(PICK.shadowS, wx(pebble.x), sy(pebble.z, 0), 12, 4, 9); }

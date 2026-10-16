@@ -384,7 +384,13 @@ One program module, **`tsk`**, assembled from:
       the ending's stray sprites in MAME, and its missing boot); the ending's walk compared a negative x unsigned
       (`lblo` for `lblt`); `DB.*` states against the exported `DB` frame group (the assembler ignores case: they're
       `DK.*`); stagegen read `fcn "DIAMONDBACK"` as a call to `Diamondback` (it skips `fcn` strings now).
-17. The pad harness, co-op.
+17. ✓ **The story page and the words' banks** *(2026-10-16)*: jump on the title shows the backstory (nine lines,
+    `StoryTab`; the hero out of the way); jump again starts the game. Those nine lines pushed sprite memory past
+    what the machine had (MAME: `tsk` failed to start, error #032), so **a word only drawn on one stage now lives in
+    that stage's sprite bank** (`export.js WORDBANK`: its title card, its boss's lines, its messages; the title's
+    words with Boot Hill, whose art is up behind the title), still `TX.<name>` to the 6809 (the group's `alias`).
+    Shared cells 1,141 -> 898; sprite RAM in all 1,384K -> 1,222K, under the last build that ran.
+18. The pad harness, co-op.
 
 Each step has a demo script and a MAME check against the browser; the K2 run is the user's.
 

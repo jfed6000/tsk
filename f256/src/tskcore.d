@@ -28,11 +28,11 @@ BulH                equ       $001C
 BulV                equ       $003D
 CamLead             equ       $0090
 ChainT              equ       $001B
-CI.BarBk            equ       $0077
-CI.BarFg            equ       $0078
-CI.BarHi            equ       $0079
+CI.BarBk            equ       $0074
+CI.BarFg            equ       $0075
+CI.BarHi            equ       $0076
 CI.Crm              equ       $0054
-CI.Org              equ       $0057
+CI.Org              equ       $0056
 CI.Out              equ       $0001
 CI.Yel              equ       $0055
 CL.H                equ       $0005
@@ -63,9 +63,9 @@ DlSpd               equ       $0013
 DlTall              equ       $0010
 DownT               equ       $0036
 DriftT              equ       $0080
-ds1x                equ       $5C4E
+ds1x                equ       $5CB0
 DuskEvery           equ       $0007
-DynCell             equ       $0548
+DynCell             equ       $04B0
 ES.Aim              equ       $0003
 ES.Air              equ       $0008
 ES.Appr             equ       $0002
@@ -154,7 +154,7 @@ NDynBlk             equ       $0003
 NHb                 equ       $0003
 NIt                 equ       $0006
 NMBuf               equ       $0060
-NOvlBlk             equ       $001F
+NOvlBlk             equ       $0025
 NPend               equ       $0010
 NPu                 equ       $0008
 PH.Clear            equ       $0001
@@ -173,7 +173,7 @@ PK.StarB            equ       $0002
 PN.M                equ       $0001
 PN.Size             equ       $0004
 PN.T                equ       $0000
-PopCell             equ       $0550
+PopCell             equ       $04B8
 PopLife             equ       $0036
 PU.F                equ       $0002
 PU.K                equ       $0001
