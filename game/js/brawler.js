@@ -999,9 +999,9 @@ T.runBrawler = function (A) {
     toro: ["DIAMONDBACK'S ENFORCER", 'SAY YER PRAYERS, BOOTS!', "RINGO'S GONE. YOU'RE NEXT", 72],
   };
   // The order (the user, 2026-10-16): he arrives; a second after he's down and still, his name types on over his head, a telegraph
-  // click a letter, and what he is stamps on under it; a second and a half; then his line, then Ringo's, ~4 s each
+  // click a letter, and what he is stamps on under it; a second and a half; then his line, then Ringo's, ~3.5 s each
   // ("about 2 seconds more on each line"); FIGHT!. The boss theme comes in as the sting ends (4.6 s in).
-  const ENT = { arrive: 0.6, settle: 1.0, letter: 0.045, stamp: 0.15, pause: 1.5, line: 4.0, theme: 4.6, skip: 0.8, hold: 2.0 };
+  const ENT = { arrive: 0.6, settle: 1.0, letter: 0.045, stamp: 0.15, pause: 1.5, line: 3.5, theme: 4.6, skip: 0.8, hold: 2.0 };
   const BUBBLE = !params.has('nobubble');        // (the user liked the bubble; ?nobubble for the bare words)
   let entr = null;
   function startEntrance() { entr = { t: 0, arr: null, n: 0, stamped: false }; boss.said = true; music('entrance'); }   // (his lines are the entrance's)
