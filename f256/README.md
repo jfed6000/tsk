@@ -1,6 +1,6 @@
 # Texas Shitkickers: the F256 side
 
-How the whole thing fits together, for anyone using it as an example: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+How the whole thing fits together, for anyone using it as an example: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 NitrOS-9 Level 2 on the Wildbits F256 (6809). Built the way `../game/port-guide.md` section 14 says: convert the
 assets on the host, show them with a standalone viewer, and prove every graphics primitive before any game code.
@@ -35,15 +35,17 @@ assets on the host, show them with a standalone viewer, and prove every graphics
 
 CLUT plan: 0 sprites, 1 hit flash (all white), 2 afterimage (ghost), 3 tiles.
 
-Assets: Boot Hill 576 tiles and Main Street 650 (3 sets each); 732 shared sprite cells, plus each stage's own
-(Boot Hill 113, Main Street 88) loaded at cell `SPR.Base`; 444 frames; the sprite CLUT 143 of 255, the tile CLUT 96.
-Files are per stage where they differ: `tiles_bh.bin`/`tiles_ms.bin`, `maps_*`, `spr_*`, and `clut_dusk.bin`
-(Main Street's 13 shades of night).
+Each stage's tiles, maps, sprite bank, frame records, palettes and shades are its own files (`tiles_<s>.bin`,
+`maps_<s>.bin`, `spr_<s>.bin`, `frr_<s>.bin`, `pal_<s>.bin`, `tpal_<s>.bin`, `shade_<s>.bin`), loaded with the stage;
+`sprites.bin` and `frr.bin` are the shared art; `mus_<song>.bin` a song each. The exporter prints the counts.
+
+**Without the browser prototype** (the F256-only package): `assets/` holds the exported files, so `make`, `make
+install` and the tests work; `make assets` and `make music` need `../game/` from the full repository.
 
 ## tsk: the game
 
 ```
-make                 # tsk (27.4K of 32,768; data area 5.8K of 7,936), the stage modules tskms, tskgt, tskcd, tskth, tskmi, tskhn, tsken (8K each), tskview
+make                 # tsk (29.3K of 32,768; data area 6.0K of 7,936), the stage modules tskms, tskgt, tskcd, tskth, tskmi, tskhn, tsken (8K each), tskview
 make install DSK=/absolute/path/to/image.dsk   # tsk to CMDS; the assets and the stage modules (tskms, tskgt, tskcd, tskth, tskmi, tskhn, tsken) to TSK
 make host            # the demo on the host 6809, the hero's state every 10 passes
 make mame            # the demo in MAME, snapshots in mame/snap/wbjr2/
@@ -89,26 +91,7 @@ SAM2695 (General MIDI), written straight into the MIDI FIFO at $FF30. Other lett
 | T | Taunt |
 | Q | Quit |
 
-**Sprint 1** (2026-10-12): the hero on Boot Hill with every ground and air move, the camera, and the depth-sorted
-display list with his shadow.
-
-**Sprint 2** (2026-10-13): the skeleton gunslingers and combat. Hitstop, the white hit flash and screen shake.
-
-**Sprint 3** (2026-10-14): all of Boot Hill.
-- **The opening:** he claws out of Ringo's grave and the hat hops onto his head.
-- **The stage:** four waves of skeletons and dillos, each locking the screen, then GO.
-- **Barrels:** beans, the bullwhip and the six-shooter.
-- **The HUD:** health, score, lives, weapon, the enemy's name and bar, and the combo. Popups and titles.
-- **Two-Bit:** the swing, the clods, the dig-tunnel-pop, and raising the dead at half health.
-- **The ending:** the clear, TO BE CONTINUED, or game over, and jump to play again.
-
-**Sprint 4** (2026-10-14): the title screen (with attract mode and a high score) and sound. Music and effects on the
-SAM2695: the title shuffle, Boot Hill's theme, the clear and game-over tags, sixteen effects.
-
-**Sprint 5** (2026-10-14): Main Street. It follows Boot Hill: per-stage art and sprite banks, mangy coyotes,
-skeletons walking in, night falling a step each wave, tumbleweeds, "Graveyard Boogie". Then TO BE CONTINUED.
-
-Verified on the host and in MAME; not yet run on the K2. Not yet ported: the grab and throw.
+The order the port was done in, and what each step found, is in [`docs/port-plan.md`](docs/port-plan.md).
 
 ## tskview
 
@@ -139,5 +122,5 @@ What it exercises:
 **Verified in MAME** (`wbjr2`, Longview, 2026-10-12): all of the above, including the three layers, the parallax,
 mirrored frames, the hit flash, the lightning and the clean exit to the shell.
 
-**Verified on the K2** (2026-10-12): "looks pretty smooth". The photo matches MAME, with no visible 8 px tile
+**Verified on the K2** (2026-10-12): it ran smoothly. The photo matches MAME, with no visible 8 px tile
 offset against the sprites (port-guide §6); that hasn't been measured to the pixel.

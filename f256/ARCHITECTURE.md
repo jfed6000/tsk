@@ -18,12 +18,19 @@ The short version:
 The rest of this document goes through those in turn, then the runtime design, the tools, the pitfalls we hit, and
 how to start a new game from this one.
 
+**This directory is the F256 side.** The browser prototype (`game/`) lives beside it in the full Texas Shitkickers
+repository; this guide describes it because it's half of how the game was made. Without it you can build, install
+and run everything here (the exported assets are in `assets/`), but not re-export the art or recompose the music
+(`make assets`, `make music`).
+
 ---
 
 ## 1. Repository map
 
+Paths in this guide are relative to the full repository; this directory is its `f256/`.
+
 ```
-game/                     the browser prototype (open game/index.html)
+game/                     the browser prototype (open game/index.html; not in the F256-only package)
   js/brawler.js           the game itself: input, the hero, enemies, waves, bosses, HUD, the frame loop
   js/sprites.js           procedural pixel art; the palette snapping; text; the speech bubble
   js/<stage>.js           each stage's art, its gimmicks and its boss (boothill.js, mainstreet.js, ghosttown.js, ...)
@@ -342,7 +349,7 @@ Then it goes to the K2. Install with `make install DSK=…`, or build the releas
 
 - The DMA engine only runs in vertical blank and stalls the CPU while it does: good for a whole-screen clear once a
   frame, bad for many small copies (port guide, section 6a).
-- `SS.GfxAlloc`'s error when you're out of memory is just a number to the user. Say what's needed (`NoMem`).
+- `SS.GfxAlloc`'s error when you're out of memory is just a number to the player. Say what's needed (`NoMem`).
 - Files in a release zip: `tsk` and `TSK/` collide on a case-insensitive disk (macOS's default, Windows'). Ship the
   module as `CMDS/tsk`.
 
