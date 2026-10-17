@@ -39,8 +39,9 @@ Each stage's tiles, maps, sprite bank, frame records, palettes and shades are it
 `maps_<s>.bin`, `spr_<s>.bin`, `frr_<s>.bin`, `pal_<s>.bin`, `tpal_<s>.bin`, `shade_<s>.bin`), loaded with the stage;
 `sprites.bin` and `frr.bin` are the shared art; `mus_<song>.bin` a song each. The exporter prints the counts.
 
-**Without the browser prototype** (the F256-only package): `assets/` holds the exported files, so `make`, `make
-install` and the tests work; `make assets` and `make music` need `../game/` from the full repository.
+**The exported files are committed** (`assets/*.bin`, with the generated `src/tskassets.d` and `src/tskmusic.d`
+that describe them), so `make`, `make install` and the tests work from a fresh copy, without the browser prototype.
+`make assets` and `make music` regenerate them from `../game/` in the full repository; commit what they change.
 
 ## tsk: the game
 
