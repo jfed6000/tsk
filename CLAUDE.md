@@ -13,4 +13,7 @@ in `game/` that obeys the F256 display rules.
     due two days later. Claude's tasks are assigned to `claude` with no dates.
   - Tasks link (`affects`) to the Components deliverables they change. Complete them in PPM when done.
 - Test headless with Chromium and the URL flags (`?ff`, `?bot`, `?god`, `?debug`, `?sheet`); see `game/README.md`.
-- Commit when work is done (branch main), then push to `origin` (http://seshat.local:3000/magnus/tsk.git).
+- Commit when work is done (branch main), then push to `origin` (http://seshat.local:3000/magnus/tsk.git) and to
+  `github` (https://github.com/jfed6000/tsk, public since 2026-10-21).
+- **Licence:** the characters are copyright 2026 John Federico; the code is free as long as you don't charge for it
+  (`LICENSE`). Not MIT: keep any copy (e.g. for nitros9-games) under the same terms.
