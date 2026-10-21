@@ -2,7 +2,7 @@
 
 How the whole thing fits together, for anyone using it as an example: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-NitrOS-9 Level 2 on the Wildbits F256 (6809). Built the way `../game/port-guide.md` section 14 says: convert the
+NitrOS-9 Level 2 on the Wildbits F256 (6809). Built the way the F256 porting guide's section 14 says (https://github.com/jfed6000/f256_porting): convert the
 assets on the host, show them with a standalone viewer, and prove every graphics primitive before any game code.
 
 ## Pieces

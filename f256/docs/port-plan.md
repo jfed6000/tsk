@@ -1,7 +1,7 @@
 # Texas Shitkickers on the F256: the port
 
 *How the browser game (`game/js/brawler.js`) became a NitrOS-9 Level 2 program. It follows the F256 porting guide
-(`game/port-guide.md` in the full repository) and records what is specific to this game: first the design as it
+(https://github.com/jfed6000/f256_porting) and records what is specific to this game: first the design as it
 stands, then the order the work was done in, with what each step found. For the overview, read
 [`../ARCHITECTURE.md`](../ARCHITECTURE.md) first.*
 

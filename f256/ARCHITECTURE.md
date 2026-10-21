@@ -37,7 +37,7 @@ game/                     the browser prototype (open game/index.html; not in th
   js/levels.js            level data and the bosses' lines
   js/export.js            draws and packs every asset for the F256 (run by f256/tools/export.py)
   music/                  the songs: .mid (sent to the F256) and .mp3 (what the browser plays)
-  port-guide.md           the F256 porting guide: the hardware's rules, section by section
+  port-guide.md           a pointer to the F256 porting guide (https://github.com/jfed6000/f256_porting)
   docs/                   the design: status.md (where things stand), story.md, f256-plan.md
 f256/                     the 6809 side
   src/tsk.asm + *.a       tsk, the game's core module
@@ -58,7 +58,7 @@ core in Python (`cpu6809.py`, from the Tempest port).
 
 ## 2. The hardware rules the whole design follows
 
-`game/port-guide.md` is the authority; these are the parts that shaped this game. The prototype obeys them too, so
+The F256 porting guide (https://github.com/jfed6000/f256_porting) is the authority; these are the parts that shaped this game. The prototype obeys them too, so
 nothing designed in the browser is impossible on the machine.
 
 | | |
@@ -402,7 +402,8 @@ A suggested order, the one this game followed:
 
 ## Further reading in this repo
 
-- `game/port-guide.md`: the F256 under NitrOS-9 in depth, the hardware facts read from the FPGA source
+- The F256 porting guide, https://github.com/jfed6000/f256_porting: the F256 under NitrOS-9 in depth, the hardware facts read from the FPGA
+  source, and the lessons of Joust, Tempest and this game
 - `game/docs/f256-plan.md`: how the prototype maps onto the F256 (layers, CLUTs, budgets)
 - `f256/docs/port-plan.md`: the port, sprint by sprint
 - `f256/README.md`: the build, the tools and the asset formats

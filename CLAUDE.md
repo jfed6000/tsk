@@ -4,7 +4,8 @@ A Final Fight-style brawler for the Wildbits F256 (NitrOS-9 Level 2, 6809), desi
 in `game/` that obeys the F256 display rules.
 
 - **Start here:** `game/docs/status.md` (the handoff), then `game/docs/story.md` and `game/docs/f256-plan.md`.
-- **Hardware rules:** `game/port-guide.md` (the user's F256 porting guide). Check any new visual feature against
+- **Hardware rules:** the user's F256 porting guide, https://github.com/jfed6000/f256_porting (`README.md`; a clone at `~/projects/wild/f256_porting`;
+  `game/port-guide.md` only points there). Check any new visual feature against
   its section 6 (sprites 32×32, ≤128 records, 4 CLUTs, no flip/rotate/blend, 3 layers).
 - **Project tracking: PPM project `texas-shitkickers` (id 658)**, via the ppm MCP server.
   - At the end of each session or major coding sprint, add a **journal entry** saying where things stand.
