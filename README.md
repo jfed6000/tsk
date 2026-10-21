@@ -52,4 +52,5 @@ To build it yourself, see `f256/README.md`.
 
 The characters are copyright 2026 by John Federico.
 
-The code is free, as long as you don't charge for it. See [`LICENSE`](LICENSE).
+The code is free, as long as you don't charge for it, and if you share it (or anything made from it), pass the
+license on with it. See [`LICENSE`](LICENSE).
